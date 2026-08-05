@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "../../../../../components/Navbar";
 import Footer from "../../../../../components/Footer";
+import { supabase } from "../../../../../lib/supabase";
 
 type Order = {
     id: number;

@@ -12,6 +12,7 @@ type Product = {
     title: string;
     image: string;
     price: string;
+    stock: number;
     featured: boolean;
     bestseller: boolean;
 };
@@ -120,6 +121,7 @@ export default function Home() {
                                 image={product.image}
                                 title={product.title}
                                 subtitle={`₹${product.price}`}
+                                stock={product.stock}
                             />
                         ))}
 
@@ -153,6 +155,7 @@ export default function Home() {
                                 image={product.image}
                                 title={product.title}
                                 subtitle={`₹${product.price}`}
+                                stock={product.stock}
                             />
                         ))}
 

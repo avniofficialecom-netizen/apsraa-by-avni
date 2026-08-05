@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Navbar from "../../../components/Navbar";
-import Footer from "../../../components/Footer";
-import { supabase } from "../../../lib/supabase";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import { supabase } from "../../lib/supabase";
 
 export default async function ProductsPage() {
     const { data: products } = await supabase
@@ -46,7 +46,7 @@ export default async function ProductsPage() {
                                     </p>
 
                                     <p className="text-pink-700 font-bold text-xl mt-3">
-                                        {product.price}
+                                        ₹{product.price}
                                     </p>
 
                                     <div className="flex gap-3 mt-6">

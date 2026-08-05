@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { supabase } from "../../../lib/supabase";import Navbar from "../../../../components/Navbar";
+import { supabase } from "../../../../lib/supabase";
+import Navbar from "../../../../components/Navbar";
 import Footer from "../../../../components/Footer";
 
 type Order = {
@@ -21,6 +22,7 @@ type OrderItem = {
     quantity: number;
     price: string;
 };
+
 
 export default function OrderDetails() {
     const { id } = useParams();
