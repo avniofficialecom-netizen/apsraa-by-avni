@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================
+   Invoice Print Styles (A4)
+========================= */
+
+@media print {
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  nav,
+  footer {
+    display: none !important;
+  }
+
+  #invoice {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: avoid;
+  }
+
+  tr,
+  td,
+  th {
+    page-break-inside: avoid;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* ===========================
+   4×4 Thermal Shipping Label
+=========================== */
+
+@media print {
+
+  @page {
+    size: 4in 4in;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 4in;
+    height: 4in;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #shipping-label,
+  #shipping-label * {
+    visibility: visible;
+  }
+
+  #shipping-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4in !important;
+    height: 4in !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+
+  button,
+  a {
+    display: none !important;
+  }
+
+  svg {
+    max-width: 100%;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
