@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { supabase } from "../../../../lib/supabase";
-import Navbar from "../../../../components/Navbar";
+import { supabase } from "../../../lib/supabase";import Navbar from "../../../../components/Navbar";
 import Footer from "../../../../components/Footer";
 
 type Order = {

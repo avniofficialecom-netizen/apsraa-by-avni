@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import AdminNavbar from "../../../../components/AdminNavbar";
 import Footer from "../../../../components/Footer";
-import { supabase } from "../../../../lib/supabase";
-
+import { supabase } from "../../../lib/supabase";
 export default function EditProduct() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
