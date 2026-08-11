@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 
-export async function POST(req: Request) {
+export async function GET() {
     try {
         // ==========================================
         // AUTHENTICATION
@@ -46,7 +46,12 @@ export async function POST(req: Request) {
         const {
             data: { user },
             error: userError,
-        } = await supabase.auth.getUser();
+        } =
+            await supabase.auth.getUser();
+
+        // ==========================================
+        // REQUIRE LOGIN
+        // ==========================================
 
         if (userError || !user) {
             return NextResponse.json(
@@ -62,7 +67,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // ADMIN AUTHORIZATION
+        // REQUIRE ADMIN ACCOUNT
         // ==========================================
 
         const adminEmail =
@@ -74,7 +79,7 @@ export async function POST(req: Request) {
             adminEmail.toLowerCase()
         ) {
             console.warn(
-                "Unauthorized product deletion attempt:",
+                "Unauthorized test-email attempt:",
                 user.email
             );
 
@@ -91,43 +96,57 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // READ REQUEST
+        // TEST ORDER
         // ==========================================
 
-        const body = await req.json();
-        const id = Number(body.id);
+        const orderId = 47;
 
-        if (!id || isNaN(id)) {
+        console.log(
+            "========== TEST REAL ORDER EMAIL =========="
+        );
+
+        console.log(
+            "ADMIN:",
+            user.email
+        );
+
+        console.log(
+            "TEST ORDER:",
+            orderId
+        );
+
+        // ==========================================
+        // GET EXISTING ORDER
+        // ==========================================
+
+        const {
+            data: order,
+            error: orderError,
+        } =
+            await supabaseAdmin
+                .from("orders")
+                .select(`
+                    id,
+                    customer_name,
+                    email,
+                    total,
+                    status,
+                    payment_status
+                `)
+                .eq("id", orderId)
+                .single();
+
+        if (orderError || !order) {
+            console.error(
+                "ORDER FETCH ERROR:",
+                orderError
+            );
+
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        "Valid Product ID is required.",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        // ==========================================
-        // CHECK PRODUCT EXISTS
-        // ==========================================
-
-        const {
-            data: product,
-            error: findError,
-        } = await supabaseAdmin
-            .from("products")
-            .select("id, name")
-            .eq("id", id)
-            .single();
-
-        if (findError || !product) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Product not found.",
+                        `Order #${orderId} not found.`,
                 },
                 {
                     status: 404,
@@ -136,46 +155,82 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // DELETE PRODUCT
+        // CUSTOMER EMAIL
         // ==========================================
 
-        const { error: deleteError } =
-            await supabaseAdmin
-                .from("products")
-                .delete()
-                .eq("id", id);
-
-        if (deleteError) {
-            console.error(
-                "Supabase Delete Product Error:",
-                deleteError
-            );
-
+        if (!order.email) {
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                    deleteError.message,
+                        `Order #${orderId} does not have a customer email.`,
                 },
                 {
-                    status: 500,
+                    status: 400,
                 }
             );
         }
 
+        // ==========================================
+        // SEND TEST EMAIL
+        // ==========================================
+
+        const siteUrl =
+            process.env.NEXT_PUBLIC_SITE_URL ||
+            "http://localhost:3000";
+
+        const emailResponse =
+            await fetch(
+                `${siteUrl}/api/send-order-email`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+
+                    body: JSON.stringify({
+                        orderId:
+                        order.id,
+                    }),
+                }
+            );
+
+        const emailResult =
+            await emailResponse.json();
+
         console.log(
-            `✅ Product deleted: #${id} - ${product.name}`
+            "EMAIL STATUS:",
+            emailResponse.status
         );
 
+        console.log(
+            "EMAIL RESULT:",
+            emailResult
+        );
+
+        // ==========================================
+        // RETURN RESULT
+        // ==========================================
+
         return NextResponse.json({
-            success: true,
-            message:
-                "Product deleted successfully.",
-            productId: id,
+            success:
+                emailResponse.ok &&
+                emailResult.success,
+
+            orderId:
+            order.id,
+
+            email:
+            order.email,
+
+            emailResult,
         });
+
     } catch (error) {
         console.error(
-            "Delete Product Error:",
+            "TEST EMAIL ERROR:",
             error
         );
 
@@ -183,7 +238,9 @@ export async function POST(req: Request) {
             {
                 success: false,
                 message:
-                    "Internal server error.",
+                    error instanceof Error
+                        ? error.message
+                        : "Unable to test email.",
             },
             {
                 status: 500,

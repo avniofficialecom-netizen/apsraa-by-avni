@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { useCart } from "../../components/context/CartContext";
@@ -24,17 +23,30 @@ export default function Checkout() {
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
     const [pincode, setPincode] = useState("");
+    const [processing, setProcessing] = useState(false);
 
     const total = cart.reduce(
         (sum, item) =>
             sum +
-            Number(item.price.replace("₹", "")) *
-            item.quantity,
+            Number(
+                String(item.price)
+                    .replace("₹", "")
+                    .replace(/,/g, "")
+            ) * item.quantity,
         0
     );
 
+    // ==========================================
+    // LOAD RAZORPAY
+    // ==========================================
+
     const loadRazorpay = () => {
-        return new Promise((resolve) => {
+        return new Promise<boolean>((resolve) => {
+            if (window.Razorpay) {
+                resolve(true);
+                return;
+            }
+
             const script =
                 document.createElement("script");
 
@@ -42,16 +54,39 @@ export default function Checkout() {
                 "https://checkout.razorpay.com/v1/checkout.js";
 
             script.onload = () => resolve(true);
-
             script.onerror = () => resolve(false);
 
             document.body.appendChild(script);
         });
     };
 
+    // ==========================================
+    // PLACE ORDER
+    // ==========================================
+
     const placeOrder = async () => {
-        if (!name || !phone || !address) {
-            alert("Please fill Name, Phone and Address.");
+        if (processing) return;
+
+        // ==========================================
+        // CUSTOMER VALIDATION
+        // ==========================================
+
+        if (
+            !name.trim() ||
+            !phone.trim() ||
+            !email.trim() ||
+            !address.trim()
+        ) {
+            alert(
+                "Please fill Name, Phone, Email and Address."
+            );
+            return;
+        }
+
+        if (!email.includes("@")) {
+            alert(
+                "Please enter a valid email address."
+            );
             return;
         }
 
@@ -60,184 +95,450 @@ export default function Checkout() {
             return;
         }
 
-        const loaded = await loadRazorpay();
+        setProcessing(true);
 
-        if (!loaded) {
-            alert("Failed to load Razorpay.");
-            return;
-        }
+        try {
+            // ==========================================
+            // LOAD RAZORPAY
+            // ==========================================
 
-        const createOrderResponse = await fetch("/api/create-order", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                amount: total,
-            }),
-        });
+            const loaded =
+                await loadRazorpay();
 
-        if (!createOrderResponse.ok) {
-            alert("Unable to create Razorpay order.");
-            return;
-        }
+            if (!loaded) {
+                alert(
+                    "Failed to load Razorpay."
+                );
 
-        const razorpayOrder = await createOrderResponse.json();
+                setProcessing(false);
+                return;
+            }
 
-        const options = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            // ==========================================
+            // CREATE RAZORPAY ORDER
+            // ==========================================
 
-            amount: razorpayOrder.amount,
+            console.log(
+                "========== CREATE RAZORPAY ORDER =========="
+            );
 
-            currency: razorpayOrder.currency,
+            const createOrderResponse =
+                await fetch(
+                    "/api/create-order",
+                    {
+                        method: "POST",
 
-            name: "APSRAA BY AVNI",
-
-            description: "Jewellery Purchase",
-
-            image: "/logo.png",
-
-            order_id: razorpayOrder.id,
-
-            prefill: {
-                name,
-                email,
-                contact: phone,
-            },
-
-            theme: {
-                color: "#db2777",
-            },
-
-            handler: async (response: any) => {
-
-                const verifyResponse = await fetch("/api/verify-payment", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(response),
-                });
-
-                const verify = await verifyResponse.json();
-                console.log("VERIFY:", verify);
-
-                if (!verify.success) {
-                    alert("Payment verification failed.");
-                    return;
-                }
-
-                // Save Order
-                // ==============================
-// Verify Latest Stock
-// ==============================
-
-                for (const item of cart) {
-
-                    const { data: product, error } = await supabase
-                        .from("products")
-                        .select("stock,title")
-                        .eq("id", item.id)
-                        .single();
-
-                    if (error) {
-                        alert("Unable to verify stock.");
-                        return;
-                    }
-
-                    if (product.stock <= 0) {
-                        alert(`${product.title} is now Out of Stock.`);
-                        return;
-                    }
-
-                    if (product.stock < item.quantity) {
-                        alert(
-                            `${product.title} has only ${product.stock} item(s) left in stock.`
-                        );
-                        return;
-                    }
-
-                }
-                const { data: order, error: orderError } = await supabase
-                    .from("orders")
-                    .insert([
-                        {
-                            customer_name: name,
-                            phone,
-                            address: `${address}, ${city}, ${state} - ${pincode}`,
-                            total: total.toString(),
-                            status: "Pending",
+                        headers: {
+                            "Content-Type":
+                                "application/json",
                         },
-                    ])
-                    .select()
-                    .single();
 
-                if (orderError) {
-                    alert(orderError.message);
-                    return;
-                }
-                // Save Order Items
-                const orderItems = cart.map((item) => ({
-                    order_id: order.id,
-                    product_id: item.id,
-                    title: item.title,
-                    price: item.price,
-                    quantity: item.quantity,
-                }));
-
-                const { error: itemsError } = await supabase
-                    .from("order_items")
-                    .insert(orderItems);
-
-                if (itemsError) {
-                    alert(itemsError.message);
-                    return;
-                }
-
-                // Reduce Stock
-                for (const item of cart) {
-
-                    const { data: product, error } = await supabase
-                        .from("products")
-                        .select("stock")
-                        .eq("id", item.id)
-                        .single();
-
-                    if (error) {
-                        console.error(error);
-                        continue;
+                        body: JSON.stringify({
+                            items: cart.map(
+                                (item) => ({
+                                    id: item.id,
+                                    quantity:
+                                    item.quantity,
+                                })
+                            ),
+                        }),
                     }
+                );
 
-                    const newStock = Math.max(
-                        0,
-                        product.stock - item.quantity
-                    );
+            const razorpayOrder =
+                await createOrderResponse.json();
 
-                    await supabase
-                        .from("products")
-                        .update({
-                            stock: newStock,
-                        })
-                        .eq("id", item.id);
-                }
+            console.log(
+                "RAZORPAY ORDER:",
+                razorpayOrder
+            );
 
-                clearCart();
+            if (
+                !createOrderResponse.ok ||
+                !razorpayOrder.success
+            ) {
+                alert(
+                    razorpayOrder.message ||
+                    "Unable to create Razorpay order."
+                );
 
-                router.push("/success");
-            },
+                setProcessing(false);
+                return;
+            }
 
-            modal: {
-                ondismiss: () => {
-                    console.log("Payment cancelled");
+            // ==========================================
+            // RAZORPAY OPTIONS
+            // ==========================================
+
+            const options = {
+                key:
+                process.env
+                    .NEXT_PUBLIC_RAZORPAY_KEY_ID,
+
+                amount:
+                razorpayOrder.amount,
+
+                currency:
+                razorpayOrder.currency,
+
+                name:
+                    "APSRAA BY AVNI",
+
+                description:
+                    "Jewellery Purchase",
+
+                image:
+                    "/logo.png",
+
+                order_id:
+                razorpayOrder.id,
+
+                prefill: {
+                    name,
+                    email,
+                    contact: phone,
                 },
-            },
-        };
 
-        const paymentObject = new window.Razorpay(options);
+                theme: {
+                    color: "#db2777",
+                },
 
-        paymentObject.open();
+                // ==========================================
+                // PAYMENT SUCCESS
+                // ==========================================
 
+                handler: async (
+                    response: any
+                ) => {
+                    try {
+                        console.log(
+                            "========== PAYMENT SUCCESS =========="
+                        );
+
+                        console.log(
+                            "RAZORPAY ORDER ID:",
+                            response.razorpay_order_id
+                        );
+
+                        console.log(
+                            "RAZORPAY PAYMENT ID:",
+                            response.razorpay_payment_id
+                        );
+
+                        // ==========================================
+                        // VERIFY PAYMENT + CREATE ORDER
+                        // ==========================================
+
+                        console.log(
+                            "========== VERIFY PAYMENT =========="
+                        );
+
+                        const verifyResponse =
+                            await fetch(
+                                "/api/verify-payment",
+                                {
+                                    method: "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+                                    },
+
+                                    body:
+                                        JSON.stringify({
+                                            razorpay_order_id:
+                                            response.razorpay_order_id,
+
+                                            razorpay_payment_id:
+                                            response.razorpay_payment_id,
+
+                                            razorpay_signature:
+                                            response.razorpay_signature,
+
+                                            customer: {
+                                                name,
+                                                phone,
+                                                email,
+                                                address,
+                                                city,
+                                                state,
+                                                pincode,
+                                            },
+
+                                            items:
+                                                cart.map(
+                                                    (
+                                                        item
+                                                    ) => ({
+                                                        id: item.id,
+                                                        quantity:
+                                                        item.quantity,
+                                                    })
+                                                ),
+                                        }),
+                                }
+                            );
+
+                        const verify =
+                            await verifyResponse.json();
+
+                        console.log(
+                            "VERIFY RESPONSE:",
+                            verify
+                        );
+
+                        if (
+                            !verifyResponse.ok ||
+                            !verify.success ||
+                            !verify.order
+                        ) {
+                            alert(
+                                verify.message ||
+                                "Payment verification failed."
+                            );
+
+                            setProcessing(false);
+                            return;
+                        }
+
+                        console.log(
+                            "✅ PAYMENT VERIFIED + ORDER CREATED"
+                        );
+
+                        const order =
+                            verify.order;
+
+                        // ==========================================
+                        // REDUCE STOCK
+                        // ==========================================
+
+                        console.log(
+                            "========== REDUCE STOCK =========="
+                        );
+
+                        const stockResponse =
+                            await fetch(
+                                "/api/reduce-stock",
+                                {
+                                    method: "POST",
+
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+                                    },
+
+                                    body:
+                                        JSON.stringify({
+                                            orderId:
+                                            order.id,
+
+                                            razorpay_payment_id:
+                                            response.razorpay_payment_id,
+
+                                            razorpay_signature:
+                                            response.razorpay_signature,
+                                        }),
+                                }
+                            );
+
+                        const stockResult =
+                            await stockResponse.json();
+
+                        console.log(
+                            "STOCK RESPONSE:",
+                            stockResult
+                        );
+
+                        if (
+                            !stockResponse.ok ||
+                            !stockResult.success
+                        ) {
+                            console.error(
+                                "STOCK REDUCTION FAILED:",
+                                stockResult
+                            );
+
+                            alert(
+                                stockResult.message ||
+                                "Payment succeeded, but stock could not be updated. Please contact support."
+                            );
+
+                            setProcessing(false);
+                            return;
+                        }
+
+                        console.log(
+                            "✅ STOCK REDUCED"
+                        );
+
+                        // ==========================================
+                        // SEND ORDER EMAIL
+                        // ==========================================
+
+                        console.log(
+                            "========== ORDER EMAIL =========="
+                        );
+
+                        try {
+                            const emailResponse =
+                                await fetch(
+                                    "/api/send-order-email",
+                                    {
+                                        method:
+                                            "POST",
+
+                                        headers: {
+                                            "Content-Type":
+                                                "application/json",
+                                        },
+
+                                        body:
+                                            JSON.stringify({
+                                                orderId:
+                                                order.id,
+
+                                                // Customer email
+                                                email:
+                                                    email.trim(),
+
+                                                // Customer phone
+                                                phone:
+                                                    phone.trim(),
+                                            }),
+                                    }
+                                );
+
+                            const emailText =
+                                await emailResponse.text();
+
+                            let emailResult:
+                                any = null;
+
+                            try {
+                                emailResult =
+                                    JSON.parse(
+                                        emailText
+                                    );
+                            } catch {
+                                console.error(
+                                    "EMAIL RESPONSE JSON PARSE ERROR:",
+                                    emailText
+                                );
+                            }
+
+                            console.log(
+                                "EMAIL RESULT:",
+                                emailResult
+                            );
+
+                            if (
+                                !emailResponse.ok ||
+                                !emailResult?.success
+                            ) {
+                                console.error(
+                                    "❌ ORDER EMAIL FAILED:",
+                                    emailResult
+                                );
+
+                                // Payment and order
+                                // remain successful.
+                            } else {
+                                console.log(
+                                    "✅ ORDER EMAIL SENT SUCCESSFULLY"
+                                );
+
+                                console.log(
+                                    "EMAIL ID:",
+                                    emailResult.emailId
+                                );
+                            }
+                        } catch (
+                            emailError
+                            ) {
+                            console.error(
+                                "❌ ORDER EMAIL ERROR:",
+                                emailError
+                            );
+
+                            // Payment and order
+                            // remain successful.
+                        }
+
+                        // ==========================================
+                        // CLEAR CART
+                        // ==========================================
+
+                        clearCart();
+
+                        // ==========================================
+                        // SUCCESS PAGE
+                        // ==========================================
+
+                        router.push(
+                            `/success?orderId=${order.id}`
+                        );
+                    } catch (
+                        error
+                        ) {
+                        console.error(
+                            "PAYMENT HANDLER ERROR:",
+                            error
+                        );
+
+                        alert(
+                            "Something went wrong after payment. Please contact support."
+                        );
+
+                        setProcessing(false);
+                    }
+                },
+
+                // ==========================================
+                // PAYMENT MODAL
+                // ==========================================
+
+                modal: {
+                    ondismiss: () => {
+                        console.log(
+                            "Payment cancelled"
+                        );
+
+                        setProcessing(false);
+                    },
+                },
+            };
+
+            // ==========================================
+            // OPEN RAZORPAY
+            // ==========================================
+
+            const paymentObject =
+                new window.Razorpay(
+                    options
+                );
+
+            paymentObject.open();
+
+        } catch (
+            error
+            ) {
+            console.error(
+                "CHECKOUT ERROR:",
+                error
+            );
+
+            alert(
+                "Something went wrong while starting payment."
+            );
+
+            setProcessing(false);
+        }
     };
+
+    // ==========================================
+    // UI
+    // ==========================================
+
     return (
         <>
             <Navbar />
@@ -246,7 +547,7 @@ export default function Checkout() {
 
                 <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 px-8">
 
-                    {/* Customer Details */}
+                    {/* CUSTOMER DETAILS */}
 
                     <div className="bg-white rounded-2xl shadow-lg p-8">
 
@@ -258,7 +559,11 @@ export default function Checkout() {
                             type="text"
                             placeholder="Full Name"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) =>
+                                setName(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3 mb-4"
                         />
 
@@ -266,7 +571,11 @@ export default function Checkout() {
                             type="tel"
                             placeholder="Mobile Number"
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            onChange={(e) =>
+                                setPhone(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3 mb-4"
                         />
 
@@ -274,14 +583,22 @@ export default function Checkout() {
                             type="email"
                             placeholder="Email Address"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) =>
+                                setEmail(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3 mb-4"
                         />
 
                         <textarea
                             placeholder="Full Address"
                             value={address}
-                            onChange={(e) => setAddress(e.target.value)}
+                            onChange={(e) =>
+                                setAddress(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3 mb-4 h-28"
                         />
 
@@ -289,7 +606,11 @@ export default function Checkout() {
                             type="text"
                             placeholder="City"
                             value={city}
-                            onChange={(e) => setCity(e.target.value)}
+                            onChange={(e) =>
+                                setCity(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3 mb-4"
                         />
 
@@ -297,7 +618,11 @@ export default function Checkout() {
                             type="text"
                             placeholder="State"
                             value={state}
-                            onChange={(e) => setState(e.target.value)}
+                            onChange={(e) =>
+                                setState(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3 mb-4"
                         />
 
@@ -305,13 +630,17 @@ export default function Checkout() {
                             type="text"
                             placeholder="Pincode"
                             value={pincode}
-                            onChange={(e) => setPincode(e.target.value)}
+                            onChange={(e) =>
+                                setPincode(
+                                    e.target.value
+                                )
+                            }
                             className="w-full border rounded-lg p-3"
                         />
 
                     </div>
 
-                    {/* Order Summary */}
+                    {/* ORDER SUMMARY */}
 
                     <div className="bg-white rounded-2xl shadow-lg p-8">
 
@@ -320,49 +649,67 @@ export default function Checkout() {
                         </h2>
 
                         {cart.length === 0 ? (
-
                             <p className="text-gray-500">
                                 Your cart is empty.
                             </p>
-
                         ) : (
+                            cart.map(
+                                (item) => (
+                                    <div
+                                        key={
+                                            item.id
+                                        }
+                                        className="flex justify-between mb-4"
+                                    >
+                                        <span>
+                                            {
+                                                item.title
+                                            }{" "}
+                                            ×{" "}
+                                            {
+                                                item.quantity
+                                            }
+                                        </span>
 
-                            cart.map((item) => (
-
-                                <div
-                                    key={item.id}
-                                    className="flex justify-between mb-4"
-                                >
-
-                                    <span>
-                                        {item.title} × {item.quantity}
-                                    </span>
-
-                                    <span>{item.price}</span>
-
-                                </div>
-
-                            ))
-
+                                        <span>
+                                            {
+                                                item.price
+                                            }
+                                        </span>
+                                    </div>
+                                )
+                            )
                         )}
 
                         <hr className="my-6" />
 
                         <div className="flex justify-between text-2xl font-bold">
 
-                            <span>Total</span>
+                            <span>
+                                Total
+                            </span>
 
-                            <span>₹{total}</span>
+                            <span>
+                                ₹{total}
+                            </span>
 
                         </div>
 
                         <button
                             type="button"
-                            onClick={placeOrder}
-                            className="w-full mt-8 bg-pink-600 text-white py-4 rounded-full hover:bg-pink-700 transition"
+                            onClick={
+                                placeOrder
+                            }
+                            disabled={
+                                processing
+                            }
+                            className="w-full mt-8 bg-pink-600 text-white py-4 rounded-full hover:bg-pink-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Proceed to Payment
+                            {processing
+                                ? "Processing..."
+                                : "Proceed to Payment"}
                         </button>
+
                     </div>
 
                 </div>

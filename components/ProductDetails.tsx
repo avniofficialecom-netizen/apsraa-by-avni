@@ -1,6 +1,7 @@
 "use client";
 
-import { supabase } from "../lib/supabase";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "./context/CartContext";
 
 type Product = {
@@ -23,12 +24,42 @@ export default function ProductDetails({
                                        }: {
     product: Product;
 }) {
-    const { addToCart } = useCart();
+    const router = useRouter();
 
-    const handleAddToCart = async () => {
+    const { cart, addToCart } = useCart();
 
+    const [showAddedMessage, setShowAddedMessage] =
+        useState(false);
+
+    const cartItem = cart.find(
+        (item) => item.id === product.id
+    );
+
+    const cartQuantity =
+        cartItem?.quantity ?? 0;
+
+    // ==========================================
+    // ADD TO CART
+    // ==========================================
+
+    const handleAddToCart = () => {
         if (product.stock <= 0) {
-            alert("This product is currently out of stock.");
+            setShowAddedMessage(false);
+
+            alert(
+                "This product is currently out of stock."
+            );
+
+            return;
+        }
+
+        if (cartQuantity >= product.stock) {
+            setShowAddedMessage(false);
+
+            alert(
+                `Only ${product.stock} item(s) available.`
+            );
+
             return;
         }
 
@@ -39,74 +70,136 @@ export default function ProductDetails({
             image: product.image,
         });
 
-        const { data: existingItem, error: fetchError } = await supabase
-            .from("cart")
-            .select("id, quantity")
-            .eq("product_id", product.id)
-            .maybeSingle();
+        // Show confirmation popup
+        setShowAddedMessage(true);
 
-        if (fetchError) {
-            alert(fetchError.message);
+        // Automatically hide after 3.5 seconds
+        setTimeout(() => {
+            setShowAddedMessage(false);
+        }, 3500);
+    };
+
+    // ==========================================
+    // BUY NOW
+    // ==========================================
+
+    const handleBuyNow = () => {
+        if (product.stock <= 0) {
+            alert(
+                "This product is currently out of stock."
+            );
+
             return;
         }
 
-        if (existingItem) {
+        if (cartQuantity >= product.stock) {
+            alert(
+                `Only ${product.stock} item(s) available.`
+            );
 
-            if (existingItem.quantity >= product.stock) {
-                alert(`Only ${product.stock} item(s) available.`);
-                return;
-            }
-
-            const { error } = await supabase
-                .from("cart")
-                .update({
-                    quantity: existingItem.quantity + 1,
-                })
-                .eq("id", existingItem.id);
-
-            if (error) {
-                alert(error.message);
-                return;
-            }
-
-        } else {
-
-            const { error } = await supabase
-                .from("cart")
-                .insert([
-                    {
-                        product_id: product.id,
-                        title: product.title,
-                        price: product.price,
-                        image: product.image,
-                        quantity: 1,
-                    },
-                ]);
-
-            if (error) {
-                alert(error.message);
-                return;
-            }
-
+            return;
         }
 
-        alert(`✅ ${product.title} added to cart!`);
+        addToCart({
+            id: product.id,
+            title: product.title,
+            price: product.price,
+            image: product.image,
+        });
+
+        // Go directly to checkout
+        router.push("/checkout");
     };
 
+    // ==========================================
+    // PAGE
+    // ==========================================
+
     return (
-        <div>
+        <div className="relative">
+
+            {/* ==========================================
+                ADDED TO CART POPUP
+            ========================================== */}
+
+            {showAddedMessage && (
+                <div className="fixed top-6 right-6 z-[9999] w-[min(92vw,390px)]">
+
+                    <div className="bg-white rounded-2xl shadow-2xl border border-pink-100 p-5">
+
+                        <div className="flex items-start gap-4">
+
+                            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl flex-shrink-0">
+                                ✓
+                            </div>
+
+                            <div className="flex-1">
+
+                                <h3 className="font-bold text-gray-800 text-lg">
+                                    Added to Cart!
+                                </h3>
+
+                                <p className="text-gray-500 text-sm mt-1 line-clamp-2">
+                                    {product.title}
+                                </p>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        router.push("/cart")
+                                    }
+                                    className="mt-3 text-pink-600 font-semibold text-sm hover:text-pink-800 transition"
+                                >
+                                    View Cart →
+                                </button>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setShowAddedMessage(false)
+                                }
+                                className="text-gray-400 hover:text-gray-700 text-xl"
+                                aria-label="Close"
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            )}
+
+            {/* ==========================================
+                CATEGORY
+            ========================================== */}
 
             <span className="bg-pink-100 text-pink-700 px-4 py-2 rounded-full">
                 {product.category}
             </span>
 
+            {/* ==========================================
+                TITLE
+            ========================================== */}
+
             <h1 className="text-5xl font-bold text-pink-700 mt-6">
                 {product.title}
             </h1>
 
+            {/* ==========================================
+                RATING
+            ========================================== */}
+
             <div className="mt-4 text-lg">
                 ⭐ {product.rating} ({product.reviews} Reviews)
             </div>
+
+            {/* ==========================================
+                PRICE
+            ========================================== */}
 
             <div className="flex items-center gap-4 mt-8">
 
@@ -122,9 +215,17 @@ export default function ProductDetails({
 
             </div>
 
+            {/* ==========================================
+                DESCRIPTION
+            ========================================== */}
+
             <p className="mt-8 text-gray-600 leading-8">
                 {product.description}
             </p>
+
+            {/* ==========================================
+                STOCK
+            ========================================== */}
 
             <div className="mt-6">
 
@@ -133,22 +234,33 @@ export default function ProductDetails({
                 </span>{" "}
 
                 {product.stock > 0 ? (
-
                     <span className="text-green-600 font-bold">
                         {product.stock} Available
                     </span>
-
                 ) : (
-
                     <span className="text-red-600 font-bold">
                         ❌ Out of Stock
                     </span>
-
                 )}
 
             </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* ==========================================
+                ALREADY IN CART
+            ========================================== */}
+
+            {cartQuantity > 0 && (
+                <div className="mt-4 text-pink-700 font-medium">
+                    🛒 {cartQuantity} item
+                    {cartQuantity > 1 ? "s" : ""} already in your cart
+                </div>
+            )}
+
+            {/* ==========================================
+                BADGES
+            ========================================== */}
+
+            <div className="flex gap-3 mt-6 flex-wrap">
 
                 {product.featured && (
                     <span className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full">
@@ -164,33 +276,70 @@ export default function ProductDetails({
 
             </div>
 
-            <div className="flex gap-4 mt-10">
+            {/* ==========================================
+                ACTION BUTTONS
+            ========================================== */}
+
+            <div className="flex gap-4 mt-10 flex-wrap">
 
                 {product.stock > 0 ? (
+                    <>
+                        {/* ADD TO CART */}
 
-                    <button
-                        type="button"
-                        onClick={handleAddToCart}
-                        className="bg-pink-600 text-white px-8 py-4 rounded-full hover:bg-pink-700 transition"
-                    >
-                        🛒 Add to Cart
-                    </button>
+                        <button
+                            type="button"
+                            onClick={handleAddToCart}
+                            disabled={
+                                cartQuantity >=
+                                product.stock
+                            }
+                            className={`flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg transition ${
+                                cartQuantity >=
+                                product.stock
+                                    ? "bg-gray-400 text-white cursor-not-allowed"
+                                    : "border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
+                            }`}
+                        >
+                            {cartQuantity >=
+                            product.stock
+                                ? "❌ Maximum Stock Added"
+                                : "🛒 Add to Cart"}
+                        </button>
 
+                        {/* BUY NOW */}
+
+                        <button
+                            type="button"
+                            onClick={handleBuyNow}
+                            disabled={
+                                cartQuantity >=
+                                product.stock
+                            }
+                            className={`flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg transition ${
+                                cartQuantity >=
+                                product.stock
+                                    ? "bg-gray-400 text-white cursor-not-allowed"
+                                    : "bg-pink-600 text-white hover:bg-pink-700 shadow-md hover:shadow-lg"
+                            }`}
+                        >
+                            ⚡ Buy Now
+                        </button>
+                    </>
                 ) : (
-
                     <button
                         type="button"
                         disabled
-                        className="bg-gray-400 text-white px-8 py-4 rounded-full cursor-not-allowed"
+                        className="w-full bg-gray-400 text-white px-8 py-4 rounded-xl font-semibold text-lg cursor-not-allowed"
                     >
                         ❌ Out of Stock
                     </button>
-
                 )}
+
+                {/* WISHLIST */}
 
                 <button
                     type="button"
-                    className="border-2 border-pink-600 text-pink-600 px-8 py-4 rounded-full hover:bg-pink-600 hover:text-white transition"
+                    className="w-full border-2 border-pink-200 text-pink-600 px-8 py-4 rounded-xl font-semibold hover:bg-pink-50 transition"
                 >
                     ❤️ Wishlist
                 </button>

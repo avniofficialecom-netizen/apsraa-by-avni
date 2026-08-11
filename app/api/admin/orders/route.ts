@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { supabaseAdmin } from "../../../lib/supabase-admin";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
-export async function POST(req: Request) {
+export async function GET() {
     try {
         // ==========================================
         // AUTHENTICATION
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
                                 }
                             );
                         } catch {
-                            // Middleware handles cookie updates.
+                            // Middleware may handle cookie updates.
                         }
                     },
                 },
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
             adminEmail.toLowerCase()
         ) {
             console.warn(
-                "Unauthorized product deletion attempt:",
+                "Unauthorized admin orders request:",
                 user.email
             );
 
@@ -91,71 +91,29 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // READ REQUEST
-        // ==========================================
-
-        const body = await req.json();
-        const id = Number(body.id);
-
-        if (!id || isNaN(id)) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Valid Product ID is required.",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        // ==========================================
-        // CHECK PRODUCT EXISTS
+        // FETCH ORDERS
         // ==========================================
 
         const {
-            data: product,
-            error: findError,
+            data: orders,
+            error,
         } = await supabaseAdmin
-            .from("products")
-            .select("id, name")
-            .eq("id", id)
-            .single();
+            .from("orders")
+            .select("*")
+            .order("id", {
+                ascending: false,
+            });
 
-        if (findError || !product) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Product not found.",
-                },
-                {
-                    status: 404,
-                }
-            );
-        }
-
-        // ==========================================
-        // DELETE PRODUCT
-        // ==========================================
-
-        const { error: deleteError } =
-            await supabaseAdmin
-                .from("products")
-                .delete()
-                .eq("id", id);
-
-        if (deleteError) {
+        if (error) {
             console.error(
-                "Supabase Delete Product Error:",
-                deleteError
+                "Admin Orders Fetch Error:",
+                error
             );
 
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                    deleteError.message,
+                    message: error.message,
                 },
                 {
                     status: 500,
@@ -163,19 +121,18 @@ export async function POST(req: Request) {
             );
         }
 
-        console.log(
-            `✅ Product deleted: #${id} - ${product.name}`
-        );
+        // ==========================================
+        // SUCCESS
+        // ==========================================
 
         return NextResponse.json({
             success: true,
-            message:
-                "Product deleted successfully.",
-            productId: id,
+            orders: orders ?? [],
         });
+
     } catch (error) {
         console.error(
-            "Delete Product Error:",
+            "Admin Orders API Error:",
             error
         );
 

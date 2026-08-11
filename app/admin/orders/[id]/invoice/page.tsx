@@ -4,15 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "../../../../../components/Navbar";
 import Footer from "../../../../../components/Footer";
-import { supabase } from "../../../../../lib/supabase";
 
 type Order = {
     id: number;
     customer_name: string;
+    email: string;
     phone: string;
     address: string;
     total: string;
     status: string;
+    payment_status?: string | null;
+    razorpay_order_id?: string | null;
+    razorpay_payment_id?: string | null;
     created_at: string;
 };
 
@@ -32,7 +35,7 @@ export default function InvoicePage() {
 
     useEffect(() => {
         loadInvoice();
-    }, []);
+    }, [id]);
 
     async function loadInvoice() {
         try {
@@ -54,14 +57,13 @@ export default function InvoicePage() {
             }
 
             setOrder(result.order);
-            setItems(result.items);
-
+            setItems(result.items ?? []);
         } catch (error) {
             console.error(error);
             alert("Unable to load invoice.");
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     }
 
     if (loading) {
@@ -75,7 +77,8 @@ export default function InvoicePage() {
 
                 <div className="print:hidden">
                     <Footer />
-                </div>            </>
+                </div>
+            </>
         );
     }
 
@@ -94,22 +97,30 @@ export default function InvoicePage() {
     }
 
     const subtotal = items.reduce(
-        (sum, item) => sum + Number(item.price) * item.quantity,
+        (sum, item) =>
+            sum +
+            Number(item.price) * item.quantity,
         0
     );
+
+    const isPaid = order.payment_status === "Paid";
+
     return (
         <>
             <Navbar />
 
-            <section
-                className="min-h-screen bg-gray-100 py-10 print:bg-white print:py-0"
-            >
+            <section className="min-h-screen bg-gray-100 py-10 print:bg-white print:py-0">
+
                 <div
                     id="invoice"
                     className="max-w-5xl mx-auto bg-white shadow-2xl rounded-3xl p-10 print:shadow-none print:rounded-none print:max-w-full print:p-8"
                 >
 
-                    <div className="flex justify-between items-start border-b pb-8">
+                    {/* ==============================
+                        HEADER
+                    ============================== */}
+
+                    <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b pb-8">
 
                         <div>
 
@@ -127,7 +138,7 @@ export default function InvoicePage() {
 
                         </div>
 
-                        <div className="text-right">
+                        <div className="text-left md:text-right">
 
                             <h2 className="text-4xl font-bold">
                                 INVOICE
@@ -143,12 +154,14 @@ export default function InvoicePage() {
                             <p className="mt-2">
                                 Date:
                                 <strong className="ml-2">
-                                    {new Date(order.created_at).toLocaleDateString()}
+                                    {new Date(
+                                        order.created_at
+                                    ).toLocaleDateString()}
                                 </strong>
                             </p>
 
                             <p className="mt-2">
-                                Status:
+                                Order Status:
                                 <strong className="ml-2 text-pink-700">
                                     {order.status}
                                 </strong>
@@ -157,6 +170,10 @@ export default function InvoicePage() {
                         </div>
 
                     </div>
+
+                    {/* ==============================
+                        CUSTOMER DETAILS
+                    ============================== */}
 
                     <div className="grid md:grid-cols-2 gap-10 mt-10">
 
@@ -167,11 +184,18 @@ export default function InvoicePage() {
                             </h3>
 
                             <p>
-                                <strong>Name:</strong> {order.customer_name}
+                                <strong>Name:</strong>{" "}
+                                {order.customer_name}
                             </p>
 
                             <p className="mt-2">
-                                <strong>Phone:</strong> {order.phone}
+                                <strong>Email:</strong>{" "}
+                                {order.email || "-"}
+                            </p>
+
+                            <p className="mt-2">
+                                <strong>Phone:</strong>{" "}
+                                {order.phone}
                             </p>
 
                             <p className="mt-2">
@@ -202,111 +226,202 @@ export default function InvoicePage() {
 
                     </div>
 
-                    <div className="mt-12">
+                    {/* ==============================
+                        PAYMENT DETAILS
+                    ============================== */}
 
-                        <h2 className="text-3xl font-bold text-pink-700 mb-6">
-                            Ordered Products
-                        </h2>
+                    <div className="mt-10 bg-green-50 border border-green-200 rounded-2xl p-6">
 
-                        <table className="w-full border rounded-2xl overflow-hidden">
+                        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
 
-                            <thead className="bg-pink-600 text-white">
+                            <h2 className="text-2xl font-bold text-green-700">
+                                💳 Payment Details
+                            </h2>
 
-                            <tr>
+                            <span
+                                className={`inline-block px-5 py-2 rounded-full font-bold ${
+                                    isPaid
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-yellow-100 text-yellow-700"
+                                }`}
+                            >
+                                {isPaid
+                                    ? "✅ PAID"
+                                    : `🟡 ${
+                                        order.payment_status ||
+                                        "Payment Pending"
+                                    }`}
+                            </span>
 
-                                <th className="p-4 text-left">
-                                    Product
-                                </th>
+                        </div>
 
-                                <th className="p-4 text-center">
-                                    Qty
-                                </th>
+                        <div className="grid md:grid-cols-2 gap-5">
 
-                                <th className="p-4 text-right">
-                                    Price
-                                </th>
+                            <div className="bg-white rounded-xl border p-4">
 
-                                <th className="p-4 text-right">
-                                    Total
-                                </th>
+                                <p className="text-gray-500 text-sm">
+                                    Razorpay Order ID
+                                </p>
 
-                            </tr>
+                                <p className="font-semibold mt-1 break-all">
+                                    {order.razorpay_order_id || "-"}
+                                </p>
 
-                            </thead>
-
-                            <tbody>
-
-                            {items.map((item) => (
-
-                                <tr
-                                    key={item.id}
-                                    className="border-b"
-                                >
-
-                                    <td className="p-4">
-                                        {item.title}
-                                    </td>
-
-                                    <td className="p-4 text-center">
-                                        {item.quantity}
-                                    </td>
-
-                                    <td className="p-4 text-right">
-                                        ₹{item.price}
-                                    </td>
-
-                                    <td className="p-4 text-right font-bold">
-                                        ₹{Number(item.price) * item.quantity}
-                                    </td>
-
-                                </tr>
-
-                            ))}
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-                    <div className="mt-10 flex justify-end">
-
-                        <div className="w-full max-w-md">
-
-                            <div className="flex justify-between py-3 border-b">
-                                <span className="font-semibold">
-                                    Subtotal
-                                </span>
-
-                                <span>
-                                    ₹{subtotal}
-                                </span>
                             </div>
 
-                            <div className="flex justify-between py-3 border-b">
-                                <span className="font-semibold">
-                                    Shipping
-                                </span>
+                            <div className="bg-white rounded-xl border p-4">
 
-                                <span>
-                                    ₹0
-                                </span>
-                            </div>
+                                <p className="text-gray-500 text-sm">
+                                    Razorpay Payment ID
+                                </p>
 
-                            <div className="flex justify-between py-4 text-2xl font-bold text-green-600">
-                                <span>
-                                    Grand Total
-                                </span>
+                                <p className="font-semibold mt-1 break-all">
+                                    {order.razorpay_payment_id || "-"}
+                                </p>
 
-                                <span>
-                                    ₹{order.total}
-                                </span>
                             </div>
 
                         </div>
 
                     </div>
 
-                    <div className="mt-14 flex flex-wrap gap-4 justify-center">
+                    {/* ==============================
+                        PRODUCTS
+                    ============================== */}
+
+                    <div className="mt-12">
+
+                        <h2 className="text-3xl font-bold text-pink-700 mb-6">
+                            Ordered Products
+                        </h2>
+
+                        <div className="overflow-x-auto">
+
+                            <table className="w-full border rounded-2xl overflow-hidden">
+
+                                <thead className="bg-pink-600 text-white">
+
+                                <tr>
+
+                                    <th className="p-4 text-left">
+                                        Product
+                                    </th>
+
+                                    <th className="p-4 text-center">
+                                        Qty
+                                    </th>
+
+                                    <th className="p-4 text-right">
+                                        Price
+                                    </th>
+
+                                    <th className="p-4 text-right">
+                                        Total
+                                    </th>
+
+                                </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                {items.map((item) => (
+
+                                    <tr
+                                        key={item.id}
+                                        className="border-b"
+                                    >
+
+                                        <td className="p-4">
+                                            {item.title}
+                                        </td>
+
+                                        <td className="p-4 text-center">
+                                            {item.quantity}
+                                        </td>
+
+                                        <td className="p-4 text-right">
+                                            ₹{item.price}
+                                        </td>
+
+                                        <td className="p-4 text-right font-bold">
+                                            ₹
+                                            {(
+                                                Number(
+                                                    item.price
+                                                ) *
+                                                item.quantity
+                                            ).toFixed(2)}
+                                        </td>
+
+                                    </tr>
+
+                                ))}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                    {/* ==============================
+                        TOTALS
+                    ============================== */}
+
+                    <div className="mt-10 flex justify-end">
+
+                        <div className="w-full max-w-md">
+
+                            <div className="flex justify-between py-3 border-b">
+
+                                <span className="font-semibold">
+                                    Subtotal
+                                </span>
+
+                                <span>
+                                    ₹{subtotal.toFixed(2)}
+                                </span>
+
+                            </div>
+
+                            <div className="flex justify-between py-3 border-b">
+
+                                <span className="font-semibold">
+                                    Shipping
+                                </span>
+
+                                <span>
+                                    ₹0.00
+                                </span>
+
+                            </div>
+
+                            <div className="flex justify-between py-4 text-2xl font-bold text-green-600">
+
+                                <span>
+                                    Grand Total
+                                </span>
+
+                                <span>
+                                    ₹
+                                    {Number(
+                                        order.total
+                                    ).toFixed(2)}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    {/* ==============================
+                        BUTTONS
+                    ============================== */}
+
+                    <div className="mt-14 flex flex-wrap gap-4 justify-center print:hidden">
 
                         <button
                             onClick={() => window.print()}
@@ -324,6 +439,10 @@ export default function InvoicePage() {
 
                     </div>
 
+                    {/* ==============================
+                        FOOTER
+                    ============================== */}
+
                     <div className="mt-16 border-t pt-8 text-center text-gray-500">
 
                         <p className="font-semibold">
@@ -334,14 +453,21 @@ export default function InvoicePage() {
                             Premium Artificial Jewellery
                         </p>
 
+                        {isPaid && (
+                            <p className="mt-3 text-green-600 font-semibold">
+                                Payment received successfully.
+                            </p>
+                        )}
+
                     </div>
 
                 </div>
 
             </section>
 
-            <Footer />
-
+            <div className="print:hidden">
+                <Footer />
+            </div>
         </>
     );
 }

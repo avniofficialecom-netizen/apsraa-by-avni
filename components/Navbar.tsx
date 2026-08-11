@@ -49,6 +49,13 @@ export default function Navbar() {
                     </Link>
 
                     <Link
+                        href="/track-order"
+                        className="hover:text-pink-700 transition"
+                    >
+                        📦 Track Order
+                    </Link>
+
+                    <Link
                         href="/cart"
                         className="relative hover:text-pink-700 transition"
                     >
@@ -56,8 +63,8 @@ export default function Navbar() {
 
                         {totalItems > 0 && (
                             <span className="absolute -top-3 -right-5 bg-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                {totalItems}
-              </span>
+                                {totalItems}
+                            </span>
                         )}
                     </Link>
 
