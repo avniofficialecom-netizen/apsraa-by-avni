@@ -55,8 +55,7 @@ export default function Footer() {
                     </p>
 
                     <p className="mt-3 text-gray-400">
-                        📞 +91 XXXXX XXXXX
-                    </p>
+                        📞 +91 75058 08115                    </p>
 
                     <p className="mt-3 text-gray-400">
                         📍 India

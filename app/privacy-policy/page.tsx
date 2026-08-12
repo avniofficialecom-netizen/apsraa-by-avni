@@ -77,8 +77,7 @@ export default function PrivacyPolicy() {
                                 <br />
                                 Email: support@apsraabyavni.com
                                 <br />
-                                Phone: +91-XXXXXXXXXX
-                            </p>
+                                Phone: +91 75058 08115                            </p>
                         </div>
 
                     </div>
