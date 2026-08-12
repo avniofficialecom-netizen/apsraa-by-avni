@@ -66,189 +66,265 @@ export default async function Home() {
         <>
             <Navbar />
 
-            {/* Hero Section */}
-            <section className="min-h-screen bg-gradient-to-r from-pink-50 to-white px-10">
-                <div className="max-w-7xl mx-auto h-screen flex items-center justify-between">
+            {/* =====================================================
+                HERO SECTION
+            ====================================================== */}
 
-                    <div className="max-w-xl">
+            <section className="bg-gradient-to-r from-pink-50 to-white">
 
-                        <span className="bg-pink-100 text-pink-700 px-5 py-2 rounded-full font-semibold">
-                            ✨ Premium Collection 2026
-                        </span>
+                <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
 
-                        <h1 className="mt-6 text-6xl font-extrabold text-pink-700 leading-tight">
-                            Elegance That Lasts
-                        </h1>
+                    <div className="min-h-[560px] md:min-h-[calc(100vh-88px)] flex items-center">
 
-                        <p className="mt-6 text-xl text-gray-600">
-                            Premium Artificial Jewellery
-                            <br />
-                            For Every Occasion.
-                        </p>
+                        {/* HERO CONTENT */}
 
-                        <div className="mt-10 flex gap-4">
+                        <div className="w-full md:max-w-xl py-16 md:py-20">
 
-                            <Link
-                                href="/shop"
-                                className="bg-pink-600 text-white px-8 py-4 rounded-full hover:bg-pink-700 transition"
-                            >
-                                Shop Collection
-                            </Link>
+                            <span className="inline-block bg-pink-100 text-pink-700 px-4 sm:px-5 py-2 rounded-full font-semibold text-sm sm:text-base">
+                                ✨ Premium Collection 2026
+                            </span>
 
-                            <Link
-                                href="/shop"
-                                className="border-2 border-pink-600 text-pink-600 px-8 py-4 rounded-full hover:bg-pink-600 hover:text-white transition"
-                            >
-                                Explore Categories
-                            </Link>
+                            <h1 className="mt-6 text-5xl sm:text-6xl md:text-6xl font-extrabold text-pink-700 leading-[1.05]">
+                                Elegance That Lasts
+                            </h1>
+
+                            <p className="mt-6 text-lg sm:text-xl text-gray-600 leading-relaxed">
+                                Premium Artificial Jewellery
+                                <br />
+                                For Every Occasion.
+                            </p>
+
+                            <div className="mt-8 md:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4">
+
+                                <Link
+                                    href="/shop"
+                                    className="inline-flex items-center justify-center bg-pink-600 text-white px-7 sm:px-8 py-3.5 sm:py-4 rounded-full hover:bg-pink-700 transition font-medium"
+                                >
+                                    Shop Collection
+                                </Link>
+
+                                <Link
+                                    href="/shop"
+                                    className="inline-flex items-center justify-center border-2 border-pink-600 text-pink-600 px-7 sm:px-8 py-3.5 sm:py-4 rounded-full hover:bg-pink-600 hover:text-white transition font-medium"
+                                >
+                                    Explore Categories
+                                </Link>
+
+                            </div>
+
+                        </div>
+
+                        {/* HERO IMAGE
+                            Hidden on mobile to prevent the desktop
+                            image from creating overflow/empty space.
+                        */}
+
+                        <div className="hidden md:block flex-1 ml-10 lg:ml-16">
+
+                            <img
+                                src="/images/product1.jpg"
+                                alt="APSRAA BY AVNI jewellery collection"
+                                className="w-full max-w-[520px] h-[560px] lg:h-[650px] object-cover rounded-3xl shadow-2xl ml-auto"
+                            />
 
                         </div>
 
                     </div>
 
-                    <div>
-                        <img
-                            src="/images/product1.jpg"
-                            alt="APSRAA BY AVNI"
-                            className="w-[520px] h-[650px] object-cover rounded-3xl shadow-2xl"
-                        />
-                    </div>
-
                 </div>
+
             </section>
 
-            {/* Featured Products */}
-            <section className="py-24 bg-white">
 
-                <h2 className="text-5xl font-bold text-center text-pink-700">
-                    Featured Collection
-                </h2>
+            {/* =====================================================
+                FEATURED PRODUCTS
+            ====================================================== */}
 
-                <p className="text-center text-gray-500 mt-4">
-                    Handpicked jewellery for every occasion.
-                </p>
+            <section className="py-16 md:py-24 bg-white">
 
-                <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto mt-16 px-8">
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
 
-                    {featuredProducts.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            id={product.id}
-                            image={product.image}
-                            title={product.title}
-                            subtitle={`₹${product.price}`}
-                            stock={product.stock}
-                        />
-                    ))}
+                    <h2 className="text-4xl sm:text-5xl font-bold text-center text-pink-700 leading-tight">
+                        Featured Collection
+                    </h2>
 
-                </div>
-
-                {featuredProducts.length === 0 && (
-                    <p className="text-center mt-16 text-gray-500">
-                        No featured products available.
+                    <p className="text-center text-gray-500 mt-4">
+                        Handpicked jewellery for every occasion.
                     </p>
-                )}
 
-            </section>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 mt-12 md:mt-16">
 
-            {/* Best Sellers */}
-            <section className="py-24 bg-pink-50">
+                        {featuredProducts.map((product) => (
+                            <ProductCard
+                                key={product.id}
+                                id={product.id}
+                                image={product.image}
+                                title={product.title}
+                                subtitle={`₹${product.price}`}
+                                stock={product.stock}
+                            />
+                        ))}
 
-                <h2 className="text-5xl font-bold text-center text-pink-700">
-                    Best Sellers
-                </h2>
+                    </div>
 
-                <p className="text-center text-gray-500 mt-4">
-                    Loved by our customers.
-                </p>
-
-                <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto mt-16 px-8">
-
-                    {bestsellerProducts.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            id={product.id}
-                            image={product.image}
-                            title={product.title}
-                            subtitle={`₹${product.price}`}
-                            stock={product.stock}
-                        />
-                    ))}
+                    {featuredProducts.length === 0 && (
+                        <p className="text-center mt-16 text-gray-500">
+                            No featured products available.
+                        </p>
+                    )}
 
                 </div>
 
-                {bestsellerProducts.length === 0 && (
-                    <p className="text-center mt-16 text-gray-500">
-                        No best seller products available.
+            </section>
+
+
+            {/* =====================================================
+                BEST SELLERS
+            ====================================================== */}
+
+            <section className="py-16 md:py-24 bg-pink-50">
+
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
+
+                    <h2 className="text-4xl sm:text-5xl font-bold text-center text-pink-700 leading-tight">
+                        Best Sellers
+                    </h2>
+
+                    <p className="text-center text-gray-500 mt-4">
+                        Loved by our customers.
                     </p>
-                )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                        {bestsellerProducts.map((product) => (
+                            <ProductCard
+                                key={product.id}
+                                id={product.id}
+                                image={product.image}
+                                title={product.title}
+                                subtitle={`₹${product.price}`}
+                                stock={product.stock}
+                            />
+                        ))}
+
+                    </div>
+
+                    {bestsellerProducts.length === 0 && (
+                        <p className="text-center mt-16 text-gray-500">
+                            No best seller products available.
+                        </p>
+                    )}
+
+                </div>
 
             </section>
 
-            {/* Why Choose Us */}
-            <section className="py-24 bg-white">
 
-                <h2 className="text-5xl font-bold text-center text-pink-700">
-                    Why Choose APSRAA BY AVNI?
-                </h2>
+            {/* =====================================================
+                WHY CHOOSE US
+            ====================================================== */}
 
-                <p className="text-center text-gray-500 mt-4">
-                    We make shopping for jewellery simple, secure and delightful.
-                </p>
+            <section className="py-16 md:py-24 bg-white">
 
-                <div className="grid md:grid-cols-4 gap-8 max-w-7xl mx-auto mt-16 px-8">
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
 
-                    <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
-                        <div className="text-5xl">💎</div>
+                    <h2 className="text-4xl sm:text-5xl font-bold text-center text-pink-700 leading-tight">
+                        Why Choose APSRAA BY AVNI?
+                    </h2>
 
-                        <h3 className="mt-4 text-2xl font-bold">
-                            Premium Quality
-                        </h3>
+                    <p className="text-center text-gray-500 mt-4">
+                        We make shopping for jewellery simple, secure and delightful.
+                    </p>
 
-                        <p className="mt-3 text-gray-600">
-                            Beautiful craftsmanship with elegant designs.
-                        </p>
-                    </div>
 
-                    <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
-                        <div className="text-5xl">🚚</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mt-12 md:mt-16">
 
-                        <h3 className="mt-4 text-2xl font-bold">
-                            Fast Shipping
-                        </h3>
 
-                        <p className="mt-3 text-gray-600">
-                            Quick delivery across India.
-                        </p>
-                    </div>
+                        {/* PREMIUM QUALITY */}
 
-                    <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
-                        <div className="text-5xl">🔒</div>
+                        <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
 
-                        <h3 className="mt-4 text-2xl font-bold">
-                            Secure Payment
-                        </h3>
+                            <div className="text-5xl">
+                                💎
+                            </div>
 
-                        <p className="mt-3 text-gray-600">
-                            Safe & Secure Payments.
-                        </p>
-                    </div>
+                            <h3 className="mt-4 text-xl md:text-2xl font-bold">
+                                Premium Quality
+                            </h3>
 
-                    <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
-                        <div className="text-5xl">↩️</div>
+                            <p className="mt-3 text-gray-600">
+                                Beautiful craftsmanship with elegant designs.
+                            </p>
 
-                        <h3 className="mt-4 text-2xl font-bold">
-                            Easy Returns
-                        </h3>
+                        </div>
 
-                        <p className="mt-3 text-gray-600">
-                            Hassle-free returns on eligible products.
-                        </p>
+
+                        {/* FAST SHIPPING */}
+
+                        <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
+
+                            <div className="text-5xl">
+                                🚚
+                            </div>
+
+                            <h3 className="mt-4 text-xl md:text-2xl font-bold">
+                                Fast Shipping
+                            </h3>
+
+                            <p className="mt-3 text-gray-600">
+                                Quick delivery across India.
+                            </p>
+
+                        </div>
+
+
+                        {/* SECURE PAYMENT */}
+
+                        <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
+
+                            <div className="text-5xl">
+                                🔒
+                            </div>
+
+                            <h3 className="mt-4 text-xl md:text-2xl font-bold">
+                                Secure Payment
+                            </h3>
+
+                            <p className="mt-3 text-gray-600">
+                                Safe & Secure Payments.
+                            </p>
+
+                        </div>
+
+
+                        {/* EASY RETURNS */}
+
+                        <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
+
+                            <div className="text-5xl">
+                                ↩️
+                            </div>
+
+                            <h3 className="mt-4 text-xl md:text-2xl font-bold">
+                                Easy Returns
+                            </h3>
+
+                            <p className="mt-3 text-gray-600">
+                                Hassle-free returns on eligible products.
+                            </p>
+
+                        </div>
+
                     </div>
 
                 </div>
 
             </section>
+
+
+            {/* =====================================================
+                FOOTER
+            ====================================================== */}
 
             <Footer />
         </>
