@@ -1,11 +1,7 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import ProductCard from "../components/ProductCard";
 import Footer from "../components/Footer";
-import { supabase } from "../lib/supabase";
 
 type Product = {
     id: number;
@@ -17,29 +13,54 @@ type Product = {
     bestseller: boolean;
 };
 
-export default function Home() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+export const dynamic = "force-dynamic";
 
-    useEffect(() => {
-        async function fetchProducts() {
-            const { data, error } = await supabase
-                .from("products")
-                .select("*")
-                .order("id", { ascending: false });
+export default async function Home() {
+    let products: Product[] = [];
 
-            if (!error && data) {
-                setProducts(data);
+    try {
+        const supabaseUrl =
+            process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+        const supabaseKey =
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseKey) {
+            const response = await fetch(
+                `${supabaseUrl}/rest/v1/products?select=*&order=id.desc`,
+                {
+                    method: "GET",
+                    headers: {
+                        apikey: supabaseKey,
+                        Authorization: `Bearer ${supabaseKey}`,
+                    },
+                    cache: "no-store",
+                }
+            );
+
+            if (response.ok) {
+                products = await response.json();
+            } else {
+                console.error(
+                    "Failed to fetch products:",
+                    response.status
+                );
             }
-
-            setLoading(false);
         }
+    } catch (error) {
+        console.error(
+            "Products loading error:",
+            error
+        );
+    }
 
-        fetchProducts();
-    }, []);
+    const featuredProducts = products.filter(
+        (p) => p.featured
+    );
 
-    const featuredProducts = products.filter((p) => p.featured);
-    const bestsellerProducts = products.filter((p) => p.bestseller);
+    const bestsellerProducts = products.filter(
+        (p) => p.bestseller
+    );
 
     return (
         <>
@@ -107,25 +128,25 @@ export default function Home() {
                     Handpicked jewellery for every occasion.
                 </p>
 
-                {loading ? (
-                    <p className="text-center mt-16 text-xl">
-                        Loading...
+                <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto mt-16 px-8">
+
+                    {featuredProducts.map((product) => (
+                        <ProductCard
+                            key={product.id}
+                            id={product.id}
+                            image={product.image}
+                            title={product.title}
+                            subtitle={`₹${product.price}`}
+                            stock={product.stock}
+                        />
+                    ))}
+
+                </div>
+
+                {featuredProducts.length === 0 && (
+                    <p className="text-center mt-16 text-gray-500">
+                        No featured products available.
                     </p>
-                ) : (
-                    <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto mt-16 px-8">
-
-                        {featuredProducts.map((product) => (
-                            <ProductCard
-                                key={product.id}
-                                id={product.id}
-                                image={product.image}
-                                title={product.title}
-                                subtitle={`₹${product.price}`}
-                                stock={product.stock}
-                            />
-                        ))}
-
-                    </div>
                 )}
 
             </section>
@@ -141,25 +162,25 @@ export default function Home() {
                     Loved by our customers.
                 </p>
 
-                {loading ? (
-                    <p className="text-center mt-16 text-xl">
-                        Loading...
+                <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto mt-16 px-8">
+
+                    {bestsellerProducts.map((product) => (
+                        <ProductCard
+                            key={product.id}
+                            id={product.id}
+                            image={product.image}
+                            title={product.title}
+                            subtitle={`₹${product.price}`}
+                            stock={product.stock}
+                        />
+                    ))}
+
+                </div>
+
+                {bestsellerProducts.length === 0 && (
+                    <p className="text-center mt-16 text-gray-500">
+                        No best seller products available.
                     </p>
-                ) : (
-                    <div className="grid md:grid-cols-3 gap-10 max-w-7xl mx-auto mt-16 px-8">
-
-                        {bestsellerProducts.map((product) => (
-                            <ProductCard
-                                key={product.id}
-                                id={product.id}
-                                image={product.image}
-                                title={product.title}
-                                subtitle={`₹${product.price}`}
-                                stock={product.stock}
-                            />
-                        ))}
-
-                    </div>
                 )}
 
             </section>
@@ -179,7 +200,11 @@ export default function Home() {
 
                     <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
                         <div className="text-5xl">💎</div>
-                        <h3 className="mt-4 text-2xl font-bold">Premium Quality</h3>
+
+                        <h3 className="mt-4 text-2xl font-bold">
+                            Premium Quality
+                        </h3>
+
                         <p className="mt-3 text-gray-600">
                             Beautiful craftsmanship with elegant designs.
                         </p>
@@ -187,7 +212,11 @@ export default function Home() {
 
                     <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
                         <div className="text-5xl">🚚</div>
-                        <h3 className="mt-4 text-2xl font-bold">Fast Shipping</h3>
+
+                        <h3 className="mt-4 text-2xl font-bold">
+                            Fast Shipping
+                        </h3>
+
                         <p className="mt-3 text-gray-600">
                             Quick delivery across India.
                         </p>
@@ -195,7 +224,11 @@ export default function Home() {
 
                     <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
                         <div className="text-5xl">🔒</div>
-                        <h3 className="mt-4 text-2xl font-bold">Secure Payment</h3>
+
+                        <h3 className="mt-4 text-2xl font-bold">
+                            Secure Payment
+                        </h3>
+
                         <p className="mt-3 text-gray-600">
                             Safe & Secure Payments.
                         </p>
@@ -203,7 +236,11 @@ export default function Home() {
 
                     <div className="bg-pink-50 rounded-3xl p-8 text-center shadow-md">
                         <div className="text-5xl">↩️</div>
-                        <h3 className="mt-4 text-2xl font-bold">Easy Returns</h3>
+
+                        <h3 className="mt-4 text-2xl font-bold">
+                            Easy Returns
+                        </h3>
+
                         <p className="mt-3 text-gray-600">
                             Hassle-free returns on eligible products.
                         </p>
