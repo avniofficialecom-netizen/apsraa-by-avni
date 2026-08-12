@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
     return (
         <footer className="bg-gray-900 text-white">
@@ -23,10 +25,43 @@ export default function Footer() {
                     </h3>
 
                     <ul className="space-y-3 text-gray-400">
-                        <li>Necklace Sets</li>
-                        <li>Earrings</li>
-                        <li>Bridal Collection</li>
-                        <li>Chokers</li>
+
+                        <li>
+                            <Link
+                                href="/shop"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Necklace Sets
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/shop"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Earrings
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/shop"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Bridal Collection
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/shop"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Chokers
+                            </Link>
+                        </li>
+
                     </ul>
                 </div>
 
@@ -37,10 +72,52 @@ export default function Footer() {
                     </h3>
 
                     <ul className="space-y-3 text-gray-400">
-                        <li>Shipping Policy</li>
-                        <li>Return Policy</li>
-                        <li>Privacy Policy</li>
-                        <li>Contact Us</li>
+
+                        <li>
+                            <Link
+                                href="/shipping-policy"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Shipping Policy
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/refund-policy"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Refund & Cancellation Policy
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/privacy-policy"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Privacy Policy
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/terms-and-conditions"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Terms & Conditions
+                            </Link>
+                        </li>
+
+                        <li>
+                            <Link
+                                href="/contact"
+                                className="hover:text-pink-500 transition"
+                            >
+                                Contact Us
+                            </Link>
+                        </li>
+
                     </ul>
                 </div>
 
@@ -55,11 +132,13 @@ export default function Footer() {
                     </p>
 
                     <p className="mt-3 text-gray-400">
-                        📞 +91 75058 08115                    </p>
+                        📞 +91 75058 08115
+                    </p>
 
                     <p className="mt-3 text-gray-400">
                         📍 India
                     </p>
+
                 </div>
 
             </div>
@@ -73,17 +152,28 @@ export default function Footer() {
                     </p>
 
                     <div className="flex gap-6 mt-4 md:mt-0 text-gray-400">
-                        <span className="cursor-pointer hover:text-pink-500 transition">
+
+                        <a
+                            href="#"
+                            className="cursor-pointer hover:text-pink-500 transition"
+                        >
                             Instagram
-                        </span>
+                        </a>
 
-                        <span className="cursor-pointer hover:text-pink-500 transition">
+                        <a
+                            href="#"
+                            className="cursor-pointer hover:text-pink-500 transition"
+                        >
                             Facebook
-                        </span>
+                        </a>
 
-                        <span className="cursor-pointer hover:text-pink-500 transition">
+                        <a
+                            href="#"
+                            className="cursor-pointer hover:text-pink-500 transition"
+                        >
                             WhatsApp
-                        </span>
+                        </a>
+
                     </div>
 
                 </div>
