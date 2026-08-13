@@ -19,8 +19,9 @@ export default function AdminNavbar() {
 
         try {
             await supabase.auth.signOut();
-        } finally {
             router.replace("/admin/login");
+        } finally {
+            setLoggingOut(false);
         }
     }
 
@@ -55,128 +56,135 @@ export default function AdminNavbar() {
         return pathname.startsWith(href);
     }
 
+    function closeMenu() {
+        setMenuOpen(false);
+    }
+
     return (
-        <>
-            <nav className="admin-navbar">
+        <nav className="admin-navbar">
 
-                <div className="admin-navbar-inner">
+            {/* ==============================
+                NAVBAR TOP
+            ============================== */}
 
-                    {/* LOGO */}
+            <div className="admin-navbar-inner">
 
-                    <Link
-                        href="/admin"
-                        className="admin-logo"
-                        onClick={() => setMenuOpen(false)}
-                    >
-                        <span>APSRAA</span>
-                        <span>ADMIN</span>
-                    </Link>
+                {/* LOGO */}
 
+                <Link
+                    href="/admin"
+                    className="admin-logo"
+                    onClick={closeMenu}
+                >
+                    <span>APSRAA</span>
+                    <span>ADMIN</span>
+                </Link>
 
-                    {/* DESKTOP MENU */}
+                {/* DESKTOP NAVIGATION */}
 
-                    <div className="admin-desktop-menu">
+                <div className="admin-desktop-menu">
 
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={
-                                    isActive(item.href)
-                                        ? "admin-nav-link active"
-                                        : "admin-nav-link"
-                                }
-                            >
-                                {item.name}
-                            </Link>
-                        ))}
-
-                    </div>
-
-
-                    {/* DESKTOP LOGOUT */}
-
-                    <button
-                        onClick={logout}
-                        disabled={loggingOut}
-                        className="admin-desktop-logout"
-                    >
-                        {loggingOut
-                            ? "Logging..."
-                            : "Logout"}
-                    </button>
-
-
-                    {/* MOBILE MENU BUTTON */}
-
-                    <button
-                        type="button"
-                        className="admin-mobile-button"
-                        onClick={() =>
-                            setMenuOpen(!menuOpen)
-                        }
-                        aria-label="Open admin menu"
-                    >
-                        {menuOpen ? "✕" : "☰"}
-                    </button>
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={
+                                isActive(item.href)
+                                    ? "admin-nav-link active"
+                                    : "admin-nav-link"
+                            }
+                        >
+                            {item.name}
+                        </Link>
+                    ))}
 
                 </div>
 
+                {/* DESKTOP LOGOUT */}
 
-                {/* MOBILE MENU */}
+                <button
+                    type="button"
+                    onClick={logout}
+                    disabled={loggingOut}
+                    className="admin-desktop-logout"
+                >
+                    {loggingOut ? "Logging..." : "Logout"}
+                </button>
 
-                {menuOpen && (
-                    <div className="admin-mobile-menu">
+                {/* MOBILE MENU BUTTON */}
 
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={() =>
-                                    setMenuOpen(false)
-                                }
-                                className={
-                                    isActive(item.href)
-                                        ? "admin-mobile-link active"
-                                        : "admin-mobile-link"
-                                }
-                            >
-                                <span className="admin-mobile-icon">
-                                    {item.icon}
-                                </span>
+                <button
+                    type="button"
+                    className="admin-mobile-button"
+                    onClick={() => setMenuOpen((value) => !value)}
+                    aria-label={
+                        menuOpen
+                            ? "Close admin menu"
+                            : "Open admin menu"
+                    }
+                    aria-expanded={menuOpen}
+                >
+                    {menuOpen ? "✕" : "☰"}
+                </button>
 
-                                <span>
-                                    {item.name}
-                                </span>
-                            </Link>
-                        ))}
+            </div>
 
+            {/* ==============================
+                MOBILE MENU
+            ============================== */}
 
-                        <button
-                            onClick={logout}
-                            disabled={loggingOut}
-                            className="admin-mobile-logout"
+            {menuOpen && (
+                <div className="admin-mobile-menu">
+
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={closeMenu}
+                            className={
+                                isActive(item.href)
+                                    ? "admin-mobile-link active"
+                                    : "admin-mobile-link"
+                            }
                         >
                             <span className="admin-mobile-icon">
-                                🚪
+                                {item.icon}
                             </span>
 
-                            <span>
-                                {loggingOut
-                                    ? "Logging out..."
-                                    : "Logout"}
-                            </span>
-                        </button>
+                            <span>{item.name}</span>
+                        </Link>
+                    ))}
 
-                    </div>
-                )}
+                    <button
+                        type="button"
+                        onClick={logout}
+                        disabled={loggingOut}
+                        className="admin-mobile-logout"
+                    >
+                        <span className="admin-mobile-icon">
+                            🚪
+                        </span>
 
-            </nav>
+                        <span>
+                            {loggingOut
+                                ? "Logging out..."
+                                : "Logout"}
+                        </span>
+                    </button>
 
+                </div>
+            )}
 
-            {/* RESPONSIVE CSS */}
+            {/* ==============================
+                RESPONSIVE CSS
+            ============================== */}
 
             <style jsx>{`
+
+                /* ==============================
+                   MAIN NAVBAR
+                ============================== */
+
                 .admin-navbar {
                     position: sticky;
                     top: 0;
@@ -184,7 +192,7 @@ export default function AdminNavbar() {
                     width: 100%;
                     background: #0f172a;
                     color: white;
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+                    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
                 }
 
                 .admin-navbar-inner {
@@ -192,44 +200,70 @@ export default function AdminNavbar() {
                     max-width: 1280px;
                     height: 76px;
                     margin: 0 auto;
-                    padding: 0 24px;
+                    padding: 0 28px;
 
                     display: flex;
                     align-items: center;
-                    justify-content: space-between;
-                    gap: 20px;
+
+                    box-sizing: border-box;
                 }
+
+                /* ==============================
+                   LOGO
+                ============================== */
 
                 .admin-logo {
                     display: flex;
                     flex-direction: column;
-                    line-height: 0.95;
+
                     text-decoration: none;
+
+                    line-height: 0.9;
+
                     flex-shrink: 0;
+
+                    min-width: 150px;
                 }
 
                 .admin-logo span {
                     color: #f472b6;
-                    font-size: 28px;
+
+                    font-size: 27px;
                     font-weight: 800;
-                    letter-spacing: -0.5px;
+
+                    letter-spacing: -0.6px;
                 }
+
+                /* ==============================
+                   DESKTOP MENU
+                ============================== */
 
                 .admin-desktop-menu {
                     display: flex;
                     align-items: center;
-                    gap: 8px;
+
+                    gap: 4px;
+
                     margin-left: auto;
                 }
 
                 .admin-nav-link {
                     color: #e5e7eb;
+
                     text-decoration: none;
-                    padding: 10px 14px;
+
+                    padding: 10px 15px;
+
                     border-radius: 10px;
+
                     font-size: 15px;
                     font-weight: 500;
-                    transition: 0.2s;
+
+                    white-space: nowrap;
+
+                    transition:
+                        background 0.2s ease,
+                        color 0.2s ease;
                 }
 
                 .admin-nav-link:hover {
@@ -242,21 +276,44 @@ export default function AdminNavbar() {
                     color: white;
                 }
 
+                /* ==============================
+                   DESKTOP LOGOUT
+                ============================== */
+
                 .admin-desktop-logout {
                     border: none;
+
                     background: #db2777;
                     color: white;
-                    padding: 11px 20px;
+
+                    padding: 12px 21px;
+
                     border-radius: 12px;
+
+                    font-size: 15px;
                     font-weight: 600;
+
                     cursor: pointer;
-                    margin-left: 12px;
+
+                    margin-left: 18px;
+
                     white-space: nowrap;
+
+                    transition: background 0.2s ease;
                 }
 
                 .admin-desktop-logout:hover {
                     background: #be185d;
                 }
+
+                .admin-desktop-logout:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                /* ==============================
+                   MOBILE BUTTON
+                ============================== */
 
                 .admin-mobile-button {
                     display: none;
@@ -271,79 +328,110 @@ export default function AdminNavbar() {
                     color: white;
 
                     font-size: 23px;
-                    cursor: pointer;
 
                     align-items: center;
                     justify-content: center;
+
+                    cursor: pointer;
+
+                    flex-shrink: 0;
                 }
+
+                /* ==============================
+                   MOBILE MENU
+                ============================== */
 
                 .admin-mobile-menu {
                     display: none;
                 }
 
-
-                /* =====================================
-                   MOBILE
-                   ===================================== */
+                /* ==============================
+                   TABLET / MOBILE
+                ============================== */
 
                 @media (max-width: 767px) {
 
                     .admin-navbar-inner {
                         height: 68px;
+
                         padding: 0 16px;
+
+                        justify-content: space-between;
+                    }
+
+                    .admin-logo {
+                        min-width: 0;
                     }
 
                     .admin-logo span {
                         font-size: 21px;
+                        letter-spacing: -0.3px;
                     }
 
                     .admin-desktop-menu {
-                        display: none !important;
+                        display: none;
                     }
 
                     .admin-desktop-logout {
-                        display: none !important;
+                        display: none;
                     }
 
                     .admin-mobile-button {
-                        display: flex !important;
-                        flex-shrink: 0;
+                        display: flex;
                     }
 
                     .admin-mobile-menu {
-                        display: block;
+                        display: flex;
+
+                        flex-direction: column;
+
                         width: 100%;
-                        padding: 8px 12px 14px;
+
+                        padding: 10px 14px 15px;
+
                         background: #0f172a;
+
                         border-top: 1px solid #334155;
+
+                        box-sizing: border-box;
                     }
 
                     .admin-mobile-link,
                     .admin-mobile-logout {
+
                         width: 100%;
-                        min-height: 48px;
+
+                        min-height: 50px;
 
                         display: flex;
+
                         align-items: center;
 
-                        gap: 12px;
+                        gap: 13px;
 
-                        padding: 11px 14px;
-                        margin-bottom: 5px;
+                        padding: 12px 15px;
+
+                        margin: 0 0 6px 0;
 
                         border: none;
-                        border-radius: 10px;
+
+                        border-radius: 11px;
 
                         background: #1e293b;
+
                         color: #e5e7eb;
 
                         text-decoration: none;
+
                         text-align: left;
 
-                        font-size: 15px;
+                        font-size: 16px;
+
                         font-weight: 500;
 
                         box-sizing: border-box;
+
+                        cursor: pointer;
                     }
 
                     .admin-mobile-link.active {
@@ -357,25 +445,36 @@ export default function AdminNavbar() {
                     }
 
                     .admin-mobile-logout {
-                        cursor: pointer;
-                        margin-top: 8px;
+                        margin-top: 5px;
                         margin-bottom: 0;
+                    }
+
+                    .admin-mobile-logout:disabled {
+                        opacity: 0.6;
+                        cursor: not-allowed;
                     }
 
                     .admin-mobile-icon {
                         width: 26px;
-                        text-align: center;
-                        font-size: 18px;
+
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+
+                        font-size: 19px;
+
                         flex-shrink: 0;
                     }
                 }
 
-
-                /* VERY SMALL PHONES */
+                /* ==============================
+                   SMALL PHONES
+                ============================== */
 
                 @media (max-width: 400px) {
 
                     .admin-navbar-inner {
+                        height: 64px;
                         padding: 0 14px;
                     }
 
@@ -386,9 +485,15 @@ export default function AdminNavbar() {
                     .admin-mobile-button {
                         width: 42px;
                         height: 42px;
+
+                        border-radius: 11px;
+
+                        font-size: 21px;
                     }
                 }
+
             `}</style>
-        </>
+
+        </nav>
     );
 }
