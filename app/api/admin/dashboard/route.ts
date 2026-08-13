@@ -6,7 +6,7 @@ import { supabaseAdmin } from "../../../../lib/supabase-admin";
 export async function GET() {
     try {
         // ==========================================
-        // AUTHENTICATION
+        // CREATE SERVER SUPABASE CLIENT
         // ==========================================
 
         const cookieStore = await cookies();
@@ -36,12 +36,16 @@ export async function GET() {
                                 }
                             );
                         } catch {
-                            // Middleware may handle cookie updates.
+                            // Middleware can also refresh cookies.
                         }
                     },
                 },
             }
         );
+
+        // ==========================================
+        // GET CURRENT SUPABASE USER
+        // ==========================================
 
         const {
             data: { user },
@@ -49,11 +53,16 @@ export async function GET() {
         } = await supabase.auth.getUser();
 
         if (userError || !user) {
+            console.error(
+                "Dashboard authentication failed:",
+                userError
+            );
+
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        "Unauthorized. Admin login required.",
+                        "Unauthorized. Please login again.",
                 },
                 {
                     status: 401,
@@ -62,20 +71,59 @@ export async function GET() {
         }
 
         // ==========================================
-        // ADMIN AUTHORIZATION
+        // ADMIN EMAIL
         // ==========================================
 
         const adminEmail =
-            process.env.ADMIN_EMAIL;
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL
+                ?.trim()
+                .toLowerCase();
+
+        const loggedInEmail =
+            user.email
+                ?.trim()
+                .toLowerCase();
+
+        console.log(
+            "Dashboard admin check:",
+            {
+                loggedInEmail,
+                adminConfigured: !!adminEmail,
+            }
+        );
+
+        // ==========================================
+        // ADMIN AUTHORIZATION
+        // ==========================================
+
+        if (!adminEmail) {
+            console.error(
+                "NEXT_PUBLIC_ADMIN_EMAIL is missing in Vercel."
+            );
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Server admin configuration is missing.",
+                },
+                {
+                    status: 500,
+                }
+            );
+        }
 
         if (
-            !adminEmail ||
-            user.email?.toLowerCase() !==
-            adminEmail.toLowerCase()
+            !loggedInEmail ||
+            loggedInEmail !== adminEmail
         ) {
-            console.warn(
-                "Unauthorized admin dashboard request:",
-                user.email
+            console.error(
+                "Admin email mismatch:",
+                {
+                    loggedInEmail,
+                    expectedAdmin:
+                    adminEmail,
+                }
             );
 
             return NextResponse.json(
@@ -91,7 +139,7 @@ export async function GET() {
         }
 
         // ==========================================
-        // FETCH ORDERS
+        // FETCH ALL ORDERS
         // ==========================================
 
         const {
@@ -114,6 +162,8 @@ export async function GET() {
                     success: false,
                     message:
                         "Unable to load order data.",
+                    error:
+                    orderError.message,
                 },
                 {
                     status: 500,
@@ -125,13 +175,18 @@ export async function GET() {
             orderData ?? [];
 
         // ==========================================
-        // ORDER STATISTICS
+        // TOTAL ORDERS
         // ==========================================
 
         const orders =
             allOrders.length;
 
-        const activeOrderValue =
+        // ==========================================
+        // GROSS ORDER VALUE
+        // Excludes cancelled orders
+        // ==========================================
+
+        const grossOrderValue =
             allOrders.reduce(
                 (sum, order) => {
                     if (
@@ -150,6 +205,10 @@ export async function GET() {
                 },
                 0
             );
+
+        // ==========================================
+        // PAID ORDERS
+        // ==========================================
 
         const paid =
             allOrders.filter(
@@ -173,6 +232,10 @@ export async function GET() {
                 0
             );
 
+        // ==========================================
+        // CANCELLED
+        // ==========================================
+
         const cancelled =
             allOrders.filter(
                 (order) =>
@@ -193,6 +256,10 @@ export async function GET() {
                 0
             );
 
+        // ==========================================
+        // CUSTOMERS
+        // ==========================================
+
         const uniqueCustomers =
             new Set(
                 allOrders
@@ -205,6 +272,10 @@ export async function GET() {
 
         const customers =
             uniqueCustomers.size;
+
+        // ==========================================
+        // ORDER STATUS
+        // ==========================================
 
         const pendingOrders =
             allOrders.filter(
@@ -261,13 +332,12 @@ export async function GET() {
         const {
             count: productCount,
             error: productError,
-        } =
-            await supabaseAdmin
-                .from("products")
-                .select("id", {
-                    count: "exact",
-                    head: true,
-                });
+        } = await supabaseAdmin
+            .from("products")
+            .select("id", {
+                count: "exact",
+                head: true,
+            });
 
         if (productError) {
             console.error(
@@ -280,6 +350,8 @@ export async function GET() {
                     success: false,
                     message:
                         "Unable to load product count.",
+                    error:
+                    productError.message,
                 },
                 {
                     status: 500,
@@ -288,22 +360,21 @@ export async function GET() {
         }
 
         // ==========================================
-        // LOW STOCK PRODUCTS
+        // LOW STOCK
         // ==========================================
 
         const {
             data: lowStock,
             error: lowStockError,
-        } =
-            await supabaseAdmin
-                .from("products")
-                .select(
-                    "id, title, stock"
-                )
-                .lte("stock", 5)
-                .order("stock", {
-                    ascending: true,
-                });
+        } = await supabaseAdmin
+            .from("products")
+            .select(
+                "id, title, stock"
+            )
+            .lte("stock", 5)
+            .order("stock", {
+                ascending: true,
+            });
 
         if (lowStockError) {
             console.error(
@@ -316,9 +387,11 @@ export async function GET() {
                     success: false,
                     message:
                         "Unable to load low stock products.",
+                    error:
+                    lowStockError.message,
                 },
                 {
-                    status: 500
+                    status: 500,
                 }
             );
         }
@@ -334,8 +407,7 @@ export async function GET() {
                 orders,
                 paidOrders,
                 paidRevenue,
-                grossOrderValue:
-                activeOrderValue,
+                grossOrderValue,
                 cancelledOrders,
                 cancelledValue,
                 customers,

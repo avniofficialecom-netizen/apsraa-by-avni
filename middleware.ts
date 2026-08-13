@@ -2,9 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export async function middleware(
-    request: NextRequest
-) {
+export async function middleware(request: NextRequest) {
     let response = NextResponse.next({
         request,
     });
@@ -20,15 +18,8 @@ export async function middleware(
 
                 setAll(cookiesToSet) {
                     cookiesToSet.forEach(
-                        ({
-                             name,
-                             value,
-                             options,
-                         }) => {
-                            request.cookies.set(
-                                name,
-                                value
-                            );
+                        ({ name, value, options }) => {
+                            request.cookies.set(name, value);
 
                             response.cookies.set(
                                 name,
@@ -42,12 +33,21 @@ export async function middleware(
         }
     );
 
+    /*
+     * IMPORTANT:
+     * getUser() refreshes/validates the Supabase session
+     * and allows the SSR client to update the cookies.
+     */
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
-    const pathname =
-        request.nextUrl.pathname;
+    const pathname = request.nextUrl.pathname;
+
+    const adminEmail =
+        process.env.NEXT_PUBLIC_ADMIN_EMAIL
+            ?.trim()
+            .toLowerCase();
 
     const isAdminRoute =
         pathname.startsWith("/admin");
@@ -55,135 +55,90 @@ export async function middleware(
     const isLoginPage =
         pathname === "/admin/login";
 
-    // ==========================================
-    // ADMIN EMAIL
-    // ==========================================
-    // IMPORTANT:
-    // Vercel has NEXT_PUBLIC_ADMIN_EMAIL
-    // ==========================================
-
-    const adminEmail =
-        process.env.NEXT_PUBLIC_ADMIN_EMAIL
-            ?.trim()
-            .toLowerCase();
+    console.log(
+        "MIDDLEWARE:",
+        pathname,
+        "USER:",
+        user?.email || "none",
+        "ADMIN:",
+        adminEmail || "missing"
+    );
 
     // ==========================================
-    // ADMIN LOGIN PAGE
+    // /admin/login
     // ==========================================
 
     if (isLoginPage) {
-        // No logged-in user:
-        // allow login page.
+        // No session → show login page
         if (!user) {
             return response;
         }
 
-        // Admin configuration missing
-        if (!adminEmail) {
-            console.error(
-                "NEXT_PUBLIC_ADMIN_EMAIL is missing."
-            );
-
-            return response;
-        }
-
-        // Logged-in user must be admin
+        // Correct admin → dashboard
         if (
-            user.email?.trim().toLowerCase() !==
+            adminEmail &&
+            user.email?.trim().toLowerCase() ===
             adminEmail
         ) {
-            console.warn(
-                "Unauthorized admin user:",
-                user.email
-            );
-
-            await supabase.auth.signOut();
-
-            const loginUrl =
+            const url =
                 request.nextUrl.clone();
 
-            loginUrl.pathname =
-                "/admin/login";
+            url.pathname = "/admin";
 
-            return NextResponse.redirect(
-                loginUrl
-            );
+            return NextResponse.redirect(url);
         }
 
-        // Already logged in as admin
-        const adminUrl =
-            request.nextUrl.clone();
+        // Logged-in non-admin
+        await supabase.auth.signOut();
 
-        adminUrl.pathname =
-            "/admin";
-
-        return NextResponse.redirect(
-            adminUrl
-        );
+        return response;
     }
 
     // ==========================================
-    // PROTECT ALL ADMIN ROUTES
+    // ALL /admin ROUTES
     // ==========================================
 
     if (isAdminRoute) {
-        // No user → login
+        // No session → login
         if (!user) {
-            const loginUrl =
+            const url =
                 request.nextUrl.clone();
 
-            loginUrl.pathname =
-                "/admin/login";
+            url.pathname = "/admin/login";
 
-            return NextResponse.redirect(
-                loginUrl
-            );
+            return NextResponse.redirect(url);
         }
 
-        // Admin configuration missing
+        // Admin email missing
         if (!adminEmail) {
             console.error(
                 "NEXT_PUBLIC_ADMIN_EMAIL is missing."
             );
 
-            const loginUrl =
-                request.nextUrl.clone();
-
-            loginUrl.pathname =
-                "/admin/login";
-
-            return NextResponse.redirect(
-                loginUrl
-            );
+            return response;
         }
 
-        // User exists but is NOT admin
+        // Wrong user
         if (
             user.email?.trim().toLowerCase() !==
             adminEmail
         ) {
             console.warn(
-                "Unauthorized admin access:",
+                "Unauthorized admin:",
                 user.email
             );
 
             await supabase.auth.signOut();
 
-            const loginUrl =
+            const url =
                 request.nextUrl.clone();
 
-            loginUrl.pathname =
-                "/admin/login";
+            url.pathname = "/admin/login";
 
-            return NextResponse.redirect(
-                loginUrl
-            );
+            return NextResponse.redirect(url);
         }
 
-        // ======================================
-        // CORRECT ADMIN
-        // ======================================
-
+        // Correct admin
         return response;
     }
 
