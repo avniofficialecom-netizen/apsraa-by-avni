@@ -17,132 +17,266 @@ function SuccessContent() {
         <>
             <Navbar />
 
-            <section className="min-h-screen bg-pink-50 flex items-center justify-center px-6 py-20">
+            <main className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-50 px-4 py-12 md:py-20">
 
-                <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-xl w-full text-center">
+                <div className="max-w-2xl mx-auto">
 
-                    {/* Success Icon */}
+                    {/* SUCCESS CARD */}
 
-                    <div className="text-7xl mb-6">
-                        🎉
-                    </div>
+                    <div className="bg-white rounded-3xl shadow-xl border border-pink-100 overflow-hidden">
 
-                    {/* Heading */}
+                        {/* TOP SUCCESS AREA */}
 
-                    <h1 className="text-4xl font-bold text-pink-700 mb-4">
-                        Order Placed Successfully!
-                    </h1>
+                        <div className="text-center px-6 md:px-10 pt-10 md:pt-14">
 
-                    {/* Message */}
+                            {/* Success Icon */}
 
-                    <p className="text-gray-600 text-lg mb-8">
-                        Thank you for shopping with
-                        <br />
+                            <div className="mx-auto w-24 h-24 rounded-full bg-green-100 flex items-center justify-center text-5xl mb-6">
+                                ✓
+                            </div>
 
-                        <span className="font-bold text-pink-600">
-                            APSRAA BY AVNI
-                        </span>
-                    </p>
+                            {/* Heading */}
 
-                    {/* Order Information */}
+                            <h1 className="text-3xl md:text-4xl font-bold text-pink-700">
+                                Order Placed Successfully!
+                            </h1>
 
-                    {orderId ? (
-                        <div className="bg-pink-100 rounded-xl p-6 mb-8 text-left">
+                            <p className="text-gray-600 text-base md:text-lg mt-4 leading-relaxed">
+                                Thank you for shopping with
+                                <br />
 
-                            <div className="flex justify-between items-center">
-
-                                <span className="text-gray-600">
-                                    Order Number
+                                <span className="font-bold text-pink-600">
+                                    APSRAA BY AVNI
                                 </span>
+                            </p>
 
-                                <span className="font-bold text-pink-700 text-lg">
-                                    #{orderId}
-                                </span>
+                        </div>
+
+
+                        {/* ORDER INFORMATION */}
+
+                        {orderId ? (
+
+                            <div className="px-6 md:px-10 mt-8">
+
+                                <div className="bg-pink-50 border border-pink-100 rounded-2xl p-5 md:p-6">
+
+                                    <div className="text-center">
+
+                                        <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold">
+                                            Your Order Number
+                                        </p>
+
+                                        <p className="text-3xl md:text-4xl font-bold text-pink-700 mt-2">
+                                            #{orderId}
+                                        </p>
+
+                                    </div>
+
+                                    <div className="border-t border-pink-200 my-5" />
+
+                                    <div className="flex items-center gap-3">
+
+                                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                            ✓
+                                        </div>
+
+                                        <div>
+                                            <p className="font-semibold text-gray-800">
+                                                Payment Successful
+                                            </p>
+
+                                            <p className="text-sm text-gray-500">
+                                                Your payment has been received and your order has been created.
+                                            </p>
+                                        </div>
+
+                                    </div>
+
+                                </div>
 
                             </div>
 
-                            <p className="text-gray-600 text-sm mt-4">
-                                Your payment was successfully
-                                processed and your order has
-                                been received.
-                            </p>
+                        ) : (
 
-                        </div>
-                    ) : (
-                        <div className="bg-pink-100 rounded-xl p-5 mb-8">
+                            <div className="px-6 md:px-10 mt-8">
 
-                            <p className="text-gray-700">
-                                Your order has been received.
-                            </p>
+                                <div className="bg-pink-50 border border-pink-100 rounded-2xl p-5 text-center">
 
-                            <p className="text-gray-700 mt-2">
-                                Our team will contact you
-                                shortly to confirm your order.
-                            </p>
+                                    <p className="text-gray-700 font-medium">
+                                        Your order has been received successfully.
+                                    </p>
 
-                        </div>
-                    )}
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        Please keep your order number available for tracking.
+                                    </p>
 
-                    {/* Buttons */}
+                                </div>
 
-                    <div className="flex flex-col gap-4">
+                            </div>
 
-                        {orderId && (
-                            <Link
-                                href={`/order/${orderId}`}
-                                className="bg-pink-600 text-white py-4 rounded-full font-semibold hover:bg-pink-700 transition"
-                            >
-                                📦 View Your Order
-                            </Link>
                         )}
 
-                        <Link
-                            href="/shop"
-                            className="border-2 border-pink-600 text-pink-600 py-4 rounded-full font-semibold hover:bg-pink-50 transition"
-                        >
-                            Continue Shopping
-                        </Link>
 
-                        <Link
-                            href="/"
-                            className="text-pink-600 py-3 font-semibold hover:underline transition"
-                        >
-                            Back to Home
-                        </Link>
+                        {/* WHAT HAPPENS NEXT */}
+
+                        <div className="px-6 md:px-10 mt-8">
+
+                            <h2 className="text-lg font-bold text-gray-800 mb-4">
+                                What happens next?
+                            </h2>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                                <div className="bg-gray-50 rounded-2xl p-4 text-center">
+
+                                    <div className="text-2xl mb-2">
+                                        📦
+                                    </div>
+
+                                    <p className="font-semibold text-gray-800 text-sm">
+                                        Order Confirmed
+                                    </p>
+
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Your order is being prepared.
+                                    </p>
+
+                                </div>
+
+
+                                <div className="bg-gray-50 rounded-2xl p-4 text-center">
+
+                                    <div className="text-2xl mb-2">
+                                        🚚
+                                    </div>
+
+                                    <p className="font-semibold text-gray-800 text-sm">
+                                        Shipped
+                                    </p>
+
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        We will dispatch your order.
+                                    </p>
+
+                                </div>
+
+
+                                <div className="bg-gray-50 rounded-2xl p-4 text-center">
+
+                                    <div className="text-2xl mb-2">
+                                        🏠
+                                    </div>
+
+                                    <p className="font-semibold text-gray-800 text-sm">
+                                        Delivered
+                                    </p>
+
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Enjoy your APSRAA jewellery.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        {/* ACTION BUTTONS */}
+
+                        <div className="px-6 md:px-10 mt-8 pb-10 md:pb-12">
+
+                            <div className="flex flex-col gap-3">
+
+                                {orderId && (
+                                    <Link
+                                        href={`/order/${orderId}`}
+                                        className="w-full text-center bg-pink-600 text-white py-4 rounded-full font-semibold hover:bg-pink-700 transition shadow-md"
+                                    >
+                                        📦 View Your Order
+                                    </Link>
+                                )}
+
+                                <Link
+                                    href="/track-order"
+                                    className="w-full text-center border-2 border-pink-600 text-pink-600 py-4 rounded-full font-semibold hover:bg-pink-50 transition"
+                                >
+                                    🔍 Track Your Order
+                                </Link>
+
+                                <Link
+                                    href="/shop"
+                                    className="w-full text-center border border-gray-300 text-gray-700 py-4 rounded-full font-semibold hover:bg-gray-50 transition"
+                                >
+                                    🛍️ Continue Shopping
+                                </Link>
+
+                                <Link
+                                    href="/"
+                                    className="text-center text-pink-600 py-2 font-semibold hover:underline transition"
+                                >
+                                    Back to Home
+                                </Link>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    {/* SECURITY MESSAGE */}
+
+                    <div className="text-center mt-6 px-4">
+
+                        <p className="text-sm text-gray-500">
+                            🔒 Your payment was processed securely by Razorpay.
+                        </p>
+
+                        <p className="text-xs text-gray-400 mt-2">
+                            Please keep your order number for future reference.
+                        </p>
 
                     </div>
 
                 </div>
 
-            </section>
+            </main>
 
             <Footer />
         </>
     );
 }
 
+
 export default function SuccessPage() {
+
     return (
         <Suspense
             fallback={
                 <>
                     <Navbar />
 
-                    <section className="min-h-screen bg-pink-50 flex items-center justify-center px-6">
+                    <main className="min-h-screen bg-pink-50 flex items-center justify-center px-5">
 
-                        <div className="bg-white rounded-3xl shadow-xl p-10 text-center">
+                        <div className="bg-white rounded-3xl shadow-xl p-10 text-center max-w-md w-full">
 
                             <div className="text-6xl mb-5">
                                 🎉
                             </div>
 
-                            <p className="text-xl text-gray-600">
-                                Loading your order...
+                            <h1 className="text-2xl font-bold text-pink-700">
+                                Processing Your Order
+                            </h1>
+
+                            <p className="text-gray-500 mt-3">
+                                Please wait while we load your order confirmation.
                             </p>
 
                         </div>
 
-                    </section>
+                    </main>
 
                     <Footer />
                 </>

@@ -9,67 +9,63 @@ export async function middleware(
         request,
     });
 
-    const supabase =
-        createServerClient(
-            process.env
-                .NEXT_PUBLIC_SUPABASE_URL!,
-            process.env
-                .NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() {
-                        return request.cookies.getAll();
-                    },
-
-                    setAll(
-                        cookiesToSet
-                    ) {
-                        cookiesToSet.forEach(
-                            ({
-                                 name,
-                                 value,
-                                 options,
-                             }) => {
-                                request.cookies.set(
-                                    name,
-                                    value
-                                );
-
-                                response.cookies.set(
-                                    name,
-                                    value,
-                                    options
-                                );
-                            }
-                        );
-                    },
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return request.cookies.getAll();
                 },
-            }
-        );
+
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(
+                        ({
+                             name,
+                             value,
+                             options,
+                         }) => {
+                            request.cookies.set(
+                                name,
+                                value
+                            );
+
+                            response.cookies.set(
+                                name,
+                                value,
+                                options
+                            );
+                        }
+                    );
+                },
+            },
+        }
+    );
 
     const {
         data: { user },
-    } =
-        await supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     const pathname =
         request.nextUrl.pathname;
 
     const isAdminRoute =
-        pathname.startsWith(
-            "/admin"
-        );
+        pathname.startsWith("/admin");
 
     const isLoginPage =
-        pathname ===
-        "/admin/login";
+        pathname === "/admin/login";
 
     // ==========================================
     // ADMIN EMAIL
     // ==========================================
+    // IMPORTANT:
+    // Vercel has NEXT_PUBLIC_ADMIN_EMAIL
+    // ==========================================
 
     const adminEmail =
-        process.env.ADMIN_EMAIL;
+        process.env.NEXT_PUBLIC_ADMIN_EMAIL
+            ?.trim()
+            .toLowerCase();
 
     // ==========================================
     // ADMIN LOGIN PAGE
@@ -77,17 +73,30 @@ export async function middleware(
 
     if (isLoginPage) {
         // No logged-in user:
-        // allow the login page.
+        // allow login page.
         if (!user) {
             return response;
         }
 
-        // Logged-in user must be the admin.
+        // Admin configuration missing
+        if (!adminEmail) {
+            console.error(
+                "NEXT_PUBLIC_ADMIN_EMAIL is missing."
+            );
+
+            return response;
+        }
+
+        // Logged-in user must be admin
         if (
-            !adminEmail ||
-            user.email?.toLowerCase() !==
-            adminEmail.toLowerCase()
+            user.email?.trim().toLowerCase() !==
+            adminEmail
         ) {
+            console.warn(
+                "Unauthorized admin user:",
+                user.email
+            );
+
             await supabase.auth.signOut();
 
             const loginUrl =
@@ -101,7 +110,7 @@ export async function middleware(
             );
         }
 
-        // Admin is already logged in.
+        // Already logged in as admin
         const adminUrl =
             request.nextUrl.clone();
 
@@ -131,11 +140,27 @@ export async function middleware(
             );
         }
 
+        // Admin configuration missing
+        if (!adminEmail) {
+            console.error(
+                "NEXT_PUBLIC_ADMIN_EMAIL is missing."
+            );
+
+            const loginUrl =
+                request.nextUrl.clone();
+
+            loginUrl.pathname =
+                "/admin/login";
+
+            return NextResponse.redirect(
+                loginUrl
+            );
+        }
+
         // User exists but is NOT admin
         if (
-            !adminEmail ||
-            user.email?.toLowerCase() !==
-            adminEmail.toLowerCase()
+            user.email?.trim().toLowerCase() !==
+            adminEmail
         ) {
             console.warn(
                 "Unauthorized admin access:",
@@ -155,7 +180,10 @@ export async function middleware(
             );
         }
 
-        // Correct admin
+        // ======================================
+        // CORRECT ADMIN
+        // ======================================
+
         return response;
     }
 
