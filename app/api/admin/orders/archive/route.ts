@@ -1,18 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { supabaseAdmin } from "../../../lib/supabase-admin";
-
-const allowedStatuses = [
-    "Pending",
-    "Confirmed",
-    "Packed",
-    "Shipped",
-    "Delivered",
-    "Cancelled",
-];
-
-export async function POST(req: Request) {
+import { supabaseAdmin } from "../../../../../lib/supabase-admin";export async function POST(req: Request) {
     try {
         // ==========================================
         // AUTHENTICATION
@@ -106,7 +95,7 @@ export async function POST(req: Request) {
             loggedInEmail !== configuredAdminEmail
         ) {
             console.warn(
-                "Unauthorized admin API attempt:",
+                "Unauthorized archive API attempt:",
                 user.email
             );
 
@@ -129,7 +118,7 @@ export async function POST(req: Request) {
         const body = await req.json();
 
         const id = Number(body.id);
-        const status = body.status;
+        const archived = body.archived;
 
         // ==========================================
         // VALIDATE ORDER ID
@@ -148,28 +137,15 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // VALIDATE STATUS
+        // VALIDATE ARCHIVED VALUE
         // ==========================================
 
-        if (!status) {
+        if (typeof archived !== "boolean") {
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        "Order status is required.",
-                },
-                {
-                    status: 400,
-                }
-            );
-        }
-
-        if (!allowedStatuses.includes(status)) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Invalid order status.",
+                        "Archived value must be true or false.",
                 },
                 {
                     status: 400,
@@ -186,7 +162,7 @@ export async function POST(req: Request) {
             error: findError,
         } = await supabaseAdmin
             .from("orders")
-            .select("id, status, delivered_at")
+            .select("id, archived")
             .eq("id", id)
             .single();
 
@@ -203,37 +179,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // PREPARE UPDATE
-        // ==========================================
-
-        const updateData: {
-            status: string;
-            delivered_at?: string | null;
-        } = {
-            status,
-        };
-
-        // When order becomes Delivered for the first time,
-        // record the current timestamp.
-        if (
-            status === "Delivered" &&
-            order.status !== "Delivered"
-        ) {
-            updateData.delivered_at =
-                new Date().toISOString();
-        }
-
-        // If an order is moved away from Delivered,
-        // clear the delivery timestamp.
-        if (
-            status !== "Delivered" &&
-            order.status === "Delivered"
-        ) {
-            updateData.delivered_at = null;
-        }
-
-        // ==========================================
-        // UPDATE ORDER
+        // UPDATE ARCHIVE STATUS
         // ==========================================
 
         const {
@@ -241,16 +187,16 @@ export async function POST(req: Request) {
             error: updateError,
         } = await supabaseAdmin
             .from("orders")
-            .update(updateData)
+            .update({
+                archived,
+            })
             .eq("id", id)
-            .select(
-                "id, status, delivered_at"
-            )
+            .select("id, archived")
             .single();
 
         if (updateError) {
             console.error(
-                "Supabase Update Error:",
+                "Supabase Archive Update Error:",
                 updateError
             );
 
@@ -266,25 +212,28 @@ export async function POST(req: Request) {
             );
         }
 
-        console.log(
-            `✅ Order #${id} status changed from ${order.status} to ${status}`
-        );
+        // ==========================================
+        // SUCCESS
+        // ==========================================
 
-        if (status === "Delivered") {
-            console.log(
-                `📅 Order #${id} delivered_at: ${updatedOrder.delivered_at}`
-            );
-        }
+        const action = archived
+            ? "archived"
+            : "restored";
+
+        console.log(
+            `✅ Order #${id} ${action}`
+        );
 
         return NextResponse.json({
             success: true,
-            message:
-                "Order status updated successfully.",
+            message: archived
+                ? "Order archived successfully."
+                : "Order restored successfully.",
             order: updatedOrder,
         });
     } catch (error) {
         console.error(
-            "Update Order Status Error:",
+            "Order Archive API Error:",
             error
         );
 
