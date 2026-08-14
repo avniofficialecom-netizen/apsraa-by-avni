@@ -33,49 +33,72 @@ export default function ShippingLabel() {
 
     useEffect(() => {
         loadLabel();
-    }, []);
+    }, [id]);
 
     useEffect(() => {
         if (order && barcodeRef.current) {
-            JsBarcode(barcodeRef.current, `APS${order.id}`, {
-                format: "CODE128",
-                width: 2.5,
-                height: 70,
-                displayValue: true,
-                fontSize: 14,
-                margin: 0,
-            });
+            JsBarcode(
+                barcodeRef.current,
+                `APS${order.id}`,
+                {
+                    format: "CODE128",
+                    width: 2.5,
+                    height: 70,
+                    displayValue: true,
+                    fontSize: 14,
+                    margin: 0,
+                }
+            );
         }
     }, [order]);
 
     async function loadLabel() {
         try {
-            const response = await fetch("/api/invoice", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    orderId: Number(id),
-                }),
-            });
+            setLoading(true);
+
+            const response = await fetch(
+                "/api/invoice",
+                {
+                    method: "POST",
+
+                    // Important:
+                    // Send the logged-in admin session.
+                    credentials: "include",
+
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+
+                    body: JSON.stringify({
+                        orderId: Number(id),
+                    }),
+                }
+            );
 
             const result = await response.json();
 
-            if (!result.success) {
-                alert(result.message);
+            if (!response.ok || !result.success) {
+                alert(
+                    result.message ||
+                    "Unable to load shipping label."
+                );
                 return;
             }
 
             setOrder(result.order);
-            setItems(result.items);
-
+            setItems(result.items ?? []);
         } catch (error) {
-            console.error(error);
-            alert("Unable to load shipping label.");
-        }
+            console.error(
+                "Shipping Label Error:",
+                error
+            );
 
-        setLoading(false);
+            alert(
+                "Unable to load shipping label."
+            );
+        } finally {
+            setLoading(false);
+        }
     }
 
     if (loading) {
@@ -97,6 +120,7 @@ export default function ShippingLabel() {
             </section>
         );
     }
+
     return (
         <section className="min-h-screen bg-gray-200 flex items-center justify-center p-6 print:bg-white print:p-0">
 
@@ -124,7 +148,9 @@ export default function ShippingLabel() {
                         </p>
 
                         <p className="text-[10px]">
-                            {new Date(order.created_at).toLocaleDateString()}
+                            {new Date(
+                                order.created_at
+                            ).toLocaleDateString()}
                         </p>
 
                     </div>
@@ -198,26 +224,29 @@ export default function ShippingLabel() {
 
                     </div>
 
-                    {items.slice(0, 2).map((item) => (
+                    {items
+                        .slice(0, 2)
+                        .map((item) => (
 
-                        <div
-                            key={item.id}
-                            className="flex justify-between text-[10px] mb-1"
-                        >
+                            <div
+                                key={item.id}
+                                className="flex justify-between text-[10px] mb-1"
+                            >
 
-                            <span className="truncate max-w-[170px]">
-                                {item.title}
-                            </span>
+                                <span className="truncate max-w-[170px]">
+                                    {item.title}
+                                </span>
 
-                            <span>
-                                {item.quantity}
-                            </span>
+                                <span>
+                                    {item.quantity}
+                                </span>
 
-                        </div>
+                            </div>
 
-                    ))}
+                        ))}
 
                 </div>
+
                 {/* Footer */}
 
                 <div className="border border-black mt-2 p-2">
