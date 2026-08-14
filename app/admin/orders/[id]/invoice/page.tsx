@@ -60,7 +60,7 @@ export default function InvoicePage() {
             setOrder(result.order);
             setItems(result.items ?? []);
         } catch (error) {
-            console.error(error);
+            console.error("Invoice loading error:", error);
             alert("Unable to load invoice.");
         } finally {
             setLoading(false);
@@ -70,15 +70,15 @@ export default function InvoicePage() {
     if (loading) {
         return (
             <>
-                <Navbar />
-
-                <section className="min-h-screen flex items-center justify-center text-2xl">
-                    Loading Invoice...
-                </section>
-
                 <div className="print:hidden">
-                    <Footer />
+                    <Navbar />
                 </div>
+
+                <section className="min-h-screen flex items-center justify-center">
+                    <h2 className="text-2xl font-bold">
+                        Loading Invoice...
+                    </h2>
+                </section>
             </>
         );
     }
@@ -86,73 +86,75 @@ export default function InvoicePage() {
     if (!order) {
         return (
             <>
-                <Navbar />
+                <div className="print:hidden">
+                    <Navbar />
+                </div>
 
-                <section className="min-h-screen flex items-center justify-center text-2xl">
-                    Invoice Not Found
+                <section className="min-h-screen flex items-center justify-center">
+                    <h2 className="text-2xl font-bold">
+                        Invoice Not Found
+                    </h2>
                 </section>
-
-                <Footer />
             </>
         );
     }
 
     const subtotal = items.reduce(
         (sum, item) =>
-            sum +
-            Number(item.price) * item.quantity,
+            sum + Number(item.price) * item.quantity,
         0
     );
 
-    const isPaid = order.payment_status === "Paid";
+    const isPaid =
+        order.payment_status === "Paid";
 
     return (
         <>
-            <Navbar />
+            {/* WEB NAVBAR */}
+            <div className="print:hidden">
+                <Navbar />
+            </div>
 
-            <section className="min-h-screen bg-gray-100 py-10 print:bg-white print:py-0">
+            {/* PAGE */}
+            <main className="invoice-page bg-gray-100 min-h-screen py-10">
 
+                {/* INVOICE */}
                 <div
                     id="invoice"
-                    className="max-w-5xl mx-auto bg-white shadow-2xl rounded-3xl p-10 print:shadow-none print:rounded-none print:max-w-full print:p-8"
+                    className="invoice mx-auto max-w-5xl bg-white p-10 shadow-2xl rounded-3xl"
                 >
 
-                    {/* ==============================
-                        HEADER
-                    ============================== */}
-
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-b pb-8">
+                    {/* HEADER */}
+                    <div className="flex justify-between items-start border-b pb-6">
 
                         <div>
-
-                            <h1 className="text-5xl font-bold text-pink-700">
+                            <h1 className="text-4xl font-bold text-pink-700">
                                 APSRAA BY AVNI
                             </h1>
 
-                            <p className="text-gray-500 mt-2">
+                            <p className="text-gray-500 mt-1">
                                 Premium Artificial Jewellery
                             </p>
 
                             <p className="text-gray-500">
                                 India
                             </p>
-
                         </div>
 
-                        <div className="text-left md:text-right">
+                        <div className="text-right">
 
-                            <h2 className="text-4xl font-bold">
+                            <h2 className="text-3xl font-bold">
                                 INVOICE
                             </h2>
 
-                            <p className="mt-4">
+                            <p className="mt-3">
                                 Invoice No:
                                 <strong className="ml-2">
                                     #{order.id}
                                 </strong>
                             </p>
 
-                            <p className="mt-2">
+                            <p>
                                 Date:
                                 <strong className="ml-2">
                                     {new Date(
@@ -161,7 +163,7 @@ export default function InvoicePage() {
                                 </strong>
                             </p>
 
-                            <p className="mt-2">
+                            <p>
                                 Order Status:
                                 <strong className="ml-2 text-pink-700">
                                     {order.status}
@@ -169,18 +171,14 @@ export default function InvoicePage() {
                             </p>
 
                         </div>
-
                     </div>
 
-                    {/* ==============================
-                        CUSTOMER DETAILS
-                    ============================== */}
-
-                    <div className="grid md:grid-cols-2 gap-10 mt-10">
+                    {/* CUSTOMER */}
+                    <div className="grid grid-cols-2 gap-8 mt-7">
 
                         <div>
 
-                            <h3 className="text-2xl font-bold mb-4">
+                            <h3 className="text-xl font-bold mb-3">
                                 Bill To
                             </h3>
 
@@ -189,216 +187,191 @@ export default function InvoicePage() {
                                 {order.customer_name}
                             </p>
 
-                            <p className="mt-2">
+                            <p className="mt-1">
                                 <strong>Email:</strong>{" "}
                                 {order.email || "-"}
                             </p>
 
-                            <p className="mt-2">
+                            <p className="mt-1">
                                 <strong>Phone:</strong>{" "}
                                 {order.phone}
                             </p>
 
-                            <p className="mt-2">
+                            <p className="mt-1">
                                 <strong>Address:</strong>
                             </p>
 
-                            <p className="text-gray-600 mt-1 whitespace-pre-line">
+                            <p className="text-gray-600 whitespace-pre-line">
                                 {order.address}
                             </p>
 
                         </div>
 
-                        <div className="flex items-end justify-end">
+                        <div className="flex justify-end items-start">
 
-                            <div className="bg-pink-50 rounded-2xl p-6 text-right">
+                            <div className="bg-pink-50 rounded-xl p-5 text-right">
 
                                 <p className="text-gray-500">
                                     Total Amount
                                 </p>
 
-                                <h2 className="text-5xl font-bold text-green-600 mt-2">
+                                <h2 className="text-4xl font-bold text-green-600">
                                     ₹{order.total}
                                 </h2>
 
                             </div>
 
                         </div>
-
                     </div>
 
-                    {/* ==============================
-                        PAYMENT DETAILS
-                    ============================== */}
+                    {/* PAYMENT */}
+                    <div className="mt-7 bg-green-50 border border-green-200 rounded-xl p-5">
 
-                    <div className="mt-10 bg-green-50 border border-green-200 rounded-2xl p-6">
+                        <div className="flex justify-between items-center mb-4">
 
-                        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-
-                            <h2 className="text-2xl font-bold text-green-700">
+                            <h2 className="text-xl font-bold text-green-700">
                                 💳 Payment Details
                             </h2>
 
                             <span
-                                className={`inline-block px-5 py-2 rounded-full font-bold ${
+                                className={
                                     isPaid
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-yellow-100 text-yellow-700"
-                                }`}
+                                        ? "bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold"
+                                        : "bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-bold"
+                                }
                             >
                                 {isPaid
-                                    ? "✅ PAID"
-                                    : `🟡 ${
-                                        order.payment_status ||
-                                        "Payment Pending"
-                                    }`}
+                                    ? "PAID"
+                                    : order.payment_status ||
+                                    "Payment Pending"}
                             </span>
 
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-5">
+                        <div className="grid grid-cols-2 gap-4">
 
-                            <div className="bg-white rounded-xl border p-4">
+                            <div className="bg-white border rounded-lg p-3">
 
                                 <p className="text-gray-500 text-sm">
                                     Razorpay Order ID
                                 </p>
 
-                                <p className="font-semibold mt-1 break-all">
+                                <p className="font-semibold break-all">
                                     {order.razorpay_order_id || "-"}
                                 </p>
 
                             </div>
 
-                            <div className="bg-white rounded-xl border p-4">
+                            <div className="bg-white border rounded-lg p-3">
 
                                 <p className="text-gray-500 text-sm">
                                     Razorpay Payment ID
                                 </p>
 
-                                <p className="font-semibold mt-1 break-all">
+                                <p className="font-semibold break-all">
                                     {order.razorpay_payment_id || "-"}
                                 </p>
 
                             </div>
 
                         </div>
-
                     </div>
 
-                    {/* ==============================
-                        PRODUCTS
-                    ============================== */}
+                    {/* PRODUCTS */}
+                    <div className="mt-7">
 
-                    <div className="mt-12">
-
-                        <h2 className="text-3xl font-bold text-pink-700 mb-6">
+                        <h2 className="text-2xl font-bold text-pink-700 mb-3">
                             Ordered Products
                         </h2>
 
-                        <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
 
-                            <table className="w-full border rounded-2xl overflow-hidden">
+                            <thead>
+                            <tr className="bg-pink-600 text-white">
 
-                                <thead className="bg-pink-600 text-white">
+                                <th className="p-3 text-left">
+                                    Product
+                                </th>
 
-                                <tr>
+                                <th className="p-3 text-center">
+                                    Qty
+                                </th>
 
-                                    <th className="p-4 text-left">
-                                        Product
-                                    </th>
+                                <th className="p-3 text-right">
+                                    Price
+                                </th>
 
-                                    <th className="p-4 text-center">
-                                        Qty
-                                    </th>
+                                <th className="p-3 text-right">
+                                    Total
+                                </th>
 
-                                    <th className="p-4 text-right">
-                                        Price
-                                    </th>
+                            </tr>
+                            </thead>
 
-                                    <th className="p-4 text-right">
-                                        Total
-                                    </th>
+                            <tbody>
+
+                            {items.map((item) => (
+
+                                <tr
+                                    key={item.id}
+                                    className="border-b"
+                                >
+
+                                    <td className="p-3">
+                                        {item.title}
+                                    </td>
+
+                                    <td className="p-3 text-center">
+                                        {item.quantity}
+                                    </td>
+
+                                    <td className="p-3 text-right">
+                                        ₹{item.price}
+                                    </td>
+
+                                    <td className="p-3 text-right font-bold">
+                                        ₹
+                                        {(
+                                            Number(item.price) *
+                                            item.quantity
+                                        ).toFixed(2)}
+                                    </td>
 
                                 </tr>
 
-                                </thead>
+                            ))}
 
-                                <tbody>
+                            </tbody>
 
-                                {items.map((item) => (
-
-                                    <tr
-                                        key={item.id}
-                                        className="border-b"
-                                    >
-
-                                        <td className="p-4">
-                                            {item.title}
-                                        </td>
-
-                                        <td className="p-4 text-center">
-                                            {item.quantity}
-                                        </td>
-
-                                        <td className="p-4 text-right">
-                                            ₹{item.price}
-                                        </td>
-
-                                        <td className="p-4 text-right font-bold">
-                                            ₹
-                                            {(
-                                                Number(item.price) *
-                                                item.quantity
-                                            ).toFixed(2)}
-                                        </td>
-
-                                    </tr>
-
-                                ))}
-
-                                </tbody>
-
-                            </table>
-
-                        </div>
-
+                        </table>
                     </div>
 
-                    {/* ==============================
-                        TOTALS
-                    ============================== */}
+                    {/* TOTAL */}
+                    <div className="mt-6 flex justify-end">
 
-                    <div className="mt-10 flex justify-end">
+                        <div className="w-80">
 
-                        <div className="w-full max-w-md">
-
-                            <div className="flex justify-between py-3 border-b">
-
-                                <span className="font-semibold">
+                            <div className="flex justify-between border-b py-2">
+                                <span>
                                     Subtotal
                                 </span>
 
                                 <span>
                                     ₹{subtotal.toFixed(2)}
                                 </span>
-
                             </div>
 
-                            <div className="flex justify-between py-3 border-b">
-
-                                <span className="font-semibold">
+                            <div className="flex justify-between border-b py-2">
+                                <span>
                                     Shipping
                                 </span>
 
                                 <span>
                                     ₹0.00
                                 </span>
-
                             </div>
 
-                            <div className="flex justify-between py-4 text-2xl font-bold text-green-600">
-
+                            <div className="flex justify-between py-3 text-xl font-bold text-green-600">
                                 <span>
                                     Grand Total
                                 </span>
@@ -409,51 +382,47 @@ export default function InvoicePage() {
                                         order.total
                                     ).toFixed(2)}
                                 </span>
-
                             </div>
 
                         </div>
-
                     </div>
 
-                    {/* ==============================
-                        BUTTONS
-                    ============================== */}
-
-                    <div className="mt-14 flex flex-wrap gap-4 justify-center print:hidden">
+                    {/* BUTTONS */}
+                    <div className="print-hidden-buttons mt-8 flex justify-center gap-4">
 
                         <button
-                            onClick={() => window.print()}
-                            className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-4 rounded-2xl text-lg font-bold transition"
+                            onClick={() =>
+                                window.print()
+                            }
+                            className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 rounded-xl font-bold"
                         >
                             🖨 Print Invoice
                         </button>
 
                         <button
-                            onClick={() => window.history.back()}
-                            className="bg-gray-700 hover:bg-gray-800 text-white px-8 py-4 rounded-2xl text-lg font-bold transition"
+                            onClick={() =>
+                                window.history.back()
+                            }
+                            className="bg-gray-700 hover:bg-gray-800 text-white px-8 py-3 rounded-xl font-bold"
                         >
                             ← Back
                         </button>
 
                     </div>
 
-                    {/* ==============================
-                        FOOTER
-                    ============================== */}
-
-                    <div className="mt-16 border-t pt-8 text-center text-gray-500">
+                    {/* INVOICE FOOTER */}
+                    <div className="invoice-footer mt-8 border-t pt-5 text-center text-gray-500">
 
                         <p className="font-semibold">
                             Thank you for shopping with APSRAA BY AVNI ❤️
                         </p>
 
-                        <p className="mt-2">
+                        <p className="mt-1">
                             Premium Artificial Jewellery
                         </p>
 
                         {isPaid && (
-                            <p className="mt-3 text-green-600 font-semibold">
+                            <p className="mt-2 text-green-600 font-semibold">
                                 Payment received successfully.
                             </p>
                         )}
@@ -461,12 +430,68 @@ export default function InvoicePage() {
                     </div>
 
                 </div>
+            </main>
 
-            </section>
-
+            {/* WEB FOOTER */}
             <div className="print:hidden">
                 <Footer />
             </div>
+
+            {/* PRINT CSS */}
+            <style>{`
+                @page {
+                    size: A4;
+                    margin: 10mm;
+                }
+
+                @media print {
+
+                    html,
+                    body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                    }
+
+                    body * {
+                        visibility: hidden;
+                    }
+
+                    #invoice,
+                    #invoice * {
+                        visibility: visible;
+                    }
+
+                    #invoice {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        max-width: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                    }
+
+                    .print-hidden-buttons {
+                        display: none !important;
+                    }
+
+                    .invoice-footer {
+                        margin-top: 10px !important;
+                    }
+
+                    table {
+                        page-break-inside: auto;
+                    }
+
+                    tr {
+                        page-break-inside: avoid;
+                    }
+                }
+            `}</style>
         </>
     );
 }
