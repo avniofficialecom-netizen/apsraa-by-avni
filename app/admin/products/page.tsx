@@ -224,8 +224,7 @@ export default function ProductsPage() {
 
                             </div>
 
-                        ) : filteredProducts.length ===
-                        0 ? (
+                        ) : filteredProducts.length === 0 ? (
 
                             /* No products */
 
@@ -274,9 +273,7 @@ export default function ProductsPage() {
                                     (product) => (
 
                                         <article
-                                            key={
-                                                product.id
-                                            }
+                                            key={product.id}
                                             className="bg-white rounded-2xl sm:rounded-3xl shadow-md overflow-hidden hover:shadow-xl transition"
                                         >
 
@@ -404,9 +401,17 @@ export default function ProductsPage() {
                                                     </Link>
 
                                                     <DeleteProductButton
-                                                        id={
-                                                            product.id
-                                                        }
+                                                        id={product.id}
+                                                        onDeleted={(deletedId) => {
+                                                            setProducts(
+                                                                (currentProducts) =>
+                                                                    currentProducts.filter(
+                                                                        (item) =>
+                                                                            item.id !==
+                                                                            deletedId
+                                                                    )
+                                                            );
+                                                        }}
                                                     />
 
                                                 </div>
