@@ -74,8 +74,8 @@ export default function InvoicePage() {
                     <Navbar />
                 </div>
 
-                <section className="min-h-screen flex items-center justify-center">
-                    <h2 className="text-2xl font-bold">
+                <section className="min-h-screen flex items-center justify-center p-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-center">
                         Loading Invoice...
                     </h2>
                 </section>
@@ -90,8 +90,8 @@ export default function InvoicePage() {
                     <Navbar />
                 </div>
 
-                <section className="min-h-screen flex items-center justify-center">
-                    <h2 className="text-2xl font-bold">
+                <section className="min-h-screen flex items-center justify-center p-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-center">
                         Invoice Not Found
                     </h2>
                 </section>
@@ -105,56 +105,83 @@ export default function InvoicePage() {
         0
     );
 
-    const isPaid =
-        order.payment_status === "Paid";
+    const isPaid = order.payment_status === "Paid";
 
     return (
         <>
-            {/* WEB NAVBAR */}
+            {/* NAVBAR */}
             <div className="print:hidden">
                 <Navbar />
             </div>
 
             {/* PAGE */}
-            <main className="invoice-page bg-gray-100 min-h-screen py-10">
+            <main className="invoice-page bg-gray-100 min-h-screen py-4 sm:py-6 lg:py-10 px-2 sm:px-4">
 
                 {/* INVOICE */}
                 <div
                     id="invoice"
-                    className="invoice mx-auto max-w-5xl bg-white p-10 shadow-2xl rounded-3xl"
+                    className="
+                        invoice
+                        mx-auto
+                        w-full
+                        max-w-5xl
+                        bg-white
+                        p-4
+                        sm:p-6
+                        lg:p-10
+                        shadow-xl
+                        sm:shadow-2xl
+                        rounded-xl
+                        sm:rounded-3xl
+                    "
                 >
 
                     {/* HEADER */}
-                    <div className="flex justify-between items-start border-b pb-6">
+                    <div
+                        className="
+                            flex
+                            flex-col
+                            sm:flex-row
+                            justify-between
+                            gap-5
+                            sm:gap-8
+                            items-start
+                            border-b
+                            pb-5
+                            sm:pb-6
+                        "
+                    >
 
-                        <div>
-                            <h1 className="text-4xl font-bold text-pink-700">
+                        <div className="w-full sm:w-auto">
+
+                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-pink-700">
                                 APSRAA BY AVNI
                             </h1>
 
-                            <p className="text-gray-500 mt-1">
+                            <p className="text-sm sm:text-base text-gray-500 mt-1">
                                 Premium Artificial Jewellery
                             </p>
 
-                            <p className="text-gray-500">
+                            <p className="text-sm sm:text-base text-gray-500">
                                 India
                             </p>
+
                         </div>
 
-                        <div className="text-right">
+                        <div className="w-full sm:w-auto text-left sm:text-right">
 
-                            <h2 className="text-3xl font-bold">
+                            <h2 className="text-2xl sm:text-3xl font-bold">
                                 INVOICE
                             </h2>
 
-                            <p className="mt-3">
+                            <p className="mt-2 sm:mt-3 text-sm sm:text-base">
                                 Invoice No:
                                 <strong className="ml-2">
                                     #{order.id}
                                 </strong>
                             </p>
 
-                            <p>
+                            <p className="text-sm sm:text-base">
                                 Date:
                                 <strong className="ml-2">
                                     {new Date(
@@ -163,7 +190,7 @@ export default function InvoicePage() {
                                 </strong>
                             </p>
 
-                            <p>
+                            <p className="text-sm sm:text-base">
                                 Order Status:
                                 <strong className="ml-2 text-pink-700">
                                     {order.status}
@@ -174,70 +201,96 @@ export default function InvoicePage() {
                     </div>
 
                     {/* CUSTOMER */}
-                    <div className="grid grid-cols-2 gap-8 mt-7">
+                    <div
+                        className="
+                            grid
+                            grid-cols-1
+                            lg:grid-cols-2
+                            gap-5
+                            sm:gap-7
+                            lg:gap-8
+                            mt-5
+                            sm:mt-7
+                        "
+                    >
 
                         <div>
 
-                            <h3 className="text-xl font-bold mb-3">
+                            <h3 className="text-lg sm:text-xl font-bold mb-3">
                                 Bill To
                             </h3>
 
-                            <p>
-                                <strong>Name:</strong>{" "}
-                                {order.customer_name}
-                            </p>
+                            <div className="space-y-1 text-sm sm:text-base">
 
-                            <p className="mt-1">
-                                <strong>Email:</strong>{" "}
-                                {order.email || "-"}
-                            </p>
+                                <p>
+                                    <strong>Name:</strong>{" "}
+                                    {order.customer_name}
+                                </p>
 
-                            <p className="mt-1">
-                                <strong>Phone:</strong>{" "}
-                                {order.phone}
-                            </p>
+                                <p className="break-all">
+                                    <strong>Email:</strong>{" "}
+                                    {order.email || "-"}
+                                </p>
 
-                            <p className="mt-1">
-                                <strong>Address:</strong>
-                            </p>
+                                <p>
+                                    <strong>Phone:</strong>{" "}
+                                    {order.phone}
+                                </p>
 
-                            <p className="text-gray-600 whitespace-pre-line">
-                                {order.address}
-                            </p>
+                                <p>
+                                    <strong>Address:</strong>
+                                </p>
+
+                                <p className="text-gray-600 whitespace-pre-line leading-5">
+                                    {order.address}
+                                </p>
+
+                            </div>
 
                         </div>
 
-                        <div className="flex justify-end items-start">
+                        <div className="flex justify-start lg:justify-end items-start">
 
-                            <div className="bg-pink-50 rounded-xl p-5 text-right">
+                            <div className="bg-pink-50 rounded-xl p-4 sm:p-5 text-left sm:text-right w-full sm:w-auto">
 
-                                <p className="text-gray-500">
+                                <p className="text-sm sm:text-base text-gray-500">
                                     Total Amount
                                 </p>
 
-                                <h2 className="text-4xl font-bold text-green-600">
+                                <h2 className="text-3xl sm:text-4xl font-bold text-green-600">
                                     ₹{order.total}
                                 </h2>
 
                             </div>
 
                         </div>
+
                     </div>
 
                     {/* PAYMENT */}
-                    <div className="mt-7 bg-green-50 border border-green-200 rounded-xl p-5">
+                    <div className="mt-5 sm:mt-7 bg-green-50 border border-green-200 rounded-xl p-3 sm:p-5">
 
-                        <div className="flex justify-between items-center mb-4">
+                        <div
+                            className="
+                                flex
+                                flex-col
+                                sm:flex-row
+                                justify-between
+                                gap-3
+                                sm:items-center
+                                mb-4
+                            "
+                        >
 
-                            <h2 className="text-xl font-bold text-green-700">
+                            <h2 className="text-lg sm:text-xl font-bold text-green-700">
                                 💳 Payment Details
                             </h2>
 
                             <span
                                 className={
                                     isPaid
-                                        ? "bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold"
-                                        : "bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-bold"
+                                        ? "bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold text-sm w-fit"
+                                        : "bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-bold text-sm w-fit"
                                 }
                             >
                                 {isPaid
@@ -248,15 +301,15 @@ export default function InvoicePage() {
 
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 
                             <div className="bg-white border rounded-lg p-3">
 
-                                <p className="text-gray-500 text-sm">
+                                <p className="text-gray-500 text-xs sm:text-sm">
                                     Razorpay Order ID
                                 </p>
 
-                                <p className="font-semibold break-all">
+                                <p className="font-semibold text-sm break-all">
                                     {order.razorpay_order_id || "-"}
                                 </p>
 
@@ -264,11 +317,11 @@ export default function InvoicePage() {
 
                             <div className="bg-white border rounded-lg p-3">
 
-                                <p className="text-gray-500 text-sm">
+                                <p className="text-gray-500 text-xs sm:text-sm">
                                     Razorpay Payment ID
                                 </p>
 
-                                <p className="font-semibold break-all">
+                                <p className="font-semibold text-sm break-all">
                                     {order.razorpay_payment_id || "-"}
                                 </p>
 
@@ -278,80 +331,134 @@ export default function InvoicePage() {
                     </div>
 
                     {/* PRODUCTS */}
-                    <div className="mt-7">
+                    <div className="mt-5 sm:mt-7">
 
-                        <h2 className="text-2xl font-bold text-pink-700 mb-3">
+                        <h2 className="text-xl sm:text-2xl font-bold text-pink-700 mb-3">
                             Ordered Products
                         </h2>
 
-                        <table className="w-full border-collapse">
+                        {/* Desktop/tablet */}
+                        <div className="hidden sm:block overflow-x-auto">
 
-                            <thead>
-                            <tr className="bg-pink-600 text-white">
+                            <table className="w-full border-collapse">
 
-                                <th className="p-3 text-left">
-                                    Product
-                                </th>
+                                <thead>
+                                <tr className="bg-pink-600 text-white">
 
-                                <th className="p-3 text-center">
-                                    Qty
-                                </th>
+                                    <th className="p-3 text-left">
+                                        Product
+                                    </th>
 
-                                <th className="p-3 text-right">
-                                    Price
-                                </th>
+                                    <th className="p-3 text-center">
+                                        Qty
+                                    </th>
 
-                                <th className="p-3 text-right">
-                                    Total
-                                </th>
+                                    <th className="p-3 text-right">
+                                        Price
+                                    </th>
 
-                            </tr>
-                            </thead>
+                                    <th className="p-3 text-right">
+                                        Total
+                                    </th>
 
-                            <tbody>
+                                </tr>
+                                </thead>
+
+                                <tbody>
+
+                                {items.map((item) => (
+
+                                    <tr
+                                        key={item.id}
+                                        className="border-b"
+                                    >
+
+                                        <td className="p-3">
+                                            {item.title}
+                                        </td>
+
+                                        <td className="p-3 text-center">
+                                            {item.quantity}
+                                        </td>
+
+                                        <td className="p-3 text-right">
+                                            ₹{item.price}
+                                        </td>
+
+                                        <td className="p-3 text-right font-bold">
+                                            ₹
+                                            {(
+                                                Number(item.price) *
+                                                item.quantity
+                                            ).toFixed(2)}
+                                        </td>
+
+                                    </tr>
+
+                                ))}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                        {/* Mobile */}
+                        <div className="sm:hidden space-y-2">
 
                             {items.map((item) => (
 
-                                <tr
+                                <div
                                     key={item.id}
-                                    className="border-b"
+                                    className="border rounded-lg p-3"
                                 >
 
-                                    <td className="p-3">
+                                    <p className="font-semibold text-sm">
                                         {item.title}
-                                    </td>
+                                    </p>
 
-                                    <td className="p-3 text-center">
-                                        {item.quantity}
-                                    </td>
+                                    <div className="flex justify-between mt-2 text-sm">
 
-                                    <td className="p-3 text-right">
-                                        ₹{item.price}
-                                    </td>
+                                        <span>
+                                            Qty: {item.quantity}
+                                        </span>
 
-                                    <td className="p-3 text-right font-bold">
-                                        ₹
-                                        {(
-                                            Number(item.price) *
-                                            item.quantity
-                                        ).toFixed(2)}
-                                    </td>
+                                        <span>
+                                            ₹{item.price} each
+                                        </span>
 
-                                </tr>
+                                    </div>
+
+                                    <div className="flex justify-between mt-1 font-bold text-sm">
+
+                                        <span>
+                                            Item Total
+                                        </span>
+
+                                        <span>
+                                            ₹
+                                            {(
+                                                Number(item.price) *
+                                                item.quantity
+                                            ).toFixed(2)}
+                                        </span>
+
+                                    </div>
+
+                                </div>
 
                             ))}
 
-                            </tbody>
+                        </div>
 
-                        </table>
                     </div>
 
                     {/* TOTAL */}
-                    <div className="mt-6 flex justify-end">
+                    <div className="mt-5 sm:mt-6 flex justify-end">
 
-                        <div className="w-80">
+                        <div className="w-full sm:w-80">
 
-                            <div className="flex justify-between border-b py-2">
+                            <div className="flex justify-between border-b py-2 text-sm sm:text-base">
                                 <span>
                                     Subtotal
                                 </span>
@@ -361,7 +468,7 @@ export default function InvoicePage() {
                                 </span>
                             </div>
 
-                            <div className="flex justify-between border-b py-2">
+                            <div className="flex justify-between border-b py-2 text-sm sm:text-base">
                                 <span>
                                     Shipping
                                 </span>
@@ -371,7 +478,7 @@ export default function InvoicePage() {
                                 </span>
                             </div>
 
-                            <div className="flex justify-between py-3 text-xl font-bold text-green-600">
+                            <div className="flex justify-between py-3 text-lg sm:text-xl font-bold text-green-600">
                                 <span>
                                     Grand Total
                                 </span>
@@ -385,16 +492,39 @@ export default function InvoicePage() {
                             </div>
 
                         </div>
+
                     </div>
 
                     {/* BUTTONS */}
-                    <div className="print-hidden-buttons mt-8 flex justify-center gap-4">
+                    <div
+                        className="
+                            print-hidden-buttons
+                            mt-6
+                            sm:mt-8
+                            flex
+                            flex-col
+                            sm:flex-row
+                            justify-center
+                            gap-3
+                        "
+                    >
 
                         <button
                             onClick={() =>
                                 window.print()
                             }
-                            className="bg-pink-600 hover:bg-pink-700 text-white px-8 py-3 rounded-xl font-bold"
+                            className="
+                                bg-pink-600
+                                hover:bg-pink-700
+                                text-white
+                                px-6
+                                sm:px-8
+                                py-3
+                                rounded-xl
+                                font-bold
+                                w-full
+                                sm:w-auto
+                            "
                         >
                             🖨 Print Invoice
                         </button>
@@ -403,26 +533,37 @@ export default function InvoicePage() {
                             onClick={() =>
                                 window.history.back()
                             }
-                            className="bg-gray-700 hover:bg-gray-800 text-white px-8 py-3 rounded-xl font-bold"
+                            className="
+                                bg-gray-700
+                                hover:bg-gray-800
+                                text-white
+                                px-6
+                                sm:px-8
+                                py-3
+                                rounded-xl
+                                font-bold
+                                w-full
+                                sm:w-auto
+                            "
                         >
                             ← Back
                         </button>
 
                     </div>
 
-                    {/* INVOICE FOOTER */}
-                    <div className="invoice-footer mt-8 border-t pt-5 text-center text-gray-500">
+                    {/* FOOTER */}
+                    <div className="invoice-footer mt-6 sm:mt-8 border-t pt-4 sm:pt-5 text-center text-gray-500">
 
-                        <p className="font-semibold">
+                        <p className="font-semibold text-sm sm:text-base">
                             Thank you for shopping with APSRAA BY AVNI ❤️
                         </p>
 
-                        <p className="mt-1">
+                        <p className="mt-1 text-sm">
                             Premium Artificial Jewellery
                         </p>
 
                         {isPaid && (
-                            <p className="mt-2 text-green-600 font-semibold">
+                            <p className="mt-2 text-green-600 font-semibold text-sm">
                                 Payment received successfully.
                             </p>
                         )}
