@@ -23,11 +23,7 @@ export async function POST(req: Request) {
                     setAll(cookiesToSet) {
                         try {
                             cookiesToSet.forEach(
-                                ({
-                                     name,
-                                     value,
-                                     options,
-                                 }) => {
+                                ({ name, value, options }) => {
                                     cookieStore.set(
                                         name,
                                         value,
@@ -36,7 +32,7 @@ export async function POST(req: Request) {
                                 }
                             );
                         } catch {
-                            // Middleware handles cookie updates.
+                            // Cookie updates may be handled by middleware.
                         }
                     },
                 },
@@ -52,8 +48,7 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Unauthorized. Admin login required.",
+                    message: "Unauthorized. Admin login required.",
                 },
                 {
                     status: 401,
@@ -66,12 +61,34 @@ export async function POST(req: Request) {
         // ==========================================
 
         const adminEmail =
-            process.env.ADMIN_EMAIL;
+            process.env.ADMIN_EMAIL ||
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+        if (!adminEmail) {
+            console.error(
+                "Admin email environment variable is missing."
+            );
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Admin configuration is missing.",
+                },
+                {
+                    status: 500,
+                }
+            );
+        }
+
+        const loggedInEmail =
+            user.email?.trim().toLowerCase();
+
+        const configuredAdminEmail =
+            adminEmail.trim().toLowerCase();
 
         if (
-            !adminEmail ||
-            user.email?.toLowerCase() !==
-            adminEmail.toLowerCase()
+            !loggedInEmail ||
+            loggedInEmail !== configuredAdminEmail
         ) {
             console.warn(
                 "Unauthorized product deletion attempt:",
@@ -81,8 +98,7 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Forbidden. Admin access required.",
+                    message: "Forbidden. Admin access required.",
                 },
                 {
                     status: 403,
@@ -97,12 +113,11 @@ export async function POST(req: Request) {
         const body = await req.json();
         const id = Number(body.id);
 
-        if (!id || isNaN(id)) {
+        if (!id || Number.isNaN(id)) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Valid Product ID is required.",
+                    message: "Valid Product ID is required.",
                 },
                 {
                     status: 400,
@@ -119,15 +134,32 @@ export async function POST(req: Request) {
             error: findError,
         } = await supabaseAdmin
             .from("products")
-            .select("id, name")
+            .select("id, title")
             .eq("id", id)
-            .single();
+            .maybeSingle();
 
-        if (findError || !product) {
+        if (findError) {
+            console.error(
+                "Find Product Error:",
+                findError
+            );
+
             return NextResponse.json(
                 {
                     success: false,
-                    message: "Product not found.",
+                    message: findError.message,
+                },
+                {
+                    status: 500,
+                }
+            );
+        }
+
+        if (!product) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: `Product #${id} not found.`,
                 },
                 {
                     status: 404,
@@ -139,11 +171,12 @@ export async function POST(req: Request) {
         // DELETE PRODUCT
         // ==========================================
 
-        const { error: deleteError } =
-            await supabaseAdmin
-                .from("products")
-                .delete()
-                .eq("id", id);
+        const {
+            error: deleteError,
+        } = await supabaseAdmin
+            .from("products")
+            .delete()
+            .eq("id", id);
 
         if (deleteError) {
             console.error(
@@ -154,8 +187,7 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                    deleteError.message,
+                    message: deleteError.message,
                 },
                 {
                     status: 500,
@@ -164,15 +196,15 @@ export async function POST(req: Request) {
         }
 
         console.log(
-            `✅ Product deleted: #${id} - ${product.name}`
+            `✅ Product deleted: #${id} - ${product.title}`
         );
 
         return NextResponse.json({
             success: true,
-            message:
-                "Product deleted successfully.",
+            message: "Product deleted successfully.",
             productId: id,
         });
+
     } catch (error) {
         console.error(
             "Delete Product Error:",
@@ -182,8 +214,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
             {
                 success: false,
-                message:
-                    "Internal server error.",
+                message: "Internal server error.",
             },
             {
                 status: 500,
