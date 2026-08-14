@@ -41,6 +41,7 @@ export default function InvoicePage() {
         try {
             const response = await fetch("/api/invoice", {
                 method: "POST",
+                credentials: "include",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -347,9 +348,7 @@ export default function InvoicePage() {
                                         <td className="p-4 text-right font-bold">
                                             ₹
                                             {(
-                                                Number(
-                                                    item.price
-                                                ) *
+                                                Number(item.price) *
                                                 item.quantity
                                             ).toFixed(2)}
                                         </td>

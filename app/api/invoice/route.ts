@@ -5,13 +5,15 @@ import { supabaseAdmin } from "../../../lib/supabase-admin";
 
 export async function POST(req: Request) {
     try {
+        // ==========================================
+        // READ REQUEST
+        // ==========================================
+
         const body = await req.json();
 
         const orderId = Number(body.orderId);
 
-        const contact = String(
-            body.contact || ""
-        )
+        const contact = String(body.contact || "")
             .trim()
             .toLowerCase();
 
@@ -23,8 +25,7 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Valid Order ID is required.",
+                    message: "Valid Order ID is required.",
                 },
                 {
                     status: 400,
@@ -33,10 +34,11 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // CHECK WHETHER REQUEST IS FROM ADMIN
+        // AUTHENTICATION
         // ==========================================
 
         let isAdmin = false;
+        let loggedInEmail = "";
 
         try {
             const cookieStore = await cookies();
@@ -79,48 +81,41 @@ export async function POST(req: Request) {
             } = await supabase.auth.getUser();
 
             if (!userError && user) {
+                loggedInEmail =
+                    user.email?.trim().toLowerCase() || "";
+
+                // Support BOTH environment variable names.
+                // Production currently uses NEXT_PUBLIC_ADMIN_EMAIL.
                 const adminEmail =
-                    process.env.ADMIN_EMAIL;
+                    process.env.ADMIN_EMAIL ||
+                    process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
                 if (
                     adminEmail &&
-                    user.email?.toLowerCase() ===
-                    adminEmail.toLowerCase()
+                    loggedInEmail ===
+                    adminEmail.trim().toLowerCase()
                 ) {
                     isAdmin = true;
                 }
+
+                console.log(
+                    "Invoice admin check:",
+                    {
+                        loggedInEmail,
+                        adminConfigured: Boolean(adminEmail),
+                        isAdmin,
+                    }
+                );
+            } else {
+                console.warn(
+                    "Invoice authentication failed:",
+                    userError
+                );
             }
         } catch (authError) {
-            console.warn(
-                "Invoice admin authentication check failed:",
+            console.error(
+                "Invoice authentication error:",
                 authError
-            );
-        }
-
-        console.log(
-            "INVOICE REQUEST:",
-            {
-                orderId,
-                isAdmin,
-                hasContact: Boolean(contact),
-            }
-        );
-
-        // ==========================================
-        // CUSTOMER CONTACT REQUIRED
-        // ONLY IF NOT ADMIN
-        // ==========================================
-
-        if (!isAdmin && !contact) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Email or phone number is required.",
-                },
-                {
-                    status: 400,
-                }
             );
         }
 
@@ -158,8 +153,7 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Order not found.",
+                    message: "Order not found.",
                 },
                 {
                     status: 404,
@@ -170,9 +164,28 @@ export async function POST(req: Request) {
         // ==========================================
         // CUSTOMER VERIFICATION
         // ==========================================
+        //
+        // ADMIN:
+        // No email/phone verification required.
+        //
+        // CUSTOMER:
+        // Email OR phone must match the order.
+        // ==========================================
 
-        // Admin does NOT need customer verification.
         if (!isAdmin) {
+            if (!contact) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Email or phone number is required.",
+                    },
+                    {
+                        status: 400,
+                    }
+                );
+            }
+
             const customerEmail =
                 String(order.email || "")
                     .trim()
@@ -193,10 +206,7 @@ export async function POST(req: Request) {
                 enteredPhone === customerPhone &&
                 customerPhone !== "";
 
-            if (
-                !emailMatches &&
-                !phoneMatches
-            ) {
+            if (!emailMatches && !phoneMatches) {
                 return NextResponse.json(
                     {
                         success: false,
@@ -210,13 +220,16 @@ export async function POST(req: Request) {
             }
 
             console.log(
-                "✅ CUSTOMER VERIFIED FOR INVOICE:",
+                "CUSTOMER VERIFIED FOR INVOICE:",
                 orderId
             );
         } else {
             console.log(
-                "✅ ADMIN VERIFIED FOR INVOICE:",
-                orderId
+                "ADMIN VERIFIED FOR INVOICE:",
+                {
+                    orderId,
+                    loggedInEmail,
+                }
             );
         }
 
@@ -260,7 +273,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // RETURN VERIFIED INVOICE DATA
+        // SUCCESS
         // ==========================================
 
         return NextResponse.json({
@@ -285,12 +298,10 @@ export async function POST(req: Request) {
                 order.total,
 
                 status:
-                    order.status ||
-                    "Pending",
+                    order.status || "Pending",
 
                 payment_status:
-                    order.payment_status ||
-                    "Pending",
+                    order.payment_status || "Pending",
 
                 razorpay_order_id:
                 order.razorpay_order_id,
@@ -302,15 +313,12 @@ export async function POST(req: Request) {
                 order.created_at,
             },
 
-            items:
-                items || [],
+            items: items || [],
 
-            access:
-                isAdmin
-                    ? "admin"
-                    : "customer",
+            access: isAdmin
+                ? "admin"
+                : "customer",
         });
-
     } catch (error) {
         console.error(
             "Invoice API Error:",
