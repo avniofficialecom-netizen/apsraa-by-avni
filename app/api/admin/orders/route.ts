@@ -23,11 +23,7 @@ export async function GET() {
                     setAll(cookiesToSet) {
                         try {
                             cookiesToSet.forEach(
-                                ({
-                                     name,
-                                     value,
-                                     options,
-                                 }) => {
+                                ({ name, value, options }) => {
                                     cookieStore.set(
                                         name,
                                         value,
@@ -36,7 +32,7 @@ export async function GET() {
                                 }
                             );
                         } catch {
-                            // Middleware may handle cookie updates.
+                            // Cookie updates may be handled by middleware.
                         }
                     },
                 },
@@ -48,12 +44,12 @@ export async function GET() {
             error: userError,
         } = await supabase.auth.getUser();
 
+        // No logged-in Supabase user
         if (userError || !user) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Unauthorized. Admin login required.",
+                    message: "Unauthorized. Admin login required.",
                 },
                 {
                     status: 401,
@@ -65,13 +61,37 @@ export async function GET() {
         // ADMIN AUTHORIZATION
         // ==========================================
 
+        // Support both environment variable names.
+        // Your Vercel project currently has NEXT_PUBLIC_ADMIN_EMAIL.
         const adminEmail =
-            process.env.ADMIN_EMAIL;
+            process.env.ADMIN_EMAIL ||
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+        if (!adminEmail) {
+            console.error(
+                "Admin email environment variable is missing."
+            );
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Admin configuration is missing.",
+                },
+                {
+                    status: 500,
+                }
+            );
+        }
+
+        const loggedInEmail =
+            user.email?.trim().toLowerCase();
+
+        const configuredAdminEmail =
+            adminEmail.trim().toLowerCase();
 
         if (
-            !adminEmail ||
-            user.email?.toLowerCase() !==
-            adminEmail.toLowerCase()
+            !loggedInEmail ||
+            loggedInEmail !== configuredAdminEmail
         ) {
             console.warn(
                 "Unauthorized admin orders request:",
@@ -81,8 +101,7 @@ export async function GET() {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Forbidden. Admin access required.",
+                    message: "Forbidden. Admin access required.",
                 },
                 {
                     status: 403,
@@ -139,8 +158,7 @@ export async function GET() {
         return NextResponse.json(
             {
                 success: false,
-                message:
-                    "Internal server error.",
+                message: "Internal server error.",
             },
             {
                 status: 500,
