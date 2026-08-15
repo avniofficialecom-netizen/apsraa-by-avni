@@ -157,7 +157,7 @@ export default function ProductCard({
                             </span>
 
                             <span className="text-gray-400 line-through">
-                                ₹1499
+                                ₹899
                             </span>
 
                         </div>
