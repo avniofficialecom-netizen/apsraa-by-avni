@@ -26,6 +26,19 @@ const STATUS_FLOW = [
     "Delivered",
 ];
 
+const RETURN_STATUSES = [
+    "Return Requested",
+    "Return Approved",
+    "Return Rejected",
+    "Return Received",
+    "Refunded",
+];
+
+const RTO_STATUSES = [
+    "RTO",
+    "RTO Received",
+];
+
 export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -193,13 +206,34 @@ export default function OrdersPage() {
             case "Cancelled":
                 return "bg-red-100 text-red-700";
 
+            case "Return Requested":
+                return "bg-orange-100 text-orange-700";
+
+            case "Return Approved":
+                return "bg-blue-100 text-blue-700";
+
+            case "Return Rejected":
+                return "bg-red-100 text-red-700";
+
+            case "Return Received":
+                return "bg-purple-100 text-purple-700";
+
+            case "Refunded":
+                return "bg-green-100 text-green-700";
+
+            case "RTO":
+                return "bg-orange-100 text-orange-700";
+
+            case "RTO Received":
+                return "bg-purple-100 text-purple-700";
+
             default:
                 return "bg-gray-100 text-gray-700";
         }
     }
 
     // ==========================================
-    // NEXT STATUS
+    // NORMAL NEXT STATUS
     // ==========================================
 
     function nextStatus(status: string) {
@@ -222,7 +256,7 @@ export default function OrdersPage() {
     }
 
     // ==========================================
-    // NEXT BUTTON
+    // NORMAL NEXT BUTTON
     // ==========================================
 
     function nextButton(status: string) {
@@ -245,6 +279,71 @@ export default function OrdersPage() {
     }
 
     // ==========================================
+    // RETURN / RTO ACTIONS
+    // ==========================================
+
+    function getReturnAction(status: string) {
+        switch (status) {
+            case "Delivered":
+                return {
+                    status: "Return Requested",
+                    label: "↩️ Start Return",
+                };
+
+            case "Return Requested":
+                return {
+                    status: "Return Approved",
+                    label: "✅ Approve Return",
+                };
+
+            case "Return Approved":
+                return {
+                    status: "Return Received",
+                    label: "📦 Return Received",
+                };
+
+            case "Return Received":
+                return {
+                    status: "Refunded",
+                    label: "💰 Mark Refunded",
+                };
+
+            default:
+                return null;
+        }
+    }
+
+    function getRejectReturnAction(status: string) {
+        if (status === "Return Requested") {
+            return {
+                status: "Return Rejected",
+                label: "❌ Reject Return",
+            };
+        }
+
+        return null;
+    }
+
+    function getRTOAction(status: string) {
+        switch (status) {
+            case "Shipped":
+                return {
+                    status: "RTO",
+                    label: "🚛 Mark RTO",
+                };
+
+            case "RTO":
+                return {
+                    status: "RTO Received",
+                    label: "📦 RTO Received",
+                };
+
+            default:
+                return null;
+        }
+    }
+
+    // ==========================================
     // UPDATE ONE ORDER
     // ==========================================
 
@@ -252,16 +351,44 @@ export default function OrdersPage() {
         order: Order,
         newStatus: string
     ) {
-        const expected = nextStatus(order.status);
+        const normalNext =
+            nextStatus(order.status);
+
+        const returnAction =
+            getReturnAction(order.status);
+
+        const rejectReturnAction =
+            getRejectReturnAction(order.status);
+
+        const rtoAction =
+            getRTOAction(order.status);
+
+        const isNormalTransition =
+            newStatus === normalNext;
+
+        const isReturnTransition =
+            returnAction?.status === newStatus;
+
+        const isRejectReturnTransition =
+            rejectReturnAction?.status === newStatus;
+
+        const isRTOTransition =
+            rtoAction?.status === newStatus;
+
+        const isCancel =
+            newStatus === "Cancelled";
 
         if (
-            newStatus !== "Cancelled" &&
-            expected !== newStatus
+            !isNormalTransition &&
+            !isReturnTransition &&
+            !isRejectReturnTransition &&
+            !isRTOTransition &&
+            !isCancel
         ) {
             alert(
-                `Order #${order.id} must move to "${displayStatus(
-                    expected || order.status
-                )}" next.`
+                `Order #${order.id} cannot move directly to "${displayStatus(
+                    newStatus
+                )}".`
             );
 
             return;
@@ -273,11 +400,48 @@ export default function OrdersPage() {
             )}"?`;
 
         if (newStatus === "Confirmed") {
-            message = `Accept Order #${order.id}?`;
+            message =
+                `Accept Order #${order.id}?`;
         }
 
         if (newStatus === "Cancelled") {
-            message = `Cancel Order #${order.id}?`;
+            message =
+                `Cancel Order #${order.id}?`;
+        }
+
+        if (newStatus === "Return Requested") {
+            message =
+                `Start return for Order #${order.id}?`;
+        }
+
+        if (newStatus === "Return Approved") {
+            message =
+                `Approve return for Order #${order.id}?`;
+        }
+
+        if (newStatus === "Return Rejected") {
+            message =
+                `Reject return for Order #${order.id}?`;
+        }
+
+        if (newStatus === "Return Received") {
+            message =
+                `Mark return received for Order #${order.id}?`;
+        }
+
+        if (newStatus === "Refunded") {
+            message =
+                `Mark Order #${order.id} as refunded?`;
+        }
+
+        if (newStatus === "RTO") {
+            message =
+                `Mark Order #${order.id} as RTO?`;
+        }
+
+        if (newStatus === "RTO Received") {
+            message =
+                `Mark RTO received for Order #${order.id}?`;
         }
 
         if (!window.confirm(message)) {
@@ -303,7 +467,8 @@ export default function OrdersPage() {
                 }
             );
 
-            const result = await response.json();
+            const result =
+                await response.json();
 
             if (
                 !response.ok ||
@@ -387,7 +552,7 @@ export default function OrdersPage() {
             : null;
 
     // ==========================================
-    // BULK UPDATE
+    // BULK NORMAL UPDATE
     // ==========================================
 
     async function bulkUpdate() {
@@ -430,15 +595,16 @@ export default function OrdersPage() {
             actionText = "mark as Delivered";
         }
 
-        const confirmed = window.confirm(
-            `${actionText} ${
-                selectedOrders.length
-            } selected order${
-                selectedOrders.length > 1
-                    ? "s"
-                    : ""
-            }?`
-        );
+        const confirmed =
+            window.confirm(
+                `${actionText} ${
+                    selectedOrders.length
+                } selected order${
+                    selectedOrders.length > 1
+                        ? "s"
+                        : ""
+                }?`
+            );
 
         if (!confirmed) {
             return;
@@ -518,15 +684,16 @@ export default function OrdersPage() {
             return;
         }
 
-        const confirmed = window.confirm(
-            `Cancel ${
-                selectedOrders.length
-            } selected order${
-                selectedOrders.length > 1
-                    ? "s"
-                    : ""
-            }?`
-        );
+        const confirmed =
+            window.confirm(
+                `Cancel ${
+                    selectedOrders.length
+                } selected order${
+                    selectedOrders.length > 1
+                        ? "s"
+                        : ""
+                }?`
+            );
 
         if (!confirmed) {
             return;
@@ -543,7 +710,13 @@ export default function OrdersPage() {
                     order.status ===
                     "Delivered" ||
                     order.status ===
-                    "Cancelled"
+                    "Cancelled" ||
+                    RETURN_STATUSES.includes(
+                        order.status
+                    ) ||
+                    RTO_STATUSES.includes(
+                        order.status
+                    )
                 ) {
                     failedCount++;
                     continue;
@@ -743,6 +916,34 @@ export default function OrdersPage() {
                                     🎉 Delivered
                                 </option>
 
+                                <option value="Return Requested">
+                                    ↩️ Return Requested
+                                </option>
+
+                                <option value="Return Approved">
+                                    ✅ Return Approved
+                                </option>
+
+                                <option value="Return Rejected">
+                                    ❌ Return Rejected
+                                </option>
+
+                                <option value="Return Received">
+                                    📦 Return Received
+                                </option>
+
+                                <option value="Refunded">
+                                    💰 Refunded
+                                </option>
+
+                                <option value="RTO">
+                                    🚛 RTO
+                                </option>
+
+                                <option value="RTO Received">
+                                    📦 RTO Received
+                                </option>
+
                                 <option value="Cancelled">
                                     ❌ Cancelled
                                 </option>
@@ -847,8 +1048,7 @@ export default function OrdersPage() {
                                     </p>
 
                                     <p className="text-sm text-gray-500">
-                                        {selectedIds.length}{" "}
-                                        selected
+                                        {selectedIds.length} selected
                                     </p>
                                 </div>
 
@@ -954,6 +1154,7 @@ export default function OrdersPage() {
                         <div className="space-y-4">
 
                             {orders.map((order) => {
+
                                 const selected =
                                     selectedIds.includes(
                                         order.id
@@ -961,6 +1162,21 @@ export default function OrdersPage() {
 
                                 const next =
                                     nextStatus(
+                                        order.status
+                                    );
+
+                                const returnAction =
+                                    getReturnAction(
+                                        order.status
+                                    );
+
+                                const rejectReturnAction =
+                                    getRejectReturnAction(
+                                        order.status
+                                    );
+
+                                const rtoAction =
+                                    getRTOAction(
                                         order.status
                                     );
 
@@ -1098,6 +1314,7 @@ export default function OrdersPage() {
                                             {/* ADDRESS */}
 
                                             <div className="mt-4">
+
                                                 <p className="text-xs uppercase text-gray-400">
                                                     Delivery Address
                                                 </p>
@@ -1107,90 +1324,206 @@ export default function OrdersPage() {
                                                         order.address
                                                     }
                                                 </p>
+
                                             </div>
 
-                                            {/* PROGRESS */}
+                                            {/* NORMAL PROGRESS */}
 
-                                            <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                            {[
+                                                "Pending",
+                                                "Confirmed",
+                                                "Packed",
+                                                "Shipped",
+                                                "Delivered",
+                                            ].includes(
+                                                order.status
+                                            ) && (
+                                                <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
 
-                                                <p className="text-xs font-bold uppercase text-gray-400 mb-3">
-                                                    Order Progress
-                                                </p>
+                                                    <p className="text-xs font-bold uppercase text-gray-400 mb-3">
+                                                        Order Progress
+                                                    </p>
 
-                                                <div className="flex items-center">
+                                                    <div className="flex items-center">
 
-                                                    {STATUS_FLOW.map(
-                                                        (
-                                                            stage,
-                                                            index
-                                                        ) => {
-                                                            const currentIndex =
-                                                                STATUS_FLOW.indexOf(
-                                                                    order.status
-                                                                );
+                                                        {STATUS_FLOW.map(
+                                                            (
+                                                                stage,
+                                                                index
+                                                            ) => {
 
-                                                            const complete =
-                                                                currentIndex >=
-                                                                index;
+                                                                const currentIndex =
+                                                                    STATUS_FLOW.indexOf(
+                                                                        order.status
+                                                                    );
 
-                                                            return (
-                                                                <div
-                                                                    key={
-                                                                        stage
-                                                                    }
-                                                                    className="flex items-center flex-1"
-                                                                >
+                                                                const complete =
+                                                                    currentIndex >=
+                                                                    index;
 
-                                                                    <div className="flex flex-col items-center min-w-0">
+                                                                return (
+                                                                    <div
+                                                                        key={
+                                                                            stage
+                                                                        }
+                                                                        className="flex items-center flex-1"
+                                                                    >
 
-                                                                        <div
-                                                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                                                                complete
-                                                                                    ? "bg-pink-600 text-white"
-                                                                                    : "bg-gray-200 text-gray-500"
-                                                                            }`}
-                                                                        >
-                                                                            {
-                                                                                index +
-                                                                                1
-                                                                            }
+                                                                        <div className="flex flex-col items-center min-w-0">
+
+                                                                            <div
+                                                                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                                                    complete
+                                                                                        ? "bg-pink-600 text-white"
+                                                                                        : "bg-gray-200 text-gray-500"
+                                                                                }`}
+                                                                            >
+                                                                                {
+                                                                                    index +
+                                                                                    1
+                                                                                }
+                                                                            </div>
+
+                                                                            <span className="text-[10px] sm:text-xs text-gray-500 mt-1 text-center">
+                                                                                {stage ===
+                                                                                "Confirmed"
+                                                                                    ? "Ready"
+                                                                                    : stage}
+                                                                            </span>
+
                                                                         </div>
 
-                                                                        <span className="text-[10px] sm:text-xs text-gray-500 mt-1 text-center">
-                                                                            {stage ===
-                                                                            "Confirmed"
-                                                                                ? "Ready"
-                                                                                : stage}
-                                                                        </span>
+                                                                        {index <
+                                                                            STATUS_FLOW.length -
+                                                                            1 && (
+                                                                                <div
+                                                                                    className={`h-1 flex-1 mx-1 rounded ${
+                                                                                        complete &&
+                                                                                        currentIndex >
+                                                                                        index
+                                                                                            ? "bg-pink-600"
+                                                                                            : "bg-gray-200"
+                                                                                    }`}
+                                                                                />
+                                                                            )}
 
                                                                     </div>
+                                                                );
+                                                            }
+                                                        )}
 
-                                                                    {index <
-                                                                        STATUS_FLOW.length -
-                                                                        1 && (
-                                                                            <div
-                                                                                className={`h-1 flex-1 mx-1 rounded ${
-                                                                                    complete &&
-                                                                                    currentIndex >
-                                                                                    index
-                                                                                        ? "bg-pink-600"
-                                                                                        : "bg-gray-200"
-                                                                                }`}
-                                                                            />
-                                                                        )}
-
-                                                                </div>
-                                                            );
-                                                        }
-                                                    )}
+                                                    </div>
 
                                                 </div>
+                                            )}
 
-                                            </div>
+                                            {/* RETURN PROGRESS */}
+
+                                            {RETURN_STATUSES.includes(
+                                                order.status
+                                            ) && (
+                                                <div className="mt-5 bg-orange-50 border border-orange-200 rounded-xl p-4">
+
+                                                    <p className="text-xs font-bold uppercase text-orange-500 mb-3">
+                                                        Return Process
+                                                    </p>
+
+                                                    <div className="flex flex-wrap gap-2">
+
+                                                        {RETURN_STATUSES.map(
+                                                            (
+                                                                stage
+                                                            ) => {
+
+                                                                const current =
+                                                                    RETURN_STATUSES.indexOf(
+                                                                        order.status
+                                                                    );
+
+                                                                const index =
+                                                                    RETURN_STATUSES.indexOf(
+                                                                        stage
+                                                                    );
+
+                                                                return (
+                                                                    <span
+                                                                        key={
+                                                                            stage
+                                                                        }
+                                                                        className={`px-3 py-2 rounded-full text-xs font-bold ${
+                                                                            index <=
+                                                                            current
+                                                                                ? "bg-orange-500 text-white"
+                                                                                : "bg-white text-gray-400 border"
+                                                                        }`}
+                                                                    >
+                                                                        {stage}
+                                                                    </span>
+                                                                );
+                                                            }
+                                                        )}
+
+                                                    </div>
+
+                                                </div>
+                                            )}
+
+                                            {/* RTO PROGRESS */}
+
+                                            {RTO_STATUSES.includes(
+                                                order.status
+                                            ) && (
+                                                <div className="mt-5 bg-orange-50 border border-orange-200 rounded-xl p-4">
+
+                                                    <p className="text-xs font-bold uppercase text-orange-500 mb-3">
+                                                        RTO Process
+                                                    </p>
+
+                                                    <div className="flex flex-wrap gap-2">
+
+                                                        {RTO_STATUSES.map(
+                                                            (
+                                                                stage
+                                                            ) => {
+
+                                                                const current =
+                                                                    RTO_STATUSES.indexOf(
+                                                                        order.status
+                                                                    );
+
+                                                                const index =
+                                                                    RTO_STATUSES.indexOf(
+                                                                        stage
+                                                                    );
+
+                                                                return (
+                                                                    <span
+                                                                        key={
+                                                                            stage
+                                                                        }
+                                                                        className={`px-3 py-2 rounded-full text-xs font-bold ${
+                                                                            index <=
+                                                                            current
+                                                                                ? "bg-orange-500 text-white"
+                                                                                : "bg-white text-gray-400 border"
+                                                                        }`}
+                                                                    >
+                                                                        {stage}
+                                                                    </span>
+                                                                );
+                                                            }
+                                                        )}
+
+                                                    </div>
+
+                                                </div>
+                                            )}
 
                                             {/* ACTION BUTTONS */}
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+
+                                                {/* NORMAL NEXT */}
 
                                                 {next && (
                                                     <button
@@ -1217,12 +1550,82 @@ export default function OrdersPage() {
                                                     </button>
                                                 )}
 
+                                                {/* RETURN ACTION */}
+
+                                                {returnAction && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            updatingId ===
+                                                            order.id ||
+                                                            bulkUpdating
+                                                        }
+                                                        onClick={() =>
+                                                            updateOrderStatus(
+                                                                order,
+                                                                returnAction.status
+                                                            )
+                                                        }
+                                                        className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold"
+                                                    >
+                                                        {returnAction.label}
+                                                    </button>
+                                                )}
+
+                                                {/* REJECT RETURN */}
+
+                                                {rejectReturnAction && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            updatingId ===
+                                                            order.id ||
+                                                            bulkUpdating
+                                                        }
+                                                        onClick={() =>
+                                                            updateOrderStatus(
+                                                                order,
+                                                                rejectReturnAction.status
+                                                            )
+                                                        }
+                                                        className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 px-4 py-3 rounded-xl font-bold"
+                                                    >
+                                                        {rejectReturnAction.label}
+                                                    </button>
+                                                )}
+
+                                                {/* RTO ACTION */}
+
+                                                {rtoAction && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            updatingId ===
+                                                            order.id ||
+                                                            bulkUpdating
+                                                        }
+                                                        onClick={() =>
+                                                            updateOrderStatus(
+                                                                order,
+                                                                rtoAction.status
+                                                            )
+                                                        }
+                                                        className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold"
+                                                    >
+                                                        {rtoAction.label}
+                                                    </button>
+                                                )}
+
+                                                {/* VIEW */}
+
                                                 <Link
                                                     href={`/admin/orders/${order.id}`}
                                                     className="bg-gray-800 hover:bg-gray-900 text-white text-center px-4 py-3 rounded-xl font-bold"
                                                 >
                                                     👁 View Order
                                                 </Link>
+
+                                                {/* INVOICE */}
 
                                                 <Link
                                                     href={`/admin/orders/${order.id}/invoice`}
@@ -1232,10 +1635,18 @@ export default function OrdersPage() {
                                                     🖨 Invoice
                                                 </Link>
 
+                                                {/* CANCEL */}
+
                                                 {order.status !==
                                                     "Delivered" &&
                                                     order.status !==
-                                                    "Cancelled" && (
+                                                    "Cancelled" &&
+                                                    !RETURN_STATUSES.includes(
+                                                        order.status
+                                                    ) &&
+                                                    !RTO_STATUSES.includes(
+                                                        order.status
+                                                    ) && (
                                                         <button
                                                             type="button"
                                                             disabled={
@@ -1255,6 +1666,50 @@ export default function OrdersPage() {
                                                     )}
 
                                             </div>
+
+                                            {/* RETURN / RTO INFO */}
+
+                                            {order.status ===
+                                                "Return Requested" && (
+                                                    <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800">
+                                                        ↩️ Customer has requested a return. Review the order before approving.
+                                                    </div>
+                                                )}
+
+                                            {order.status ===
+                                                "Return Approved" && (
+                                                    <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+                                                        ✅ Return approved. Wait for the returned product to arrive.
+                                                    </div>
+                                                )}
+
+                                            {order.status ===
+                                                "Return Received" && (
+                                                    <div className="mt-4 bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm text-purple-800">
+                                                        📦 Return received. Verify the product before processing the refund.
+                                                    </div>
+                                                )}
+
+                                            {order.status ===
+                                                "Refunded" && (
+                                                    <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+                                                        💰 Refund has been marked as completed.
+                                                    </div>
+                                                )}
+
+                                            {order.status ===
+                                                "RTO" && (
+                                                    <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800">
+                                                        🚛 Shipment is returning to you.
+                                                    </div>
+                                                )}
+
+                                            {order.status ===
+                                                "RTO Received" && (
+                                                    <div className="mt-4 bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm text-purple-800">
+                                                        📦 RTO shipment received back.
+                                                    </div>
+                                                )}
 
                                             <p className="text-xs text-gray-400 mt-3">
                                                 Order placed:{" "}
