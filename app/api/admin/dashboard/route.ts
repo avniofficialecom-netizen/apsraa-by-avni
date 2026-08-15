@@ -3,10 +3,28 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
+type DashboardOrder = {
+    id: number;
+    customer_name: string;
+    total: string | number | null;
+    phone: string | null;
+    status: string;
+    payment_status: string | null;
+    created_at: string | null;
+    delivered_at: string | null;
+    archived: boolean | null;
+};
+
+type DailyRevenue = {
+    date: string;
+    revenue: number;
+    orders: number;
+};
+
 export async function GET() {
     try {
         // ==========================================
-        // CREATE SERVER SUPABASE CLIENT
+        // SUPABASE SERVER CLIENT
         // ==========================================
 
         const cookieStore = await cookies();
@@ -36,7 +54,7 @@ export async function GET() {
                                 }
                             );
                         } catch {
-                            // Middleware can also refresh cookies.
+                            // Middleware can refresh cookies.
                         }
                     },
                 },
@@ -44,7 +62,7 @@ export async function GET() {
         );
 
         // ==========================================
-        // GET CURRENT SUPABASE USER
+        // AUTHENTICATION
         // ==========================================
 
         const {
@@ -53,11 +71,6 @@ export async function GET() {
         } = await supabase.auth.getUser();
 
         if (userError || !user) {
-            console.error(
-                "Dashboard authentication failed:",
-                userError
-            );
-
             return NextResponse.json(
                 {
                     success: false,
@@ -71,7 +84,7 @@ export async function GET() {
         }
 
         // ==========================================
-        // ADMIN EMAIL
+        // ADMIN AUTHORIZATION
         // ==========================================
 
         const adminEmail =
@@ -84,21 +97,9 @@ export async function GET() {
                 ?.trim()
                 .toLowerCase();
 
-        console.log(
-            "Dashboard admin check:",
-            {
-                loggedInEmail,
-                adminConfigured: !!adminEmail,
-            }
-        );
-
-        // ==========================================
-        // ADMIN AUTHORIZATION
-        // ==========================================
-
         if (!adminEmail) {
             console.error(
-                "NEXT_PUBLIC_ADMIN_EMAIL is missing in Vercel."
+                "NEXT_PUBLIC_ADMIN_EMAIL is missing."
             );
 
             return NextResponse.json(
@@ -117,15 +118,6 @@ export async function GET() {
             !loggedInEmail ||
             loggedInEmail !== adminEmail
         ) {
-            console.error(
-                "Admin email mismatch:",
-                {
-                    loggedInEmail,
-                    expectedAdmin:
-                    adminEmail,
-                }
-            );
-
             return NextResponse.json(
                 {
                     success: false,
@@ -142,52 +134,224 @@ export async function GET() {
         // FETCH ALL ORDERS
         // ==========================================
 
-        const {
-            data: orderData,
-            error: orderError,
-        } = await supabaseAdmin
-            .from("orders")
-            .select(
-                "id, customer_name, total, phone, status, payment_status"
-            );
+        async function fetchAllOrders(): Promise<
+            DashboardOrder[]
+        > {
+            const pageSize = 50;
 
-        if (orderError) {
-            console.error(
-                "Dashboard orders error:",
-                orderError
-            );
+            let from = 0;
 
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Unable to load order data.",
-                    error:
-                    orderError.message,
-                },
-                {
-                    status: 500,
+            const allOrders: DashboardOrder[] = [];
+
+            while (true) {
+                const to =
+                    from + pageSize - 1;
+
+                const {
+                    data,
+                    error,
+                } = await supabaseAdmin
+                    .from("orders")
+                    .select(
+                        "id, customer_name, total, phone, status, payment_status, created_at, delivered_at, archived"
+                    )
+                    .order("id", {
+                        ascending: true,
+                    })
+                    .range(from, to);
+
+                if (error) {
+                    throw new Error(
+                        `Orders query failed: ${error.message}`
+                    );
                 }
+
+                const page =
+                    (data ??
+                        []) as DashboardOrder[];
+
+                allOrders.push(
+                    ...page
+                );
+
+                console.log(
+                    `Dashboard orders page: ${from}-${to}, received ${page.length}`
+                );
+
+                if (
+                    page.length <
+                    pageSize
+                ) {
+                    break;
+                }
+
+                from += pageSize;
+            }
+
+            console.log(
+                `Dashboard total orders loaded: ${allOrders.length}`
             );
+
+            return allOrders;
         }
 
         const allOrders =
-            orderData ?? [];
+            await fetchAllOrders();
 
         // ==========================================
-        // TOTAL ORDERS
+        // INDIA DATE HELPERS
         // ==========================================
 
-        const orders =
-            allOrders.length;
+        const INDIA_TIME_ZONE =
+            "Asia/Kolkata";
+
+        function getIndiaDateKey(
+            dateValue:
+                string | null | undefined
+        ): string | null {
+            if (!dateValue) {
+                return null;
+            }
+
+            const date =
+                new Date(dateValue);
+
+            if (
+                Number.isNaN(
+                    date.getTime()
+                )
+            ) {
+                return null;
+            }
+
+            const parts =
+                new Intl.DateTimeFormat(
+                    "en-CA",
+                    {
+                        timeZone:
+                        INDIA_TIME_ZONE,
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                    }
+                ).formatToParts(date);
+
+            const year =
+                parts.find(
+                    (part) =>
+                        part.type ===
+                        "year"
+                )?.value;
+
+            const month =
+                parts.find(
+                    (part) =>
+                        part.type ===
+                        "month"
+                )?.value;
+
+            const day =
+                parts.find(
+                    (part) =>
+                        part.type ===
+                        "day"
+                )?.value;
+
+            if (
+                !year ||
+                !month ||
+                !day
+            ) {
+                return null;
+            }
+
+            return `${year}-${month}-${day}`;
+        }
+
+        function getIndiaDateDaysAgo(
+            days: number
+        ): string {
+            const date =
+                new Date();
+
+            date.setDate(
+                date.getDate() - days
+            );
+
+            return (
+                getIndiaDateKey(
+                    date.toISOString()
+                ) ?? ""
+            );
+        }
+
+        const todayIndia =
+            getIndiaDateKey(
+                new Date().toISOString()
+            ) ?? "";
+
+        const sevenDaysAgo =
+            getIndiaDateDaysAgo(6);
+
+        const thirtyDaysAgo =
+            getIndiaDateDaysAgo(29);
 
         // ==========================================
-        // GROSS ORDER VALUE
-        // Excludes cancelled orders
+        // PERIOD FILTERS
         // ==========================================
 
-        const grossOrderValue =
-            allOrders.reduce(
+        const ordersToday =
+            allOrders.filter(
+                (order) =>
+                    getIndiaDateKey(
+                        order.created_at
+                    ) === todayIndia
+            );
+
+        const ordersLast7Days =
+            allOrders.filter(
+                (order) => {
+                    const dateKey =
+                        getIndiaDateKey(
+                            order.created_at
+                        );
+
+                    return (
+                        !!dateKey &&
+                        dateKey >=
+                        sevenDaysAgo &&
+                        dateKey <=
+                        todayIndia
+                    );
+                }
+            );
+
+        const ordersLast30Days =
+            allOrders.filter(
+                (order) => {
+                    const dateKey =
+                        getIndiaDateKey(
+                            order.created_at
+                        );
+
+                    return (
+                        !!dateKey &&
+                        dateKey >=
+                        thirtyDaysAgo &&
+                        dateKey <=
+                        todayIndia
+                    );
+                }
+            );
+
+        // ==========================================
+        // REVENUE
+        // ==========================================
+
+        function calculateRevenue(
+            orderList: DashboardOrder[]
+        ): number {
+            return orderList.reduce(
                 (sum, order) => {
                     if (
                         order.status ===
@@ -204,6 +368,164 @@ export async function GET() {
                     );
                 },
                 0
+            );
+        }
+
+        // ==========================================
+        // AOV
+        // ==========================================
+
+        function calculateAOV(
+            orderList: DashboardOrder[]
+        ): number {
+            const validOrders =
+                orderList.filter(
+                    (order) =>
+                        order.status !==
+                        "Cancelled"
+                );
+
+            if (
+                validOrders.length ===
+                0
+            ) {
+                return 0;
+            }
+
+            return (
+                calculateRevenue(
+                    validOrders
+                ) /
+                validOrders.length
+            );
+        }
+
+        // ==========================================
+        // DAILY REVENUE — LAST 30 DAYS
+        // ==========================================
+
+        const dailyRevenue: DailyRevenue[] =
+            [];
+
+        for (
+            let daysAgo = 29;
+            daysAgo >= 0;
+            daysAgo--
+        ) {
+            const dateKey =
+                getIndiaDateDaysAgo(
+                    daysAgo
+                );
+
+            const dayOrders =
+                allOrders.filter(
+                    (order) =>
+                        getIndiaDateKey(
+                            order.created_at
+                        ) === dateKey
+                );
+
+            dailyRevenue.push({
+                date: dateKey,
+                revenue:
+                    calculateRevenue(
+                        dayOrders
+                    ),
+                orders:
+                dayOrders.length,
+            });
+        }
+
+        // ==========================================
+        // PERIOD ANALYTICS
+        // ==========================================
+
+        const todayRevenue =
+            calculateRevenue(
+                ordersToday
+            );
+
+        const sevenDayRevenue =
+            calculateRevenue(
+                ordersLast7Days
+            );
+
+        const thirtyDayRevenue =
+            calculateRevenue(
+                ordersLast30Days
+            );
+
+        const todayAOV =
+            calculateAOV(
+                ordersToday
+            );
+
+        const sevenDayAOV =
+            calculateAOV(
+                ordersLast7Days
+            );
+
+        const thirtyDayAOV =
+            calculateAOV(
+                ordersLast30Days
+            );
+
+        const deliveredToday =
+            ordersToday.filter(
+                (order) =>
+                    order.status ===
+                    "Delivered"
+            ).length;
+
+        const deliveredLast7Days =
+            ordersLast7Days.filter(
+                (order) =>
+                    order.status ===
+                    "Delivered"
+            ).length;
+
+        const deliveredLast30Days =
+            ordersLast30Days.filter(
+                (order) =>
+                    order.status ===
+                    "Delivered"
+            ).length;
+
+        const cancelledToday =
+            ordersToday.filter(
+                (order) =>
+                    order.status ===
+                    "Cancelled"
+            ).length;
+
+        const cancelledLast7Days =
+            ordersLast7Days.filter(
+                (order) =>
+                    order.status ===
+                    "Cancelled"
+            ).length;
+
+        const cancelledLast30Days =
+            ordersLast30Days.filter(
+                (order) =>
+                    order.status ===
+                    "Cancelled"
+            ).length;
+
+        // ==========================================
+        // TOTAL ORDERS
+        // ==========================================
+
+        const orders =
+            allOrders.length;
+
+        // ==========================================
+        // GROSS ORDER VALUE
+        // ==========================================
+
+        const grossOrderValue =
+            calculateRevenue(
+                allOrders
             );
 
         // ==========================================
@@ -223,17 +545,12 @@ export async function GET() {
             paid.length;
 
         const paidRevenue =
-            paid.reduce(
-                (sum, order) =>
-                    sum +
-                    Number(
-                        order.total || 0
-                    ),
-                0
+            calculateRevenue(
+                paid
             );
 
         // ==========================================
-        // CANCELLED
+        // CANCELLED ORDERS
         // ==========================================
 
         const cancelled =
@@ -340,22 +657,8 @@ export async function GET() {
             });
 
         if (productError) {
-            console.error(
-                "Dashboard product count error:",
-                productError
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Unable to load product count.",
-                    error:
-                    productError.message,
-                },
-                {
-                    status: 500,
-                }
+            throw new Error(
+                `Product count failed: ${productError.message}`
             );
         }
 
@@ -377,22 +680,8 @@ export async function GET() {
             });
 
         if (lowStockError) {
-            console.error(
-                "Dashboard low stock error:",
-                lowStockError
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Unable to load low stock products.",
-                    error:
-                    lowStockError.message,
-                },
-                {
-                    status: 500,
-                }
+            throw new Error(
+                `Low stock query failed: ${lowStockError.message}`
             );
         }
 
@@ -405,28 +694,95 @@ export async function GET() {
 
             stats: {
                 orders,
+
                 paidOrders,
+
                 paidRevenue,
+
                 grossOrderValue,
+
                 cancelledOrders,
+
                 cancelledValue,
+
                 customers,
+
                 pendingOrders,
+
                 confirmedOrders,
+
                 packedOrders,
+
                 shippedOrders,
+
                 deliveredOrders,
+
                 products:
                     productCount ?? 0,
+
+                today: {
+                    orders:
+                    ordersToday.length,
+
+                    revenue:
+                    todayRevenue,
+
+                    aov:
+                    todayAOV,
+
+                    delivered:
+                    deliveredToday,
+
+                    cancelled:
+                    cancelledToday,
+                },
+
+                last7Days: {
+                    orders:
+                    ordersLast7Days.length,
+
+                    revenue:
+                    sevenDayRevenue,
+
+                    aov:
+                    sevenDayAOV,
+
+                    delivered:
+                    deliveredLast7Days,
+
+                    cancelled:
+                    cancelledLast7Days,
+                },
+
+                last30Days: {
+                    orders:
+                    ordersLast30Days.length,
+
+                    revenue:
+                    thirtyDayRevenue,
+
+                    aov:
+                    thirtyDayAOV,
+
+                    delivered:
+                    deliveredLast30Days,
+
+                    cancelled:
+                    cancelledLast30Days,
+                },
             },
 
-            recentOrders:
-                recentOrders ?? [],
+            // ======================================
+            // NEW DAILY BUSINESS INSIGHTS DATA
+            // ======================================
+
+            dailyRevenue,
+
+            recentOrders,
 
             lowStockProducts:
                 lowStock ?? [],
         });
-
     } catch (error) {
         console.error(
             "Admin Dashboard API Error:",
@@ -438,6 +794,10 @@ export async function GET() {
                 success: false,
                 message:
                     "Internal server error.",
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Unknown error",
             },
             {
                 status: 500,

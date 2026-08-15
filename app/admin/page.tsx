@@ -39,6 +39,20 @@ type LowStockProduct = {
     stock: number;
 };
 
+type PeriodAnalytics = {
+    orders: number;
+    revenue: number;
+    aov: number;
+    delivered: number;
+    cancelled: number;
+};
+
+type DailyRevenue = {
+    date: string;
+    revenue: number;
+    orders: number;
+};
+
 type DashboardStats = {
     orders: number;
     paidOrders: number;
@@ -53,49 +67,21 @@ type DashboardStats = {
     shippedOrders: number;
     deliveredOrders: number;
     products: number;
+
+    today: PeriodAnalytics;
+    last7Days: PeriodAnalytics;
+    last30Days: PeriodAnalytics;
 };
 
 export default function AdminPage() {
     const router = useRouter();
 
-    const [checkingAuth, setCheckingAuth] =
-        useState(true);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] =
+        useState<DashboardStats | null>(null);
 
-    const [grossOrderValue, setGrossOrderValue] =
-        useState(0);
-
-    const [paidRevenue, setPaidRevenue] =
-        useState(0);
-
-    const [cancelledValue, setCancelledValue] =
-        useState(0);
-
-    const [orders, setOrders] =
-        useState(0);
-
-    const [paidOrders, setPaidOrders] =
-        useState(0);
-
-    const [customers, setCustomers] =
-        useState(0);
-
-    const [pendingOrders, setPendingOrders] =
-        useState(0);
-
-    const [confirmedOrders, setConfirmedOrders] =
-        useState(0);
-
-    const [packedOrders, setPackedOrders] =
-        useState(0);
-
-    const [shippedOrders, setShippedOrders] =
-        useState(0);
-
-    const [deliveredOrders, setDeliveredOrders] =
-        useState(0);
-
-    const [cancelledOrders, setCancelledOrders] =
-        useState(0);
+    const [dailyRevenue, setDailyRevenue] =
+        useState<DailyRevenue[]>([]);
 
     const [recentOrders, setRecentOrders] =
         useState<RecentOrder[]>([]);
@@ -103,73 +89,26 @@ export default function AdminPage() {
     const [lowStockProducts, setLowStockProducts] =
         useState<LowStockProduct[]>([]);
 
-    const [products, setProducts] =
-        useState(0);
-
-    // ==========================================
-    // EXISTING CHART DATA
-    // ==========================================
-
-    const [monthlyRevenue] =
-        useState<number[]>([
-            12000,
-            18500,
-            24500,
-            17800,
-            32600,
-            0,
-        ]);
-
-    // ==========================================
-    // ADMIN AUTHENTICATION
-    // ==========================================
-
-    useEffect(() => {
-        checkAdmin();
-    }, []);
-
-    async function checkAdmin() {
-        setCheckingAuth(true);
-
-        try {
-            /*
-             * The dashboard data API performs the
-             * actual server-side admin verification.
-             *
-             * We simply request the protected endpoint.
-             */
-
-            await loadDashboard();
-
-        } catch (error) {
-            console.error(
-                "Admin authentication error:",
-                error
-            );
-
-            router.replace(
-                "/admin/login"
-            );
-        } finally {
-            setCheckingAuth(false);
-        }
-    }
-
     // ==========================================
     // LOAD DASHBOARD
     // ==========================================
 
+    useEffect(() => {
+        loadDashboard();
+    }, []);
+
     async function loadDashboard() {
         try {
-            const response =
-                await fetch(
-                    "/api/admin/dashboard",
-                    {
-                        method: "GET",
-                        credentials: "include",
-                        cache: "no-store",
-                    }
-                );
+            setLoading(true);
+
+            const response = await fetch(
+                "/api/admin/dashboard",
+                {
+                    method: "GET",
+                    credentials: "include",
+                    cache: "no-store",
+                }
+            );
 
             const result =
                 await response.json();
@@ -181,7 +120,6 @@ export default function AdminPage() {
                 router.replace(
                     "/admin/login"
                 );
-
                 return;
             }
 
@@ -194,80 +132,18 @@ export default function AdminPage() {
                     result
                 );
 
-                alert(
-                    result.message ||
-                    "Unable to load dashboard."
-                );
-
                 return;
             }
 
-            const stats: DashboardStats =
-                result.stats;
+            setStats(result.stats);
 
-            // ==================================
-            // SET ORDER STATISTICS
-            // ==================================
-
-            setOrders(
-                stats.orders
+            setDailyRevenue(
+                Array.isArray(
+                    result.dailyRevenue
+                )
+                    ? result.dailyRevenue
+                    : []
             );
-
-            setGrossOrderValue(
-                stats.grossOrderValue
-            );
-
-            setPaidOrders(
-                stats.paidOrders
-            );
-
-            setPaidRevenue(
-                stats.paidRevenue
-            );
-
-            setCancelledOrders(
-                stats.cancelledOrders
-            );
-
-            setCancelledValue(
-                stats.cancelledValue
-            );
-
-            setCustomers(
-                stats.customers
-            );
-
-            setPendingOrders(
-                stats.pendingOrders
-            );
-
-            setConfirmedOrders(
-                stats.confirmedOrders
-            );
-
-            setPackedOrders(
-                stats.packedOrders
-            );
-
-            setShippedOrders(
-                stats.shippedOrders
-            );
-
-            setDeliveredOrders(
-                stats.deliveredOrders
-            );
-
-            // ==================================
-            // PRODUCTS
-            // ==================================
-
-            setProducts(
-                stats.products
-            );
-
-            // ==================================
-            // RECENT ORDERS
-            // ==================================
 
             setRecentOrders(
                 Array.isArray(
@@ -277,10 +153,6 @@ export default function AdminPage() {
                     : []
             );
 
-            // ==================================
-            // LOW STOCK
-            // ==================================
-
             setLowStockProducts(
                 Array.isArray(
                     result.lowStockProducts
@@ -288,130 +160,36 @@ export default function AdminPage() {
                     ? result.lowStockProducts
                     : []
             );
-
         } catch (error) {
             console.error(
-                "Load Dashboard Error:",
+                "Dashboard loading error:",
                 error
             );
-
-            throw error;
+        } finally {
+            setLoading(false);
         }
     }
 
-    const activeOrders =
-        pendingOrders +
-        confirmedOrders +
-        packedOrders +
-        shippedOrders;
-
     // ==========================================
-    // CHART
+    // LOADING
     // ==========================================
 
-    const revenueChartData = {
-        labels: [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-        ],
-
-        datasets: [
-            {
-                label: "Revenue",
-
-                data: monthlyRevenue,
-
-                borderColor:
-                    "#db2777",
-
-                backgroundColor:
-                    "rgba(219,39,119,0.15)",
-
-                borderWidth: 4,
-
-                tension: 0.4,
-
-                fill: true,
-
-                pointRadius: 5,
-            },
-        ],
-    };
-
-    const revenueChartOptions = {
-        responsive: true,
-
-        maintainAspectRatio: false,
-
-        plugins: {
-            legend: {
-                display: false,
-            },
-        },
-    };
-
-    // ==========================================
-    // STATS
-    // ==========================================
-
-    const stats = [
-        {
-            title: "Paid Revenue",
-            value: `₹${paidRevenue.toLocaleString()}`,
-            icon: "💳",
-            color: "bg-green-500",
-        },
-
-        {
-            title: "Gross Order Value",
-            value: `₹${grossOrderValue.toLocaleString()}`,
-            icon: "💰",
-            color: "bg-pink-600",
-        },
-
-        {
-            title: "Paid Orders",
-            value: paidOrders,
-            icon: "✅",
-            color: "bg-emerald-600",
-        },
-
-        {
-            title: "Active Orders",
-            value: activeOrders,
-            icon: "📦",
-            color: "bg-blue-500",
-        },
-    ];
-
-    // ==========================================
-    // AUTH LOADING SCREEN
-    // ==========================================
-
-    if (checkingAuth) {
+    if (loading || !stats) {
         return (
             <>
                 <AdminNavbar />
 
-                <section className="min-h-screen bg-pink-50 flex items-center justify-center">
-
+                <main className="min-h-screen bg-slate-100 flex items-center justify-center">
                     <div className="text-center">
-
-                        <div className="text-5xl mb-5">
-                            🔐
+                        <div className="text-4xl mb-3">
+                            💎
                         </div>
 
-                        <p className="text-xl text-gray-600">
-                            Verifying admin access...
+                        <p className="text-gray-600 font-medium">
+                            Loading APSRAA Dashboard...
                         </p>
-
                     </div>
-
-                </section>
+                </main>
 
                 <Footer />
             </>
@@ -419,444 +197,818 @@ export default function AdminPage() {
     }
 
     // ==========================================
-    // ADMIN DASHBOARD
+    // CALCULATIONS
     // ==========================================
+
+    const activeOrders =
+        stats.pendingOrders +
+        stats.confirmedOrders +
+        stats.packedOrders +
+        stats.shippedOrders;
+
+    const readyToDispatch =
+        stats.confirmedOrders +
+        stats.packedOrders;
+
+    const outOfStockCount =
+        lowStockProducts.filter(
+            (product) =>
+                Number(product.stock) <= 0
+        ).length;
+
+    const lowStockCount =
+        lowStockProducts.filter(
+            (product) =>
+                Number(product.stock) > 0
+        ).length;
+
+    const deliveryRate =
+        stats.orders > 0
+            ? Math.round(
+                (stats.deliveredOrders /
+                    stats.orders) *
+                100
+            )
+            : 0;
+
+    const cancellationRate =
+        stats.orders > 0
+            ? Math.round(
+                (stats.cancelledOrders /
+                    stats.orders) *
+                100
+            )
+            : 0;
+
+    // ==========================================
+    // CHART
+    // ==========================================
+
+    const chartData = {
+        labels: dailyRevenue.map(
+            (item) => {
+                const date = new Date(
+                    `${item.date}T00:00:00`
+                );
+
+                return date.toLocaleDateString(
+                    "en-IN",
+                    {
+                        day: "numeric",
+                        month: "short",
+                    }
+                );
+            }
+        ),
+
+        datasets: [
+            {
+                label: "Daily Sales",
+
+                data: dailyRevenue.map(
+                    (item) =>
+                        item.revenue
+                ),
+
+                borderColor: "#e6007e",
+
+                backgroundColor:
+                    "rgba(230, 0, 126, 0.08)",
+
+                borderWidth: 2.5,
+
+                tension: 0.35,
+
+                fill: true,
+
+                pointRadius: 3,
+
+                pointHoverRadius: 6,
+            },
+        ],
+    };
+
+    const chartOptions = {
+        responsive: true,
+
+        maintainAspectRatio: false,
+
+        interaction: {
+            intersect: false,
+            mode: "index" as const,
+        },
+
+        plugins: {
+            legend: {
+                display: false,
+            },
+
+            tooltip: {
+                displayColors: false,
+
+                callbacks: {
+                    title: (
+                        items: any[]
+                    ) =>
+                        items[0]?.label ||
+                        "",
+
+                    label: (
+                        context: any
+                    ) =>
+                        ` Sales: ₹${Number(
+                            context.raw || 0
+                        ).toLocaleString()}`,
+                },
+            },
+        },
+
+        scales: {
+            x: {
+                grid: {
+                    display: false,
+                },
+
+                ticks: {
+                    color: "#64748b",
+                    maxRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 8,
+                },
+            },
+
+            y: {
+                beginAtZero: true,
+
+                grid: {
+                    color:
+                        "rgba(148, 163, 184, 0.20)",
+                },
+
+                ticks: {
+                    color: "#64748b",
+
+                    callback: (
+                        value: string | number
+                    ) =>
+                        `₹${Number(
+                            value
+                        ).toLocaleString()}`,
+                },
+            },
+        },
+    };
+
+    // ==========================================
+    // TODO CARDS
+    // ==========================================
+
+    const todoCards = [
+        {
+            title: "Pending Orders",
+            value: stats.pendingOrders,
+            icon: "📦",
+            bg: "bg-yellow-50",
+            number: "text-yellow-600",
+            href: "/admin/orders",
+        },
+
+        {
+            title: "Ready to Dispatch",
+            value: readyToDispatch,
+            icon: "🚚",
+            bg: "bg-blue-50",
+            number: "text-blue-600",
+            href: "/admin/orders",
+        },
+
+        {
+            title: "Out of Stock",
+            value: outOfStockCount,
+            icon: "❌",
+            bg: "bg-red-50",
+            number: "text-red-600",
+            href: "/admin/products",
+        },
+
+        {
+            title: "Low Stock",
+            value: lowStockCount,
+            icon: "⚠️",
+            bg: "bg-orange-50",
+            number: "text-orange-600",
+            href: "/admin/products",
+        },
+    ];
 
     return (
         <>
             <AdminNavbar />
 
-            <section className="min-h-screen bg-gradient-to-br from-pink-50 to-white py-16">
+            <main className="min-h-screen bg-slate-100 pb-12">
 
-                <div className="max-w-7xl mx-auto px-6">
+                <div className="max-w-[1500px] mx-auto px-4 md:px-6 lg:px-7 pt-5">
 
-                    {/* Header */}
+                    {/* ==================================
+                        WELCOME
+                    ================================== */}
 
-                    <h1 className="text-5xl font-bold text-pink-700 mb-2">
-                        Admin Dashboard
-                    </h1>
+                    <section className="bg-white rounded-2xl border border-slate-200 shadow-sm px-6 py-5 mb-4">
 
-                    <p className="text-gray-500 mb-10">
-                        Welcome to APSRAA BY AVNI Admin Panel
-                    </p>
+                        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
+                            Welcome back, APSRAA BY AVNI
+                        </h1>
 
-                    {/* Main Statistics */}
+                        <p className="text-slate-500 mt-1.5">
+                            Manage and grow your jewellery business
+                        </p>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                    </section>
 
-                        {stats.map(
-                            (card) => (
-                                <div
-                                    key={
-                                        card.title
-                                    }
-                                    className="bg-white rounded-3xl shadow-lg p-8 hover:shadow-xl transition"
-                                >
+                    {/* ==================================
+                        STORE OVERVIEW
+                    ================================== */}
 
-                                    <div
-                                        className={`${card.color} w-14 h-14 rounded-2xl flex items-center justify-center text-3xl text-white mb-6`}
-                                    >
-                                        {
-                                            card.icon
-                                        }
-                                    </div>
+                    <section className="bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-2xl px-6 py-4 mb-4">
 
-                                    <p className="text-gray-500">
-                                        {
+                        <div className="flex items-center gap-4">
+
+                            <div className="text-3xl">
+                                📣
+                            </div>
+
+                            <div>
+
+                                <p className="font-bold text-pink-700">
+                                    Store Overview
+                                </p>
+
+                                <p className="text-slate-700 text-sm md:text-base">
+                                    You currently have{" "}
+                                    <strong>
+                                        {activeOrders}
+                                    </strong>{" "}
+                                    active order
+                                    {activeOrders !== 1
+                                        ? "s"
+                                        : ""}{" "}
+                                    requiring attention.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                    {/* ==================================
+                        TO DO LIST
+                    ================================== */}
+
+                    <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4">
+
+                        <div className="flex items-center gap-3 mb-4">
+
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl">
+                                ☷
+                            </div>
+
+                            <h2 className="text-2xl font-bold text-slate-900">
+                                To do list
+                            </h2>
+
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+                            {todoCards.map(
+                                (card) => (
+                                    <Link
+                                        key={
                                             card.title
                                         }
-                                    </p>
-
-                                    <h2 className="text-4xl font-bold mt-2">
-                                        {
-                                            card.value
+                                        href={
+                                            card.href
                                         }
+                                        className={`${card.bg} border border-slate-200 rounded-xl px-5 py-4 hover:shadow-md transition`}
+                                    >
+
+                                        <div className="flex items-center gap-4">
+
+                                            <div className="text-3xl">
+                                                {
+                                                    card.icon
+                                                }
+                                            </div>
+
+                                            <div>
+
+                                                <p className="text-slate-700 font-medium text-sm">
+                                                    {
+                                                        card.title
+                                                    }
+                                                </p>
+
+                                                <div className="flex items-center gap-2">
+
+                                                    <span
+                                                        className={`text-2xl font-bold ${card.number}`}
+                                                    >
+                                                        {
+                                                            card.value
+                                                        }
+                                                    </span>
+
+                                                    <span className="text-slate-400 text-xl">
+                                                        ›
+                                                    </span>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </Link>
+                                )
+                            )}
+
+                        </div>
+
+                    </section>
+
+                    {/* ==================================
+                        BUSINESS INSIGHTS
+                    ================================== */}
+
+                    <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4">
+
+                        <div className="flex items-center justify-between mb-4">
+
+                            <div className="flex items-center gap-3">
+
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl">
+                                    📈
+                                </div>
+
+                                <div>
+
+                                    <h2 className="text-2xl font-bold text-slate-900">
+                                        Business Insights
                                     </h2>
 
+                                    <p className="text-sm text-slate-500">
+                                        Daily sales performance
+                                    </p>
+
                                 </div>
-                            )
-                        )}
 
-                    </div>
-
-                    {/* Financial Summary */}
-
-                    <h2 className="text-3xl font-bold mb-6 text-gray-800">
-                        Financial Summary
-                    </h2>
-
-                    <div className="grid md:grid-cols-3 gap-6 mb-12">
-
-                        <div className="bg-green-50 rounded-3xl shadow-lg p-8">
-
-                            <div className="text-5xl">
-                                💳
                             </div>
 
-                            <h3 className="text-xl font-bold mt-4">
-                                Paid Revenue
-                            </h3>
-
-                            <p className="text-4xl font-bold text-green-600 mt-2">
-                                ₹
-                                {paidRevenue.toLocaleString()}
-                            </p>
+                            <span className="text-sm font-semibold text-pink-700">
+                                Last 30 Days
+                            </span>
 
                         </div>
 
-                        <div className="bg-pink-50 rounded-3xl shadow-lg p-8">
+                        <div className="grid lg:grid-cols-[1fr_210px] gap-5">
 
-                            <div className="text-5xl">
-                                💰
+                            {/* CHART */}
+
+                            <div>
+
+                                <div className="mb-2">
+
+                                    <p className="text-sm text-slate-500">
+                                        Sales
+                                    </p>
+
+                                    <p className="text-2xl font-bold text-slate-900">
+                                        ₹
+                                        {stats.last30Days.revenue.toLocaleString()}
+                                    </p>
+
+                                </div>
+
+                                <div className="h-[270px]">
+
+                                    {dailyRevenue.length >
+                                    0 ? (
+
+                                        <Line
+                                            data={
+                                                chartData
+                                            }
+                                            options={
+                                                chartOptions
+                                            }
+                                        />
+
+                                    ) : (
+
+                                        <div className="h-full flex items-center justify-center text-slate-400">
+                                            No sales data available
+                                        </div>
+
+                                    )}
+
+                                </div>
+
                             </div>
 
-                            <h3 className="text-xl font-bold mt-4">
-                                Gross Order Value
-                            </h3>
+                            {/* INSIGHT CARDS */}
 
-                            <p className="text-4xl font-bold text-pink-700 mt-2">
-                                ₹
-                                {grossOrderValue.toLocaleString()}
-                            </p>
+                            <div className="space-y-3">
+
+                                <div className="border border-slate-200 rounded-xl p-4">
+
+                                    <p className="text-sm text-slate-500">
+                                        Today's Revenue
+                                    </p>
+
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">
+                                        ₹
+                                        {stats.today.revenue.toLocaleString()}
+                                    </p>
+
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        {
+                                            stats.today.orders
+                                        }{" "}
+                                        orders
+                                    </p>
+
+                                </div>
+
+                                <div className="border border-slate-200 rounded-xl p-4">
+
+                                    <p className="text-sm text-slate-500">
+                                        Last 7 Days
+                                    </p>
+
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">
+                                        ₹
+                                        {stats.last7Days.revenue.toLocaleString()}
+                                    </p>
+
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        {
+                                            stats.last7Days.orders
+                                        }{" "}
+                                        orders
+                                    </p>
+
+                                </div>
+
+                                <div className="border border-slate-200 rounded-xl p-4">
+
+                                    <p className="text-sm text-slate-500">
+                                        Last 30 Days
+                                    </p>
+
+                                    <p className="text-2xl font-bold text-pink-700 mt-1">
+                                        ₹
+                                        {stats.last30Days.revenue.toLocaleString()}
+                                    </p>
+
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        {
+                                            stats.last30Days.orders
+                                        }{" "}
+                                        orders
+                                    </p>
+
+                                </div>
+
+                            </div>
 
                         </div>
 
-                        <div className="bg-red-50 rounded-3xl shadow-lg p-8">
-
-                            <div className="text-5xl">
-                                ❌
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Cancelled Value
-                            </h3>
-
-                            <p className="text-4xl font-bold text-red-600 mt-2">
-                                ₹
-                                {cancelledValue.toLocaleString()}
-                            </p>
-
-                            <p className="text-gray-500 mt-2">
-                                {
-                                    cancelledOrders
-                                }{" "}
-                                cancelled order(s)
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    {/* Revenue Chart */}
-
-                    <div className="bg-white rounded-3xl shadow-xl p-8 mb-12">
-
-                        <div className="mb-6">
-
-                            <h2 className="text-3xl font-bold text-pink-700">
-                                Revenue Analytics
-                            </h2>
-
-                            <p className="text-gray-500">
-                                Last 6 Months Revenue
-                            </p>
-
-                        </div>
-
-                        <div className="h-80">
-
-                            <Line
-                                data={
-                                    revenueChartData
-                                }
-                                options={
-                                    revenueChartOptions
-                                }
-                            />
-
-                        </div>
-
-                    </div>
-
-                    {/* Order Status */}
-
-                    <h2 className="text-3xl font-bold mb-6 text-gray-800">
-                        Order Status
-                    </h2>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
-
-                        <div className="bg-yellow-50 rounded-3xl shadow-lg p-8 text-center">
-
-                            <div className="text-5xl">
-                                ⏳
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Pending
-                            </h3>
-
-                            <p className="text-4xl font-bold text-yellow-600 mt-2">
-                                {
-                                    pendingOrders
-                                }
-                            </p>
-
-                        </div>
-
-                        <div className="bg-purple-50 rounded-3xl shadow-lg p-8 text-center">
-
-                            <div className="text-5xl">
-                                🔵
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Confirmed
-                            </h3>
-
-                            <p className="text-4xl font-bold text-purple-600 mt-2">
-                                {
-                                    confirmedOrders
-                                }
-                            </p>
-
-                        </div>
-
-                        <div className="bg-blue-50 rounded-3xl shadow-lg p-8 text-center">
-
-                            <div className="text-5xl">
-                                📦
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Packed
-                            </h3>
-
-                            <p className="text-4xl font-bold text-blue-600 mt-2">
-                                {
-                                    packedOrders
-                                }
-                            </p>
-
-                        </div>
-
-                        <div className="bg-indigo-50 rounded-3xl shadow-lg p-8 text-center">
-
-                            <div className="text-5xl">
-                                🚚
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Shipped
-                            </h3>
-
-                            <p className="text-4xl font-bold text-indigo-600 mt-2">
-                                {
-                                    shippedOrders
-                                }
-                            </p>
-
-                        </div>
-
-                        <div className="bg-green-50 rounded-3xl shadow-lg p-8 text-center">
-
-                            <div className="text-5xl">
-                                ✅
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Delivered
-                            </h3>
-
-                            <p className="text-4xl font-bold text-green-600 mt-2">
-                                {
-                                    deliveredOrders
-                                }
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    {/* Payment Summary */}
-
-                    <h2 className="text-3xl font-bold mb-6 text-gray-800">
-                        Payment Summary
-                    </h2>
-
-                    <div className="grid md:grid-cols-3 gap-6 mb-12">
-
-                        <div className="bg-green-50 rounded-3xl shadow-lg p-8">
-
-                            <div className="text-5xl">
-                                💳
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Paid Orders
-                            </h3>
-
-                            <p className="text-4xl font-bold text-green-600 mt-2">
-                                {
-                                    paidOrders
-                                }
-                            </p>
-
-                        </div>
-
-                        <div className="bg-gray-50 rounded-3xl shadow-lg p-8">
-
-                            <div className="text-5xl">
-                                ⏳
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Unpaid / Pending Payment
-                            </h3>
-
-                            <p className="text-4xl font-bold text-gray-600 mt-2">
-                                {
-                                    orders -
-                                    paidOrders
-                                }
-                            </p>
-
-                        </div>
-
-                        <div className="bg-blue-50 rounded-3xl shadow-lg p-8">
-
-                            <div className="text-5xl">
-                                📦
-                            </div>
-
-                            <h3 className="text-xl font-bold mt-4">
-                                Active Orders
-                            </h3>
-
-                            <p className="text-4xl font-bold text-blue-600 mt-2">
-                                {
-                                    activeOrders
-                                }
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                    {/* Quick Actions */}
-
-                    <h2 className="text-3xl font-bold mb-6 text-gray-800">
-                        Quick Actions
-                    </h2>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-14">
-
-                        <Link
-                            href="/admin/add-product"
-                            className="bg-white rounded-3xl shadow-lg p-8 text-center hover:shadow-xl hover:-translate-y-1 transition"
-                        >
-
-                            <div className="text-5xl">
-                                ➕
-                            </div>
-
-                            <h3 className="text-2xl font-bold mt-4">
-                                Add Product
-                            </h3>
-
-                        </Link>
-
-                        <Link
-                            href="/admin/products"
-                            className="bg-white rounded-3xl shadow-lg p-8 text-center hover:shadow-xl hover:-translate-y-1 transition"
-                        >
-
-                            <div className="text-5xl">
-                                💎
-                            </div>
-
-                            <h3 className="text-2xl font-bold mt-4">
-                                Products
-                            </h3>
-
-                        </Link>
-
-                        <Link
-                            href="/admin/orders"
-                            className="bg-white rounded-3xl shadow-lg p-8 text-center hover:shadow-xl hover:-translate-y-1 transition"
-                        >
-
-                            <div className="text-5xl">
-                                📋
-                            </div>
-
-                            <h3 className="text-2xl font-bold mt-4">
-                                Orders
-                            </h3>
-
-                        </Link>
-
-                        <Link
-                            href="/admin/customers"
-                            className="bg-white rounded-3xl shadow-lg p-8 text-center hover:shadow-xl hover:-translate-y-1 transition"
-                        >
-
-                            <div className="text-5xl">
-                                👥
-                            </div>
-
-                            <h3 className="text-2xl font-bold mt-4">
-                                Customers
-                            </h3>
-
-                        </Link>
-
-                    </div>
-
-                    {/* Recent Orders */}
-
-                    <div className="bg-white rounded-3xl shadow-xl p-8 mb-12">
-
-                        <div className="flex justify-between items-center mb-6">
-
-                            <h2 className="text-3xl font-bold text-pink-700">
-                                Recent Orders
-                            </h2>
+                        <div className="mt-4">
 
                             <Link
                                 href="/admin/orders"
-                                className="text-pink-600 font-semibold hover:underline"
+                                className="inline-flex border border-pink-600 text-pink-700 px-5 py-2 rounded-lg font-semibold text-sm hover:bg-pink-50 transition"
                             >
-                                View All →
+                                View More Details
+                            </Link>
+
+                        </div>
+
+                    </section>
+
+                    {/* ==================================
+                        SALES SNAPSHOT
+                    ================================== */}
+
+                    <section className="mb-4">
+
+                        <div className="flex items-center gap-3 mb-3">
+
+                            <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xl">
+                                💰
+                            </div>
+
+                            <h2 className="text-2xl font-bold text-slate-900">
+                                Sales Snapshot
+                            </h2>
+
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+
+                                <p className="text-slate-500 text-sm">
+                                    Today
+                                </p>
+
+                                <p className="text-3xl font-bold text-slate-900 mt-1">
+                                    ₹
+                                    {stats.today.revenue.toLocaleString()}
+                                </p>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                    {
+                                        stats.today.orders
+                                    }{" "}
+                                    orders · AOV ₹
+                                    {Math.round(
+                                        stats.today.aov
+                                    ).toLocaleString()}
+                                </p>
+
+                            </div>
+
+                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+
+                                <p className="text-slate-500 text-sm">
+                                    Last 7 Days
+                                </p>
+
+                                <p className="text-3xl font-bold text-slate-900 mt-1">
+                                    ₹
+                                    {stats.last7Days.revenue.toLocaleString()}
+                                </p>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                    {
+                                        stats.last7Days.orders
+                                    }{" "}
+                                    orders · AOV ₹
+                                    {Math.round(
+                                        stats.last7Days.aov
+                                    ).toLocaleString()}
+                                </p>
+
+                            </div>
+
+                            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+
+                                <p className="text-slate-500 text-sm">
+                                    Last 30 Days
+                                </p>
+
+                                <p className="text-3xl font-bold text-pink-700 mt-1">
+                                    ₹
+                                    {stats.last30Days.revenue.toLocaleString()}
+                                </p>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                    {
+                                        stats.last30Days.orders
+                                    }{" "}
+                                    orders · AOV ₹
+                                    {Math.round(
+                                        stats.last30Days.aov
+                                    ).toLocaleString()}
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                    {/* ==================================
+                        DISPATCH PERFORMANCE
+                    ================================== */}
+
+                    <section className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 mb-4">
+
+                        <div className="flex items-center gap-3 mb-4">
+
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl">
+                                🚚
+                            </div>
+
+                            <div>
+
+                                <h2 className="text-2xl font-bold text-slate-900">
+                                    Dispatch Performance & Insights
+                                </h2>
+
+                                <p className="text-sm text-slate-500">
+                                    Current order pipeline
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+
+                            <div className="border rounded-xl p-4">
+
+                                <p className="text-sm text-slate-500">
+                                    Pending
+                                </p>
+
+                                <p className="text-3xl font-bold text-yellow-600 mt-1">
+                                    {
+                                        stats.pendingOrders
+                                    }
+                                </p>
+
+                            </div>
+
+                            <div className="border rounded-xl p-4">
+
+                                <p className="text-sm text-slate-500">
+                                    Confirmed
+                                </p>
+
+                                <p className="text-3xl font-bold text-purple-600 mt-1">
+                                    {
+                                        stats.confirmedOrders
+                                    }
+                                </p>
+
+                            </div>
+
+                            <div className="border rounded-xl p-4">
+
+                                <p className="text-sm text-slate-500">
+                                    Packed
+                                </p>
+
+                                <p className="text-3xl font-bold text-blue-600 mt-1">
+                                    {
+                                        stats.packedOrders
+                                    }
+                                </p>
+
+                            </div>
+
+                            <div className="border rounded-xl p-4">
+
+                                <p className="text-sm text-slate-500">
+                                    Shipped
+                                </p>
+
+                                <p className="text-3xl font-bold text-indigo-600 mt-1">
+                                    {
+                                        stats.shippedOrders
+                                    }
+                                </p>
+
+                            </div>
+
+                            <div className="border rounded-xl p-4">
+
+                                <p className="text-sm text-slate-500">
+                                    Delivered
+                                </p>
+
+                                <p className="text-3xl font-bold text-green-600 mt-1">
+                                    {
+                                        stats.deliveredOrders
+                                    }
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                    {/* ==================================
+                        BUSINESS HEALTH
+                    ================================== */}
+
+                    <section className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
+                            <p className="text-sm text-slate-500">
+                                Delivery Rate
+                            </p>
+
+                            <p className="text-4xl font-bold text-green-600 mt-1">
+                                {deliveryRate}%
+                            </p>
+
+                            <p className="text-sm text-slate-500 mt-1">
+                                Based on all orders
+                            </p>
+
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
+                            <p className="text-sm text-slate-500">
+                                Cancellation Rate
+                            </p>
+
+                            <p className="text-4xl font-bold text-red-600 mt-1">
+                                {
+                                    cancellationRate
+                                }%
+                            </p>
+
+                            <p className="text-sm text-slate-500 mt-1">
+                                {
+                                    stats.cancelledOrders
+                                }{" "}
+                                cancelled orders
+                            </p>
+
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+
+                            <p className="text-sm text-slate-500">
+                                Total Customers
+                            </p>
+
+                            <p className="text-4xl font-bold text-purple-600 mt-1">
+                                {
+                                    stats.customers
+                                }
+                            </p>
+
+                            <p className="text-sm text-slate-500 mt-1">
+                                Unique customers
+                            </p>
+
+                        </div>
+
+                    </section>
+
+                    {/* ==================================
+                        RECENT ORDERS
+                    ================================== */}
+
+                    <section className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 mb-4">
+
+                        <div className="flex items-center justify-between mb-4">
+
+                            <div>
+
+                                <h2 className="text-2xl font-bold text-slate-900">
+                                    Recent Orders
+                                </h2>
+
+                                <p className="text-sm text-slate-500">
+                                    Latest customer activity
+                                </p>
+
+                            </div>
+
+                            <Link
+                                href="/admin/orders"
+                                className="text-pink-700 font-semibold text-sm hover:underline"
+                            >
+                                View all →
                             </Link>
 
                         </div>
 
                         <div className="overflow-x-auto">
 
-                            <table className="w-full">
+                            <table className="w-full min-w-[700px]">
 
-                                <thead className="border-b">
+                                <thead>
 
-                                <tr>
+                                <tr className="border-b">
 
-                                    <th className="text-left p-4">
+                                    <th className="text-left py-3 px-3 text-sm text-slate-500 font-medium">
                                         Order
                                     </th>
 
-                                    <th className="text-left p-4">
+                                    <th className="text-left py-3 px-3 text-sm text-slate-500 font-medium">
                                         Customer
                                     </th>
 
-                                    <th className="text-left p-4">
+                                    <th className="text-left py-3 px-3 text-sm text-slate-500 font-medium">
                                         Amount
                                     </th>
 
-                                    <th className="text-left p-4">
+                                    <th className="text-left py-3 px-3 text-sm text-slate-500 font-medium">
                                         Payment
                                     </th>
 
-                                    <th className="text-left p-4">
+                                    <th className="text-left py-3 px-3 text-sm text-slate-500 font-medium">
                                         Status
                                     </th>
 
@@ -872,8 +1024,10 @@ export default function AdminPage() {
                                     <tr>
 
                                         <td
-                                            colSpan={5}
-                                            className="text-center py-8 text-gray-500"
+                                            colSpan={
+                                                5
+                                            }
+                                            className="py-8 text-center text-slate-500"
                                         >
                                             No recent orders
                                         </td>
@@ -886,61 +1040,65 @@ export default function AdminPage() {
                                         (
                                             order
                                         ) => (
-
                                             <tr
                                                 key={
                                                     order.id
                                                 }
-                                                className="border-b hover:bg-pink-50"
+                                                className="border-b last:border-0 hover:bg-pink-50 transition"
                                             >
 
-                                                <td className="p-4 font-bold">
+                                                <td className="py-3 px-3 font-bold text-slate-900">
                                                     #
                                                     {
                                                         order.id
                                                     }
                                                 </td>
 
-                                                <td className="p-4">
+                                                <td className="py-3 px-3 text-slate-700">
                                                     {
                                                         order.customer_name
                                                     }
                                                 </td>
 
-                                                <td className="p-4 font-bold text-green-600">
+                                                <td className="py-3 px-3 font-bold text-slate-900">
                                                     ₹
-                                                    {
-                                                        order.total
-                                                    }
+                                                    {Number(
+                                                        order.total ||
+                                                        0
+                                                    ).toLocaleString()}
                                                 </td>
 
-                                                <td className="p-4">
+                                                <td className="py-3 px-3">
 
-                                                    {order.payment_status ===
-                                                    "Paid" ? (
-
-                                                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">
-                                                                ✅ Paid
-                                                            </span>
-
-                                                    ) : (
-
-                                                        <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full font-semibold">
-                                                                🟡 Pending
-                                                            </span>
-
-                                                    )}
+                                                        <span
+                                                            className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                                                order.payment_status ===
+                                                                "Paid"
+                                                                    ? "bg-green-100 text-green-700"
+                                                                    : "bg-yellow-100 text-yellow-700"
+                                                            }`}
+                                                        >
+                                                            {
+                                                                order.payment_status ===
+                                                                "Paid"
+                                                                    ? "Paid"
+                                                                    : "Pending"
+                                                            }
+                                                        </span>
 
                                                 </td>
 
-                                                <td className="p-4">
-                                                    {
-                                                        order.status
-                                                    }
+                                                <td className="py-3 px-3">
+
+                                                        <span className="inline-flex px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold">
+                                                            {
+                                                                order.status
+                                                            }
+                                                        </span>
+
                                                 </td>
 
                                             </tr>
-
                                         )
                                     )
 
@@ -952,84 +1110,138 @@ export default function AdminPage() {
 
                         </div>
 
-                    </div>
+                    </section>
 
-                    {/* Low Stock Products */}
+                    {/* ==================================
+                        INVENTORY ALERTS
+                    ================================== */}
 
-                    <div className="bg-white rounded-3xl shadow-xl p-8">
+                    <section className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
 
-                        <h2 className="text-3xl font-bold text-red-600 mb-6">
-                            ⚠️ Low Stock Products
-                        </h2>
+                        <div className="flex items-center justify-between mb-4">
+
+                            <div>
+
+                                <h2 className="text-2xl font-bold text-slate-900">
+                                    Inventory Alerts
+                                </h2>
+
+                                <p className="text-sm text-slate-500">
+                                    Products that need attention
+                                </p>
+
+                            </div>
+
+                            <Link
+                                href="/admin/products"
+                                className="text-pink-700 font-semibold text-sm hover:underline"
+                            >
+                                View products →
+                            </Link>
+
+                        </div>
 
                         {lowStockProducts.length ===
                         0 ? (
 
-                            <div className="text-center py-8 text-green-600 font-semibold">
-                                ✅ All products are sufficiently stocked.
+                            <div className="rounded-xl bg-green-50 border border-green-100 p-6 text-center">
+
+                                <div className="text-3xl mb-1">
+                                    ✅
+                                </div>
+
+                                <p className="font-semibold text-green-700">
+                                    Inventory looks healthy
+                                </p>
+
                             </div>
 
                         ) : (
 
-                            <div className="space-y-4">
+                            <div className="space-y-2">
 
-                                {lowStockProducts.map(
-                                    (
-                                        product
-                                    ) => (
-
-                                        <div
-                                            key={
-                                                product.id
-                                            }
-                                            className="flex justify-between items-center border rounded-2xl p-5 hover:bg-red-50"
-                                        >
-
-                                            <div>
-
-                                                <h3 className="text-xl font-bold">
-                                                    {
-                                                        product.title
-                                                    }
-                                                </h3>
-
-                                                <p className="text-gray-500">
-                                                    Product ID: #
-                                                    {
-                                                        product.id
-                                                    }
-                                                </p>
-
-                                            </div>
-
-                                            <div className="text-right">
-
-                                                <p className="text-red-600 text-2xl font-bold">
-                                                    {
-                                                        product.stock
-                                                    }
-                                                </p>
-
-                                                <p className="text-gray-500">
-                                                    Left in Stock
-                                                </p>
-
-                                            </div>
-
-                                        </div>
-
+                                {lowStockProducts
+                                    .slice(
+                                        0,
+                                        8
                                     )
-                                )}
+                                    .map(
+                                        (
+                                            product
+                                        ) => (
+                                            <div
+                                                key={
+                                                    product.id
+                                                }
+                                                className="flex items-center justify-between border rounded-xl p-3"
+                                            >
+
+                                                <div className="flex items-center gap-3">
+
+                                                    <div className="w-10 h-10 rounded-lg bg-pink-50 flex items-center justify-center">
+                                                        💎
+                                                    </div>
+
+                                                    <div>
+
+                                                        <p className="font-semibold text-slate-900">
+                                                            {
+                                                                product.title
+                                                            }
+                                                        </p>
+
+                                                        <p className="text-xs text-slate-500">
+                                                            Product #
+                                                            {
+                                                                product.id
+                                                            }
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+                                                <div className="text-right">
+
+                                                    <p
+                                                        className={`text-xl font-bold ${
+                                                            Number(
+                                                                product.stock
+                                                            ) <=
+                                                            0
+                                                                ? "text-red-600"
+                                                                : "text-orange-600"
+                                                        }`}
+                                                    >
+                                                        {
+                                                            product.stock
+                                                        }
+                                                    </p>
+
+                                                    <p className="text-xs text-slate-500">
+                                                        {Number(
+                                                            product.stock
+                                                        ) <=
+                                                        0
+                                                            ? "Out of stock"
+                                                            : "Left"}
+                                                    </p>
+
+                                                </div>
+
+                                            </div>
+                                        )
+                                    )}
 
                             </div>
 
                         )}
 
-                    </div>
+                    </section>
 
                 </div>
 
-            </section>
+            </main>
 
             <Footer />
         </>

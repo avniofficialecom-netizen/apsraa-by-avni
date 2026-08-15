@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "./context/CartContext";
 
@@ -31,12 +31,61 @@ export default function ProductDetails({
     const [showAddedMessage, setShowAddedMessage] =
         useState(false);
 
+    const [quantity, setQuantity] = useState(1);
+
     const cartItem = cart.find(
         (item) => item.id === product.id
     );
 
     const cartQuantity =
         cartItem?.quantity ?? 0;
+
+    // ==========================================
+    // AVAILABLE STOCK
+    // ==========================================
+
+    const availableStock = Math.max(
+        0,
+        product.stock - cartQuantity
+    );
+
+    // Keep selected quantity inside available stock
+    useEffect(() => {
+        if (availableStock <= 0) {
+            setQuantity(1);
+            return;
+        }
+
+        setQuantity((current) =>
+            Math.min(
+                Math.max(current, 1),
+                availableStock
+            )
+        );
+    }, [availableStock]);
+
+    // ==========================================
+    // QUANTITY
+    // ==========================================
+
+    const decreaseQuantity = () => {
+        setQuantity((current) =>
+            Math.max(1, current - 1)
+        );
+    };
+
+    const increaseQuantity = () => {
+        if (quantity >= availableStock) {
+            return;
+        }
+
+        setQuantity((current) =>
+            Math.min(
+                current + 1,
+                availableStock
+            )
+        );
+    };
 
     // ==========================================
     // ADD TO CART
@@ -53,27 +102,36 @@ export default function ProductDetails({
             return;
         }
 
-        if (cartQuantity >= product.stock) {
+        if (availableStock <= 0) {
             setShowAddedMessage(false);
 
             alert(
-                `Only ${product.stock} item(s) available.`
+                "You already have the maximum available quantity of this product in your cart."
             );
 
             return;
         }
 
-        addToCart({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            image: product.image,
-        });
+        if (quantity > availableStock) {
+            alert(
+                `Only ${availableStock} item(s) can be added.`
+            );
 
-        // Show confirmation popup
+            return;
+        }
+
+        // Add selected quantity
+        for (let i = 0; i < quantity; i++) {
+            addToCart({
+                id: product.id,
+                title: product.title,
+                price: product.price,
+                image: product.image,
+            });
+        }
+
         setShowAddedMessage(true);
 
-        // Automatically hide after 3.5 seconds
         setTimeout(() => {
             setShowAddedMessage(false);
         }, 3500);
@@ -92,22 +150,32 @@ export default function ProductDetails({
             return;
         }
 
-        if (cartQuantity >= product.stock) {
+        if (availableStock <= 0) {
             alert(
-                `Only ${product.stock} item(s) available.`
+                "This product has reached the maximum available quantity in your cart."
             );
 
             return;
         }
 
-        addToCart({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            image: product.image,
-        });
+        if (quantity > availableStock) {
+            alert(
+                `Only ${availableStock} item(s) are available.`
+            );
 
-        // Go directly to checkout
+            return;
+        }
+
+        // Add selected quantity
+        for (let i = 0; i < quantity; i++) {
+            addToCart({
+                id: product.id,
+                title: product.title,
+                price: product.price,
+                image: product.image,
+            });
+        }
+
         router.push("/checkout");
     };
 
@@ -140,7 +208,7 @@ export default function ProductDetails({
                                 </h3>
 
                                 <p className="text-gray-500 text-sm mt-1 line-clamp-2">
-                                    {product.title}
+                                    {quantity} × {product.title}
                                 </p>
 
                                 <button
@@ -277,6 +345,55 @@ export default function ProductDetails({
             </div>
 
             {/* ==========================================
+                QUANTITY SELECTOR
+            ========================================== */}
+
+            {product.stock > 0 && availableStock > 0 && (
+                <div className="mt-8">
+
+                    <div className="font-semibold text-gray-800 mb-3">
+                        Quantity
+                    </div>
+
+                    <div className="inline-flex items-center border-2 border-pink-200 rounded-xl overflow-hidden bg-white">
+
+                        <button
+                            type="button"
+                            onClick={decreaseQuantity}
+                            disabled={quantity <= 1}
+                            className="w-14 h-12 text-2xl font-semibold text-pink-600 hover:bg-pink-50 disabled:text-gray-300 disabled:cursor-not-allowed transition"
+                            aria-label="Decrease quantity"
+                        >
+                            −
+                        </button>
+
+                        <div className="w-16 h-12 flex items-center justify-center border-x-2 border-pink-200 text-lg font-bold text-gray-800">
+                            {quantity}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={increaseQuantity}
+                            disabled={
+                                quantity >= availableStock
+                            }
+                            className="w-14 h-12 text-2xl font-semibold text-pink-600 hover:bg-pink-50 disabled:text-gray-300 disabled:cursor-not-allowed transition"
+                            aria-label="Increase quantity"
+                        >
+                            +
+                        </button>
+
+                    </div>
+
+                    <p className="text-sm text-gray-500 mt-2">
+                        {availableStock} item
+                        {availableStock !== 1 ? "s" : ""} available to add
+                    </p>
+
+                </div>
+            )}
+
+            {/* ==========================================
                 ACTION BUTTONS
             ========================================== */}
 
@@ -290,18 +407,15 @@ export default function ProductDetails({
                             type="button"
                             onClick={handleAddToCart}
                             disabled={
-                                cartQuantity >=
-                                product.stock
+                                availableStock <= 0
                             }
                             className={`flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg transition ${
-                                cartQuantity >=
-                                product.stock
+                                availableStock <= 0
                                     ? "bg-gray-400 text-white cursor-not-allowed"
                                     : "border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
                             }`}
                         >
-                            {cartQuantity >=
-                            product.stock
+                            {availableStock <= 0
                                 ? "❌ Maximum Stock Added"
                                 : "🛒 Add to Cart"}
                         </button>
@@ -312,12 +426,10 @@ export default function ProductDetails({
                             type="button"
                             onClick={handleBuyNow}
                             disabled={
-                                cartQuantity >=
-                                product.stock
+                                availableStock <= 0
                             }
                             className={`flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg transition ${
-                                cartQuantity >=
-                                product.stock
+                                availableStock <= 0
                                     ? "bg-gray-400 text-white cursor-not-allowed"
                                     : "bg-pink-600 text-white hover:bg-pink-700 shadow-md hover:shadow-lg"
                             }`}
@@ -343,6 +455,102 @@ export default function ProductDetails({
                 >
                     ❤️ Wishlist
                 </button>
+
+            </div>
+
+            {/* ==========================================
+                DELIVERY & TRUST
+            ========================================== */}
+
+            <div className="mt-10 border-t border-pink-100 pt-8">
+
+                <h2 className="text-xl font-bold text-pink-700 mb-5">
+                    Why Shop With Us?
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    {/* DELIVERY */}
+
+                    <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
+                        <div className="text-2xl">
+                            🚚
+                        </div>
+
+                        <div>
+                            <h3 className="font-bold text-gray-800">
+                                Delivery Available
+                            </h3>
+
+                            <p className="text-sm text-gray-500 mt-1">
+                                We deliver across India.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    {/* PACKING */}
+
+                    <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
+                        <div className="text-2xl">
+                            📦
+                        </div>
+
+                        <div>
+                            <h3 className="font-bold text-gray-800">
+                                Carefully Packed
+                            </h3>
+
+                            <p className="text-sm text-gray-500 mt-1">
+                                Your jewellery is packed carefully before dispatch.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    {/* SECURE PAYMENT */}
+
+                    <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
+                        <div className="text-2xl">
+                            🔒
+                        </div>
+
+                        <div>
+                            <h3 className="font-bold text-gray-800">
+                                Secure Checkout
+                            </h3>
+
+                            <p className="text-sm text-gray-500 mt-1">
+                                Payments are processed through our secure checkout.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    {/* QUALITY */}
+
+                    <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
+                        <div className="text-2xl">
+                            💎
+                        </div>
+
+                        <div>
+                            <h3 className="font-bold text-gray-800">
+                                Jewellery Care
+                            </h3>
+
+                            <p className="text-sm text-gray-500 mt-1">
+                                Handle and store your jewellery carefully to maintain its finish.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
 
             </div>
 

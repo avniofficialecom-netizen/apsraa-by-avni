@@ -8,7 +8,7 @@ import Footer from "../../../components/Footer";
 type Order = {
     id: number;
     customer_name: string;
-    email: string;
+    email?: string | null;
     phone: string;
     address: string;
     total: string;
@@ -18,32 +18,86 @@ type Order = {
     archived?: boolean;
 };
 
+const STATUS_FLOW = [
+    "Pending",
+    "Confirmed",
+    "Packed",
+    "Shipped",
+    "Delivered",
+];
+
 export default function OrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All");
-    const [paymentFilter, setPaymentFilter] = useState("All");
-    const [sortOrder, setSortOrder] = useState("newest");
-
-    const [archivingId, setArchivingId] =
+    const [updatingId, setUpdatingId] =
         useState<number | null>(null);
+
+    const [bulkUpdating, setBulkUpdating] =
+        useState(false);
+
+    const [selectedIds, setSelectedIds] =
+        useState<number[]>([]);
+
+    const [search, setSearch] = useState("");
+    const [productSearch, setProductSearch] =
+        useState("");
+
+    const [statusFilter, setStatusFilter] =
+        useState("All");
+
+    const [paymentFilter, setPaymentFilter] =
+        useState("All");
+
+    const [sortOrder, setSortOrder] =
+        useState("newest");
+
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalOrders, setTotalOrders] = useState(0);
+
+    // ==========================================
+    // LOAD ORDERS
+    // ==========================================
 
     useEffect(() => {
         loadOrders();
-    }, []);
-
-    // ==================================================
-    // LOAD ORDERS
-    // ==================================================
+    }, [
+        page,
+        search,
+        productSearch,
+        statusFilter,
+        paymentFilter,
+        sortOrder,
+    ]);
 
     async function loadOrders() {
         try {
             setLoading(true);
 
+            const params = new URLSearchParams();
+
+            params.set("page", String(page));
+            params.set("sort", sortOrder);
+            params.set("status", statusFilter);
+            params.set("payment", paymentFilter);
+
+            if (search.trim()) {
+                params.set(
+                    "search",
+                    search.trim()
+                );
+            }
+
+            if (productSearch.trim()) {
+                params.set(
+                    "product",
+                    productSearch.trim()
+                );
+            }
+
             const response = await fetch(
-                "/api/admin/orders",
+                `/api/admin/orders?${params.toString()}`,
                 {
                     method: "GET",
                     credentials: "include",
@@ -57,11 +111,15 @@ export default function OrdersPage() {
                 response.status === 401 ||
                 response.status === 403
             ) {
-                window.location.href = "/admin/login";
+                window.location.href =
+                    "/admin/login";
                 return;
             }
 
-            if (!response.ok || !result.success) {
+            if (
+                !response.ok ||
+                !result.success
+            ) {
                 alert(
                     result.message ||
                     "Unable to load orders."
@@ -74,29 +132,161 @@ export default function OrdersPage() {
                     ? result.orders
                     : []
             );
+
+            setTotalOrders(
+                Number(result.totalOrders || 0)
+            );
+
+            setTotalPages(
+                Math.max(
+                    1,
+                    Number(result.totalPages || 1)
+                )
+            );
+
+            setSelectedIds([]);
         } catch (error) {
             console.error(
                 "Load Orders Error:",
                 error
             );
 
-            alert(
-                "Something went wrong while loading orders."
-            );
+            alert("Unable to load orders.");
         } finally {
             setLoading(false);
         }
     }
 
-    // ==================================================
-    // UPDATE ORDER STATUS
-    // ==================================================
+    // ==========================================
+    // DISPLAY STATUS
+    // ==========================================
 
-    async function updateStatus(
-        id: number,
-        status: string
+    function displayStatus(status: string) {
+        if (status === "Confirmed") {
+            return "Ready to Dispatch";
+        }
+
+        return status;
+    }
+
+    // ==========================================
+    // STATUS CLASS
+    // ==========================================
+
+    function statusClass(status: string) {
+        switch (status) {
+            case "Pending":
+                return "bg-yellow-100 text-yellow-700";
+
+            case "Confirmed":
+                return "bg-blue-100 text-blue-700";
+
+            case "Packed":
+                return "bg-purple-100 text-purple-700";
+
+            case "Shipped":
+                return "bg-indigo-100 text-indigo-700";
+
+            case "Delivered":
+                return "bg-green-100 text-green-700";
+
+            case "Cancelled":
+                return "bg-red-100 text-red-700";
+
+            default:
+                return "bg-gray-100 text-gray-700";
+        }
+    }
+
+    // ==========================================
+    // NEXT STATUS
+    // ==========================================
+
+    function nextStatus(status: string) {
+        switch (status) {
+            case "Pending":
+                return "Confirmed";
+
+            case "Confirmed":
+                return "Packed";
+
+            case "Packed":
+                return "Shipped";
+
+            case "Shipped":
+                return "Delivered";
+
+            default:
+                return null;
+        }
+    }
+
+    // ==========================================
+    // NEXT BUTTON
+    // ==========================================
+
+    function nextButton(status: string) {
+        switch (status) {
+            case "Pending":
+                return "✅ Accept Order";
+
+            case "Confirmed":
+                return "📦 Mark Packed";
+
+            case "Packed":
+                return "🚚 Mark Shipped";
+
+            case "Shipped":
+                return "🎉 Mark Delivered";
+
+            default:
+                return null;
+        }
+    }
+
+    // ==========================================
+    // UPDATE ONE ORDER
+    // ==========================================
+
+    async function updateOrderStatus(
+        order: Order,
+        newStatus: string
     ) {
+        const expected = nextStatus(order.status);
+
+        if (
+            newStatus !== "Cancelled" &&
+            expected !== newStatus
+        ) {
+            alert(
+                `Order #${order.id} must move to "${displayStatus(
+                    expected || order.status
+                )}" next.`
+            );
+
+            return;
+        }
+
+        let message =
+            `Update Order #${order.id} to "${displayStatus(
+                newStatus
+            )}"?`;
+
+        if (newStatus === "Confirmed") {
+            message = `Accept Order #${order.id}?`;
+        }
+
+        if (newStatus === "Cancelled") {
+            message = `Cancel Order #${order.id}?`;
+        }
+
+        if (!window.confirm(message)) {
+            return;
+        }
+
         try {
+            setUpdatingId(order.id);
+
             const response = await fetch(
                 "/api/update-order-status",
                 {
@@ -107,14 +297,13 @@ export default function OrdersPage() {
                     },
                     credentials: "include",
                     body: JSON.stringify({
-                        id,
-                        status,
+                        id: order.id,
+                        status: newStatus,
                     }),
                 }
             );
 
-            const result =
-                await response.json();
+            const result = await response.json();
 
             if (
                 !response.ok ||
@@ -122,1048 +311,1016 @@ export default function OrdersPage() {
             ) {
                 alert(
                     result.message ||
-                    "Unable to update order status."
+                    "Unable to update order."
                 );
+
                 return;
             }
-
-            alert(
-                "✅ Order Status Updated Successfully"
-            );
 
             await loadOrders();
         } catch (error) {
             console.error(
-                "Update Status Error:",
+                "Update Order Error:",
                 error
             );
 
             alert(
-                "Something went wrong while updating the order."
+                "Unable to update order."
             );
+        } finally {
+            setUpdatingId(null);
         }
     }
 
-    // ==================================================
-    // ARCHIVE ORDER
-    // ==================================================
+    // ==========================================
+    // SELECTION
+    // ==========================================
 
-    async function archiveOrder(id: number) {
-        const confirmed =
-            window.confirm(
-                `Archive Order #${id}? You can restore it later from Archived Orders.`
+    function toggleOrder(id: number) {
+        setSelectedIds((current) => {
+            if (current.includes(id)) {
+                return current.filter(
+                    (selectedId) =>
+                        selectedId !== id
+                );
+            }
+
+            return [...current, id];
+        });
+    }
+
+    function selectAllVisible() {
+        if (
+            orders.length > 0 &&
+            selectedIds.length === orders.length
+        ) {
+            setSelectedIds([]);
+            return;
+        }
+
+        setSelectedIds(
+            orders.map((order) => order.id)
+        );
+    }
+
+    const selectedOrders = useMemo(() => {
+        return orders.filter((order) =>
+            selectedIds.includes(order.id)
+        );
+    }, [orders, selectedIds]);
+
+    const selectedStatus =
+        selectedOrders.length > 0
+            ? selectedOrders[0].status
+            : null;
+
+    const sameStatus =
+        selectedOrders.length > 0 &&
+        selectedOrders.every(
+            (order) =>
+                order.status === selectedStatus
+        );
+
+    const bulkNextStatus =
+        sameStatus && selectedStatus
+            ? nextStatus(selectedStatus)
+            : null;
+
+    // ==========================================
+    // BULK UPDATE
+    // ==========================================
+
+    async function bulkUpdate() {
+        if (selectedOrders.length === 0) {
+            alert(
+                "Please select at least one order."
             );
+            return;
+        }
+
+        if (!sameStatus) {
+            alert(
+                "Please select orders with the same status."
+            );
+            return;
+        }
+
+        if (!bulkNextStatus) {
+            alert(
+                "The selected orders cannot move forward."
+            );
+            return;
+        }
+
+        let actionText = "Update";
+
+        if (bulkNextStatus === "Confirmed") {
+            actionText = "Accept";
+        }
+
+        if (bulkNextStatus === "Packed") {
+            actionText = "mark as Packed";
+        }
+
+        if (bulkNextStatus === "Shipped") {
+            actionText = "mark as Shipped";
+        }
+
+        if (bulkNextStatus === "Delivered") {
+            actionText = "mark as Delivered";
+        }
+
+        const confirmed = window.confirm(
+            `${actionText} ${
+                selectedOrders.length
+            } selected order${
+                selectedOrders.length > 1
+                    ? "s"
+                    : ""
+            }?`
+        );
 
         if (!confirmed) {
             return;
         }
 
         try {
-            setArchivingId(id);
+            setBulkUpdating(true);
 
-            const response = await fetch(
-                "/api/admin/orders/archive",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        id,
-                        archived: true,
-                    }),
+            let successCount = 0;
+            let failedCount = 0;
+
+            for (const order of selectedOrders) {
+                try {
+                    const response =
+                        await fetch(
+                            "/api/update-order-status",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+                                },
+                                credentials:
+                                    "include",
+                                body: JSON.stringify({
+                                    id: order.id,
+                                    status:
+                                    bulkNextStatus,
+                                }),
+                            }
+                        );
+
+                    const result =
+                        await response.json();
+
+                    if (
+                        response.ok &&
+                        result.success
+                    ) {
+                        successCount++;
+                    } else {
+                        failedCount++;
+                    }
+                } catch {
+                    failedCount++;
                 }
-            );
-
-            const result =
-                await response.json();
-
-            if (
-                !response.ok ||
-                !result.success
-            ) {
-                alert(
-                    result.message ||
-                    "Unable to archive order."
-                );
-                return;
             }
 
-            alert(
-                `📁 Order #${id} archived successfully.`
-            );
+            setSelectedIds([]);
 
             await loadOrders();
-        } catch (error) {
-            console.error(
-                "Archive Order Error:",
-                error
-            );
 
-            alert(
-                "Unable to archive order."
-            );
+            if (failedCount === 0) {
+                alert(
+                    `Successfully updated ${successCount} order${
+                        successCount > 1
+                            ? "s"
+                            : ""
+                    }.`
+                );
+            } else {
+                alert(
+                    `${successCount} orders updated successfully. ${failedCount} failed.`
+                );
+            }
         } finally {
-            setArchivingId(null);
+            setBulkUpdating(false);
         }
     }
 
-    // ==================================================
+    // ==========================================
+    // CANCEL SELECTED
+    // ==========================================
+
+    async function cancelSelected() {
+        if (selectedOrders.length === 0) {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Cancel ${
+                selectedOrders.length
+            } selected order${
+                selectedOrders.length > 1
+                    ? "s"
+                    : ""
+            }?`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setBulkUpdating(true);
+
+            let successCount = 0;
+            let failedCount = 0;
+
+            for (const order of selectedOrders) {
+                if (
+                    order.status ===
+                    "Delivered" ||
+                    order.status ===
+                    "Cancelled"
+                ) {
+                    failedCount++;
+                    continue;
+                }
+
+                try {
+                    const response =
+                        await fetch(
+                            "/api/update-order-status",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+                                },
+                                credentials:
+                                    "include",
+                                body: JSON.stringify({
+                                    id: order.id,
+                                    status:
+                                        "Cancelled",
+                                }),
+                            }
+                        );
+
+                    const result =
+                        await response.json();
+
+                    if (
+                        response.ok &&
+                        result.success
+                    ) {
+                        successCount++;
+                    } else {
+                        failedCount++;
+                    }
+                } catch {
+                    failedCount++;
+                }
+            }
+
+            setSelectedIds([]);
+
+            await loadOrders();
+
+            alert(
+                `${successCount} cancelled successfully${
+                    failedCount
+                        ? `, ${failedCount} failed`
+                        : ""
+                }.`
+            );
+        } finally {
+            setBulkUpdating(false);
+        }
+    }
+
+    // ==========================================
+    // CLEAR FILTERS
+    // ==========================================
+
+    function clearFilters() {
+        setSearch("");
+        setProductSearch("");
+        setStatusFilter("All");
+        setPaymentFilter("All");
+        setSortOrder("newest");
+        setPage(1);
+    }
+
+    // ==========================================
     // DATE
-    // ==================================================
+    // ==========================================
 
-    function formatDate(date: string) {
-        if (!date) return "-";
+    function formatDate(value: string) {
+        if (!value) {
+            return "-";
+        }
 
-        return new Date(date).toLocaleDateString(
+        return new Date(value).toLocaleString(
             "en-IN",
             {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
             }
         );
     }
 
-    // ==================================================
-    // STATUS COLOR
-    // ==================================================
-
-    function getStatusStyle(status: string) {
-        switch (
-            status?.toLowerCase()
-            ) {
-            case "confirmed":
-                return "bg-blue-100 text-blue-700";
-
-            case "packed":
-                return "bg-purple-100 text-purple-700";
-
-            case "shipped":
-                return "bg-indigo-100 text-indigo-700";
-
-            case "delivered":
-                return "bg-green-100 text-green-700";
-
-            case "cancelled":
-                return "bg-red-100 text-red-700";
-
-            default:
-                return "bg-yellow-100 text-yellow-700";
-        }
-    }
-
-    // ==================================================
-    // FILTER + SEARCH + SORT
-    // ==================================================
-
-    const filteredOrders = useMemo(() => {
-        const searchText =
-            search.trim().toLowerCase();
-
-        const result = orders.filter(
-            (order) => {
-                const matchesSearch =
-                    !searchText ||
-                    String(order.id)
-                        .toLowerCase()
-                        .includes(searchText) ||
-                    String(
-                        order.customer_name || ""
-                    )
-                        .toLowerCase()
-                        .includes(searchText) ||
-                    String(order.phone || "")
-                        .toLowerCase()
-                        .includes(searchText) ||
-                    String(order.email || "")
-                        .toLowerCase()
-                        .includes(searchText);
-
-                const matchesStatus =
-                    statusFilter === "All" ||
-                    (order.status ||
-                        "Pending") ===
-                    statusFilter;
-
-                const currentPayment =
-                    order.payment_status ||
-                    "Pending";
-
-                const matchesPayment =
-                    paymentFilter === "All" ||
-                    currentPayment ===
-                    paymentFilter;
-
-                return (
-                    matchesSearch &&
-                    matchesStatus &&
-                    matchesPayment
-                );
-            }
-        );
-
-        return [...result].sort(
-            (a, b) => {
-                const dateA =
-                    new Date(
-                        a.created_at
-                    ).getTime();
-
-                const dateB =
-                    new Date(
-                        b.created_at
-                    ).getTime();
-
-                return sortOrder === "newest"
-                    ? dateB - dateA
-                    : dateA - dateB;
-            }
-        );
-    }, [
-        orders,
-        search,
-        statusFilter,
-        paymentFilter,
-        sortOrder,
-    ]);
-
-    // ==================================================
-    // CLEAR FILTERS
-    // ==================================================
-
-    function clearFilters() {
-        setSearch("");
-        setStatusFilter("All");
-        setPaymentFilter("All");
-        setSortOrder("newest");
-    }
-
-    const filtersActive =
-        search.trim() !== "" ||
-        statusFilter !== "All" ||
-        paymentFilter !== "All" ||
-        sortOrder !== "newest";
-
-    // ==================================================
+    // ==========================================
     // PAGE
-    // ==================================================
+    // ==========================================
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50 overflow-x-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50">
 
             <AdminNavbar />
 
-            <main>
+            <main className="px-4 sm:px-6 lg:px-8 py-8">
 
-                {/* ======================================
-                    HEADER
-                ====================================== */}
+                <div className="max-w-7xl mx-auto">
 
-                <section className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-6">
+                    {/* HEADER */}
 
-                    <div className="max-w-7xl mx-auto">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
 
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm font-bold text-pink-600 uppercase tracking-wide">
+                                APSRAA ADMIN
+                            </p>
 
-                            <div>
+                            <h1 className="text-3xl sm:text-4xl font-bold text-pink-700">
+                                Customer Orders
+                            </h1>
 
-                                <p className="text-sm font-semibold text-pink-600 uppercase tracking-wide">
-                                    APSRAA ADMIN
-                                </p>
-
-                                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-pink-700 mt-1">
-                                    Customer Orders
-                                </h1>
-
-                                <p className="text-sm sm:text-base text-gray-500 mt-2">
-                                    Manage all customer orders from one place.
-                                </p>
-
-                            </div>
-
-                            <div className="flex items-center justify-between sm:block bg-pink-600 text-white px-5 py-3 rounded-xl sm:rounded-2xl shadow-md">
-
-                                <span className="font-semibold">
-                                    Total Orders
-                                </span>
-
-                                <span className="ml-2 font-bold">
-                                    {orders.length}
-                                </span>
-
-                            </div>
-
+                            <p className="text-gray-500 mt-1">
+                                Accept and process orders in batches.
+                            </p>
                         </div>
 
-                        {/* ARCHIVED ORDERS LINK */}
-
-                        <div className="mt-5 flex justify-start sm:justify-end">
-
-                            <Link
-                                href="/admin/orders/archived"
-                                className="inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-5 py-3 rounded-xl font-bold shadow-md transition active:scale-[0.98]"
-                            >
-                                📁 Archived Orders
-                            </Link>
-
-                        </div>
+                        <Link
+                            href="/admin/orders/archived"
+                            className="bg-gray-800 hover:bg-gray-900 text-white px-5 py-3 rounded-xl font-bold text-center"
+                        >
+                            📁 Archived Orders
+                        </Link>
 
                     </div>
 
-                </section>
+                    {/* SEARCH */}
 
-                {/* ======================================
-                    SEARCH + FILTERS
-                ====================================== */}
+                    <section className="bg-white rounded-2xl shadow-md border border-pink-100 p-4 mb-5">
 
-                {!loading && orders.length > 0 && (
-                    <section className="px-4 sm:px-6 lg:px-8 pb-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-                        <div className="max-w-7xl mx-auto">
+                            <input
+                                value={search}
+                                onChange={(event) => {
+                                    setSearch(
+                                        event.target.value
+                                    );
+                                    setPage(1);
+                                }}
+                                placeholder="🔎 Search order ID, customer, phone or email"
+                                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-pink-500"
+                            />
 
-                            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-pink-100 p-4 sm:p-5">
+                            <input
+                                value={productSearch}
+                                onChange={(event) => {
+                                    setProductSearch(
+                                        event.target.value
+                                    );
+                                    setPage(1);
+                                }}
+                                placeholder="💎 Search product name, e.g. CHOKER SET"
+                                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-pink-500"
+                            />
 
-                                {/* SEARCH */}
+                        </div>
 
-                                <div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
 
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                                        Search Orders
-                                    </label>
+                            <select
+                                value={statusFilter}
+                                onChange={(event) => {
+                                    setStatusFilter(
+                                        event.target.value
+                                    );
+                                    setPage(1);
+                                }}
+                                className="border-2 border-gray-200 rounded-xl px-4 py-3 bg-white font-semibold"
+                            >
+                                <option value="All">
+                                    All Statuses
+                                </option>
 
-                                    <div className="relative">
+                                <option value="Pending">
+                                    🟡 Pending
+                                </option>
 
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg">
-                                            🔎
-                                        </span>
+                                <option value="Confirmed">
+                                    🔵 Ready to Dispatch
+                                </option>
 
-                                        <input
-                                            type="text"
-                                            value={search}
-                                            onChange={(e) =>
-                                                setSearch(
-                                                    e.target.value
-                                                )
-                                            }
-                                            placeholder="Search by order ID, name, phone or email..."
-                                            className="w-full border-2 border-gray-200 rounded-xl pl-11 pr-4 py-3.5 text-sm sm:text-base focus:outline-none focus:border-pink-500 transition"
-                                        />
+                                <option value="Packed">
+                                    📦 Packed
+                                </option>
 
-                                    </div>
+                                <option value="Shipped">
+                                    🚚 Shipped
+                                </option>
 
-                                </div>
+                                <option value="Delivered">
+                                    🎉 Delivered
+                                </option>
 
-                                {/* FILTERS */}
+                                <option value="Cancelled">
+                                    ❌ Cancelled
+                                </option>
+                            </select>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                            <select
+                                value={paymentFilter}
+                                onChange={(event) => {
+                                    setPaymentFilter(
+                                        event.target.value
+                                    );
+                                    setPage(1);
+                                }}
+                                className="border-2 border-gray-200 rounded-xl px-4 py-3 bg-white font-semibold"
+                            >
+                                <option value="All">
+                                    All Payments
+                                </option>
 
-                                    <div>
+                                <option value="Paid">
+                                    ✅ Paid
+                                </option>
 
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                                            Status
-                                        </label>
+                                <option value="Pending">
+                                    🟡 Pending
+                                </option>
+                            </select>
 
-                                        <select
-                                            value={statusFilter}
-                                            onChange={(e) =>
-                                                setStatusFilter(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full border-2 border-gray-200 rounded-xl px-3 py-3 bg-white text-gray-800 font-semibold text-sm focus:outline-none focus:border-pink-500"
-                                        >
+                            <select
+                                value={sortOrder}
+                                onChange={(event) => {
+                                    setSortOrder(
+                                        event.target.value
+                                    );
+                                    setPage(1);
+                                }}
+                                className="border-2 border-gray-200 rounded-xl px-4 py-3 bg-white font-semibold"
+                            >
+                                <option value="newest">
+                                    Newest First
+                                </option>
 
-                                            <option value="All">
-                                                All Statuses
-                                            </option>
+                                <option value="oldest">
+                                    Oldest First
+                                </option>
+                            </select>
 
-                                            <option value="Pending">
-                                                🟡 Pending
-                                            </option>
+                        </div>
 
-                                            <option value="Confirmed">
-                                                🔵 Confirmed
-                                            </option>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-4 border-t">
 
-                                            <option value="Packed">
-                                                📦 Packed
-                                            </option>
+                            <p className="text-sm text-gray-600">
+                                Showing{" "}
+                                <strong>
+                                    {orders.length}
+                                </strong>{" "}
+                                of{" "}
+                                <strong>
+                                    {totalOrders}
+                                </strong>{" "}
+                                orders
+                            </p>
 
-                                            <option value="Shipped">
-                                                🚚 Shipped
-                                            </option>
-
-                                            <option value="Delivered">
-                                                ✅ Delivered
-                                            </option>
-
-                                            <option value="Cancelled">
-                                                ❌ Cancelled
-                                            </option>
-
-                                        </select>
-
-                                    </div>
-
-                                    <div>
-
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                                            Payment
-                                        </label>
-
-                                        <select
-                                            value={paymentFilter}
-                                            onChange={(e) =>
-                                                setPaymentFilter(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full border-2 border-gray-200 rounded-xl px-3 py-3 bg-white text-gray-800 font-semibold text-sm focus:outline-none focus:border-pink-500"
-                                        >
-
-                                            <option value="All">
-                                                All Payments
-                                            </option>
-
-                                            <option value="Paid">
-                                                ✅ Paid
-                                            </option>
-
-                                            <option value="Pending">
-                                                🟡 Pending
-                                            </option>
-
-                                        </select>
-
-                                    </div>
-
-                                    <div>
-
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
-                                            Sort Orders
-                                        </label>
-
-                                        <select
-                                            value={sortOrder}
-                                            onChange={(e) =>
-                                                setSortOrder(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full border-2 border-gray-200 rounded-xl px-3 py-3 bg-white text-gray-800 font-semibold text-sm focus:outline-none focus:border-pink-500"
-                                        >
-
-                                            <option value="newest">
-                                                Newest First
-                                            </option>
-
-                                            <option value="oldest">
-                                                Oldest First
-                                            </option>
-
-                                        </select>
-
-                                    </div>
-
-                                </div>
-
-                                {/* RESULT COUNT + CLEAR */}
-
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-4 border-t">
-
-                                    <p className="text-sm text-gray-600">
-
-                                        Showing{" "}
-
-                                        <span className="font-bold text-gray-900">
-                                            {filteredOrders.length}
-                                        </span>
-
-                                        {" "}of{" "}
-
-                                        <span className="font-bold text-gray-900">
-                                            {orders.length}
-                                        </span>
-
-                                        {" "}orders
-
-                                    </p>
-
-                                    {filtersActive && (
-                                        <button
-                                            type="button"
-                                            onClick={clearFilters}
-                                            className="w-full sm:w-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-semibold text-sm transition"
-                                        >
-                                            ✕ Clear Filters
-                                        </button>
-                                    )}
-
-                                </div>
-
-                            </div>
+                            <button
+                                type="button"
+                                onClick={
+                                    clearFilters
+                                }
+                                className="text-sm bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-xl font-semibold"
+                            >
+                                ✕ Clear Filters
+                            </button>
 
                         </div>
 
                     </section>
-                )}
 
-                {/* ======================================
-                    CONTENT
-                ====================================== */}
+                    {/* BULK ACTION BAR */}
 
-                <section className="px-4 sm:px-6 lg:px-8 pb-12">
+                    <section className="bg-white rounded-2xl shadow-md border-2 border-pink-200 p-4 mb-5">
 
-                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
-                        {/* LOADING */}
+                            <div className="flex items-center gap-3">
 
-                        {loading ? (
+                                <input
+                                    type="checkbox"
+                                    checked={
+                                        orders.length > 0 &&
+                                        selectedIds.length ===
+                                        orders.length
+                                    }
+                                    onChange={
+                                        selectAllVisible
+                                    }
+                                    className="w-5 h-5 accent-pink-600"
+                                />
 
-                            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md p-12 sm:p-16 text-center">
+                                <div>
+                                    <p className="font-bold text-gray-900">
+                                        Select All
+                                    </p>
 
-                                <div className="text-5xl mb-4">
-                                    📦
+                                    <p className="text-sm text-gray-500">
+                                        {selectedIds.length}{" "}
+                                        selected
+                                    </p>
                                 </div>
-
-                                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-                                    Loading Orders...
-                                </h2>
-
-                                <p className="text-gray-500 mt-2">
-                                    Please wait.
-                                </p>
 
                             </div>
 
-                        ) : filteredOrders.length === 0 ? (
+                            {selectedIds.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
 
-                            /* NO RESULTS */
-
-                            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md p-10 sm:p-16 text-center">
-
-                                <div className="text-6xl mb-5">
-                                    🔎
-                                </div>
-
-                                <h2 className="text-2xl sm:text-3xl font-bold text-gray-700">
-                                    No Orders Found
-                                </h2>
-
-                                <p className="text-gray-500 mt-3">
-                                    No orders match your current search or filters.
-                                </p>
-
-                                {filtersActive && (
-                                    <button
-                                        type="button"
-                                        onClick={clearFilters}
-                                        className="mt-5 bg-pink-600 hover:bg-pink-700 text-white px-6 py-3 rounded-xl font-semibold"
-                                    >
-                                        Clear Filters
-                                    </button>
-                                )}
-
-                            </div>
-
-                        ) : (
-
-                            <>
-
-                                {/* ==================================
-                                    MOBILE ORDER CARDS
-                                ================================== */}
-
-                                <div className="block lg:hidden space-y-4">
-
-                                    {filteredOrders.map(
-                                        (order) => (
-
-                                            <article
-                                                key={order.id}
-                                                className="bg-white rounded-2xl shadow-md overflow-hidden border border-pink-100"
+                                    {sameStatus &&
+                                        bulkNextStatus && (
+                                            <button
+                                                type="button"
+                                                disabled={
+                                                    bulkUpdating
+                                                }
+                                                onClick={
+                                                    bulkUpdate
+                                                }
+                                                className="bg-pink-600 hover:bg-pink-700 disabled:opacity-50 text-white px-5 py-3 rounded-xl font-bold"
                                             >
-
-                                                {/* Card Header */}
-
-                                                <div className="bg-gradient-to-r from-pink-600 to-pink-700 text-white px-4 py-4">
-
-                                                    <div className="flex items-center justify-between gap-3">
-
-                                                        <div>
-
-                                                            <p className="text-xs uppercase tracking-wide opacity-80">
-                                                                Order
-                                                            </p>
-
-                                                            <p className="text-xl font-bold">
-                                                                #{order.id}
-                                                            </p>
-
-                                                        </div>
-
-                                                        <span
-                                                            className={`px-3 py-1.5 rounded-full text-xs font-bold ${getStatusStyle(
-                                                                order.status
-                                                            )}`}
-                                                        >
-                                                            {order.status ||
-                                                                "Pending"}
-                                                        </span>
-
-                                                    </div>
-
-                                                </div>
-
-                                                {/* Customer */}
-
-                                                <div className="p-4 space-y-4">
-
-                                                    <div>
-
-                                                        <p className="text-xs text-gray-400 uppercase tracking-wide">
-                                                            Customer
-                                                        </p>
-
-                                                        <p className="text-lg font-bold text-gray-900 mt-1">
-                                                            {order.customer_name}
-                                                        </p>
-
-                                                    </div>
-
-                                                    {/* Phone + Date */}
-
-                                                    <div className="grid grid-cols-2 gap-4">
-
-                                                        <div>
-
-                                                            <p className="text-xs text-gray-400 uppercase tracking-wide">
-                                                                Phone
-                                                            </p>
-
-                                                            <a
-                                                                href={`tel:${order.phone}`}
-                                                                className="text-sm font-semibold text-pink-600 mt-1 block break-all"
-                                                            >
-                                                                📞 {order.phone}
-                                                            </a>
-
-                                                        </div>
-
-                                                        <div>
-
-                                                            <p className="text-xs text-gray-400 uppercase tracking-wide">
-                                                                Date
-                                                            </p>
-
-                                                            <p className="text-sm font-semibold text-gray-700 mt-1">
-                                                                {formatDate(
-                                                                    order.created_at
-                                                                )}
-                                                            </p>
-
-                                                        </div>
-
-                                                    </div>
-
-                                                    {/* Email */}
-
-                                                    <div>
-
-                                                        <p className="text-xs text-gray-400 uppercase tracking-wide">
-                                                            Email
-                                                        </p>
-
-                                                        <p className="text-sm text-gray-700 mt-1 break-all">
-                                                            {order.email ||
-                                                                "-"}
-                                                        </p>
-
-                                                    </div>
-
-                                                    {/* Address */}
-
-                                                    <div>
-
-                                                        <p className="text-xs text-gray-400 uppercase tracking-wide">
-                                                            Delivery Address
-                                                        </p>
-
-                                                        <p className="text-sm text-gray-700 mt-1 leading-relaxed">
-                                                            {order.address}
-                                                        </p>
-
-                                                    </div>
-
-                                                    {/* Amount + Payment */}
-
-                                                    <div className="grid grid-cols-2 gap-3">
-
-                                                        <div className="bg-green-50 rounded-xl p-3">
-
-                                                            <p className="text-xs text-gray-500">
-                                                                Amount
-                                                            </p>
-
-                                                            <p className="text-xl font-bold text-green-600 mt-1">
-                                                                ₹{order.total}
-                                                            </p>
-
-                                                        </div>
-
-                                                        <div className="bg-gray-50 rounded-xl p-3">
-
-                                                            <p className="text-xs text-gray-500">
-                                                                Payment
-                                                            </p>
-
-                                                            <p
-                                                                className={`text-sm font-bold mt-2 ${
-                                                                    order.payment_status ===
-                                                                    "Paid"
-                                                                        ? "text-green-600"
-                                                                        : "text-yellow-600"
-                                                                }`}
-                                                            >
-                                                                {order.payment_status ===
-                                                                "Paid"
-                                                                    ? "✅ Paid"
-                                                                    : `🟡 ${
-                                                                        order.payment_status ||
-                                                                        "Pending"
-                                                                    }`}
-                                                            </p>
-
-                                                        </div>
-
-                                                    </div>
-
-                                                    {/* Status */}
-
-                                                    <div>
-
-                                                        <label className="text-xs text-gray-400 uppercase tracking-wide">
-                                                            Update Status
-                                                        </label>
-
-                                                        <select
-                                                            value={
-                                                                order.status ||
-                                                                "Pending"
-                                                            }
-                                                            onChange={(
-                                                                e
-                                                            ) =>
-                                                                updateStatus(
-                                                                    order.id,
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            }
-                                                            className="mt-2 w-full border-2 border-gray-200 rounded-xl px-3 py-3 bg-white text-gray-800 font-semibold focus:border-pink-500 focus:outline-none"
-                                                        >
-
-                                                            <option value="Pending">
-                                                                🟡 Pending
-                                                            </option>
-
-                                                            <option value="Confirmed">
-                                                                🔵 Confirmed
-                                                            </option>
-
-                                                            <option value="Packed">
-                                                                📦 Packed
-                                                            </option>
-
-                                                            <option value="Shipped">
-                                                                🚚 Shipped
-                                                            </option>
-
-                                                            <option value="Delivered">
-                                                                ✅ Delivered
-                                                            </option>
-
-                                                            <option value="Cancelled">
-                                                                ❌ Cancelled
-                                                            </option>
-
-                                                        </select>
-
-                                                    </div>
-
-                                                    {/* Actions */}
-
-                                                    <div className="grid grid-cols-2 gap-3 pt-1">
-
-                                                        <Link
-                                                            href={`/admin/orders/${order.id}`}
-                                                            className="bg-pink-600 text-white text-center px-3 py-3 rounded-xl font-semibold hover:bg-pink-700 active:scale-[0.98] transition"
-                                                        >
-                                                            👁 View
-                                                        </Link>
-
-                                                        <Link
-                                                            href={`/admin/orders/${order.id}/invoice`}
-                                                            target="_blank"
-                                                            className="bg-green-600 text-white text-center px-3 py-3 rounded-xl font-semibold hover:bg-green-700 active:scale-[0.98] transition"
-                                                        >
-                                                            🖨 Invoice
-                                                        </Link>
-
-                                                    </div>
-
-                                                    {/* ARCHIVE */}
-
-                                                    <button
-                                                        type="button"
-                                                        disabled={archivingId === order.id}
-                                                        onClick={() => archiveOrder(order.id)}
-                                                        className="w-full bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-3 rounded-xl font-bold transition border-2 border-gray-800"
-                                                    >
-                                                        {archivingId === order.id
-                                                            ? "⏳ Archiving..."
-                                                            : "📁 Archive Order"}
-                                                    </button>
-
-                                                </div>
-
-                                            </article>
-
-                                        )
-                                    )}
-
-                                </div>
-
-                                {/* ==================================
-                                    DESKTOP TABLE
-                                ================================== */}
-
-                                <div className="hidden lg:block overflow-x-auto bg-white rounded-3xl shadow-xl">
-
-                                    <table className="min-w-full">
-
-                                        <thead className="bg-gradient-to-r from-pink-600 to-pink-700 text-white">
-
-                                        <tr>
-
-                                            <th className="p-5 text-left">
-                                                Order
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Customer
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Phone
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Email
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Address
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Amount
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Payment
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Status
-                                            </th>
-
-                                            <th className="p-5 text-left">
-                                                Date
-                                            </th>
-
-                                            <th className="p-5 text-center">
-                                                Action
-                                            </th>
-
-                                        </tr>
-
-                                        </thead>
-
-                                        <tbody>
-
-                                        {filteredOrders.map(
-                                            (order) => (
-
-                                                <tr
-                                                    key={order.id}
-                                                    className="border-b hover:bg-pink-50 transition"
-                                                >
-
-                                                    <td className="p-5 font-bold text-pink-700">
-                                                        #{order.id}
-                                                    </td>
-
-                                                    <td className="p-5 font-semibold">
-                                                        {order.customer_name}
-                                                    </td>
-
-                                                    <td className="p-5">
-                                                        {order.phone}
-                                                    </td>
-
-                                                    <td className="p-5">
-                                                        {order.email ||
-                                                            "-"}
-                                                    </td>
-
-                                                    <td className="p-5 max-w-xs">
-                                                        <div className="truncate">
-                                                            {order.address}
-                                                        </div>
-                                                    </td>
-
-                                                    <td className="p-5 font-bold text-green-600">
-                                                        ₹{order.total}
-                                                    </td>
-
-                                                    <td className="p-5">
-
-                                                        {order.payment_status ===
-                                                        "Paid" ? (
-
-                                                            <span className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold">
-                                                                    ✅ Paid
-                                                                </span>
-
-                                                        ) : (
-
-                                                            <span className="inline-block bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full font-bold">
-                                                                    🟡{" "}
-                                                                {order.payment_status ||
-                                                                    "Pending"}
-                                                                </span>
-
-                                                        )}
-
-                                                    </td>
-
-                                                    <td className="p-5">
-
-                                                        <select
-                                                            value={
-                                                                order.status ||
-                                                                "Pending"
-                                                            }
-                                                            onChange={(
-                                                                e
-                                                            ) =>
-                                                                updateStatus(
-                                                                    order.id,
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            }
-                                                            className="border rounded-lg px-3 py-2"
-                                                        >
-
-                                                            <option value="Pending">
-                                                                🟡 Pending
-                                                            </option>
-
-                                                            <option value="Confirmed">
-                                                                🔵 Confirmed
-                                                            </option>
-
-                                                            <option value="Packed">
-                                                                📦 Packed
-                                                            </option>
-
-                                                            <option value="Shipped">
-                                                                🚚 Shipped
-                                                            </option>
-
-                                                            <option value="Delivered">
-                                                                ✅ Delivered
-                                                            </option>
-
-                                                            <option value="Cancelled">
-                                                                ❌ Cancelled
-                                                            </option>
-
-                                                        </select>
-
-                                                    </td>
-
-                                                    <td className="p-5 text-gray-500">
-                                                        {formatDate(
-                                                            order.created_at
-                                                        )}
-                                                    </td>
-
-                                                    <td className="p-5">
-
-                                                        <div className="flex flex-col gap-2">
-
-                                                            <Link
-                                                                href={`/admin/orders/${order.id}`}
-                                                                className="bg-pink-600 text-white text-center px-4 py-2 rounded-xl hover:bg-pink-700 transition"
-                                                            >
-                                                                👁 View
-                                                            </Link>
-
-                                                            <Link
-                                                                href={`/admin/orders/${order.id}/invoice`}
-                                                                target="_blank"
-                                                                className="bg-green-600 text-white text-center px-4 py-2 rounded-xl hover:bg-green-700 transition"
-                                                            >
-                                                                🖨 Invoice
-                                                            </Link>
-
-                                                            <button
-                                                                type="button"
-                                                                disabled={
-                                                                    archivingId ===
-                                                                    order.id
-                                                                }
-                                                                onClick={() =>
-                                                                    archiveOrder(
-                                                                        order.id
-                                                                    )
-                                                                }
-                                                                className="bg-gray-800 hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition"
-                                                            >
-                                                                {archivingId ===
-                                                                order.id
-                                                                    ? "Archiving..."
-                                                                    : "📁 Archive"}
-                                                            </button>
-
-                                                        </div>
-
-                                                    </td>
-
-                                                </tr>
-
-                                            )
+                                                {bulkUpdating
+                                                    ? "⏳ Updating..."
+                                                    : `${nextButton(
+                                                        selectedStatus ||
+                                                        ""
+                                                    )} (${selectedIds.length})`}
+                                            </button>
                                         )}
 
-                                        </tbody>
+                                    <button
+                                        type="button"
+                                        disabled={
+                                            bulkUpdating
+                                        }
+                                        onClick={
+                                            cancelSelected
+                                        }
+                                        className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-600 border border-red-200 px-5 py-3 rounded-xl font-bold"
+                                    >
+                                        ❌ Cancel Selected
+                                    </button>
 
-                                    </table>
+                                    <button
+                                        type="button"
+                                        disabled={
+                                            bulkUpdating
+                                        }
+                                        onClick={() =>
+                                            setSelectedIds(
+                                                []
+                                            )
+                                        }
+                                        className="bg-gray-100 hover:bg-gray-200 px-5 py-3 rounded-xl font-bold"
+                                    >
+                                        Clear Selection
+                                    </button>
 
                                 </div>
+                            )}
 
-                            </>
+                        </div>
 
-                        )}
+                        {selectedIds.length > 0 &&
+                            !sameStatus && (
+                                <div className="mt-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-3 text-sm font-semibold">
+                                    ⚠️ Select orders from the same status before using a bulk workflow action.
+                                </div>
+                            )}
 
-                    </div>
+                    </section>
 
-                </section>
+                    {/* ORDERS */}
+
+                    {loading ? (
+                        <div className="bg-white rounded-3xl shadow-md p-16 text-center">
+
+                            <div className="text-5xl mb-4">
+                                📦
+                            </div>
+
+                            <p className="text-xl font-bold text-gray-700">
+                                Loading Orders...
+                            </p>
+
+                        </div>
+                    ) : orders.length === 0 ? (
+                        <div className="bg-white rounded-3xl shadow-md p-16 text-center">
+
+                            <div className="text-6xl mb-4">
+                                🔎
+                            </div>
+
+                            <h2 className="text-2xl font-bold text-gray-700">
+                                No Orders Found
+                            </h2>
+
+                            <p className="text-gray-500 mt-2">
+                                Try changing your search or filters.
+                            </p>
+
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+
+                            {orders.map((order) => {
+                                const selected =
+                                    selectedIds.includes(
+                                        order.id
+                                    );
+
+                                const next =
+                                    nextStatus(
+                                        order.status
+                                    );
+
+                                return (
+                                    <article
+                                        key={order.id}
+                                        className={`bg-white rounded-2xl shadow-md overflow-hidden border-2 ${
+                                            selected
+                                                ? "border-pink-500"
+                                                : "border-pink-100"
+                                        }`}
+                                    >
+
+                                        {/* ORDER HEADER */}
+
+                                        <div className="bg-gradient-to-r from-pink-600 to-pink-700 text-white px-5 py-4">
+
+                                            <div className="flex items-center justify-between gap-4">
+
+                                                <div className="flex items-center gap-4">
+
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            selected
+                                                        }
+                                                        onChange={() =>
+                                                            toggleOrder(
+                                                                order.id
+                                                            )
+                                                        }
+                                                        className="w-5 h-5"
+                                                    />
+
+                                                    <div>
+                                                        <p className="text-xs uppercase opacity-80">
+                                                            Order
+                                                        </p>
+
+                                                        <p className="text-2xl font-bold">
+                                                            #
+                                                            {
+                                                                order.id
+                                                            }
+                                                        </p>
+                                                    </div>
+
+                                                </div>
+
+                                                <span
+                                                    className={`px-4 py-2 rounded-full text-sm font-bold ${statusClass(
+                                                        order.status
+                                                    )}`}
+                                                >
+                                                    {displayStatus(
+                                                        order.status
+                                                    )}
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+
+                                        <div className="p-5">
+
+                                            {/* DETAILS */}
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                                                <div>
+                                                    <p className="text-xs uppercase text-gray-400">
+                                                        Customer
+                                                    </p>
+
+                                                    <p className="font-bold text-gray-900 mt-1">
+                                                        {
+                                                            order.customer_name
+                                                        }
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs uppercase text-gray-400">
+                                                        Phone
+                                                    </p>
+
+                                                    <a
+                                                        href={`tel:${order.phone}`}
+                                                        className="font-semibold text-pink-600 mt-1 block"
+                                                    >
+                                                        📞{" "}
+                                                        {
+                                                            order.phone
+                                                        }
+                                                    </a>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs uppercase text-gray-400">
+                                                        Payment
+                                                    </p>
+
+                                                    <p
+                                                        className={`font-bold mt-1 ${
+                                                            order.payment_status ===
+                                                            "Paid"
+                                                                ? "text-green-600"
+                                                                : "text-yellow-600"
+                                                        }`}
+                                                    >
+                                                        {order.payment_status ===
+                                                        "Paid"
+                                                            ? "✅ Paid"
+                                                            : "🟡 " +
+                                                            (order.payment_status ||
+                                                                "Pending")}
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-xs uppercase text-gray-400">
+                                                        Amount
+                                                    </p>
+
+                                                    <p className="font-bold text-green-600 text-xl mt-1">
+                                                        ₹
+                                                        {
+                                                            order.total
+                                                        }
+                                                    </p>
+                                                </div>
+
+                                            </div>
+
+                                            {/* ADDRESS */}
+
+                                            <div className="mt-4">
+                                                <p className="text-xs uppercase text-gray-400">
+                                                    Delivery Address
+                                                </p>
+
+                                                <p className="text-sm text-gray-700 mt-1">
+                                                    {
+                                                        order.address
+                                                    }
+                                                </p>
+                                            </div>
+
+                                            {/* PROGRESS */}
+
+                                            <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4">
+
+                                                <p className="text-xs font-bold uppercase text-gray-400 mb-3">
+                                                    Order Progress
+                                                </p>
+
+                                                <div className="flex items-center">
+
+                                                    {STATUS_FLOW.map(
+                                                        (
+                                                            stage,
+                                                            index
+                                                        ) => {
+                                                            const currentIndex =
+                                                                STATUS_FLOW.indexOf(
+                                                                    order.status
+                                                                );
+
+                                                            const complete =
+                                                                currentIndex >=
+                                                                index;
+
+                                                            return (
+                                                                <div
+                                                                    key={
+                                                                        stage
+                                                                    }
+                                                                    className="flex items-center flex-1"
+                                                                >
+
+                                                                    <div className="flex flex-col items-center min-w-0">
+
+                                                                        <div
+                                                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                                                complete
+                                                                                    ? "bg-pink-600 text-white"
+                                                                                    : "bg-gray-200 text-gray-500"
+                                                                            }`}
+                                                                        >
+                                                                            {
+                                                                                index +
+                                                                                1
+                                                                            }
+                                                                        </div>
+
+                                                                        <span className="text-[10px] sm:text-xs text-gray-500 mt-1 text-center">
+                                                                            {stage ===
+                                                                            "Confirmed"
+                                                                                ? "Ready"
+                                                                                : stage}
+                                                                        </span>
+
+                                                                    </div>
+
+                                                                    {index <
+                                                                        STATUS_FLOW.length -
+                                                                        1 && (
+                                                                            <div
+                                                                                className={`h-1 flex-1 mx-1 rounded ${
+                                                                                    complete &&
+                                                                                    currentIndex >
+                                                                                    index
+                                                                                        ? "bg-pink-600"
+                                                                                        : "bg-gray-200"
+                                                                                }`}
+                                                                            />
+                                                                        )}
+
+                                                                </div>
+                                                            );
+                                                        }
+                                                    )}
+
+                                                </div>
+
+                                            </div>
+
+                                            {/* ACTION BUTTONS */}
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+
+                                                {next && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            updatingId ===
+                                                            order.id ||
+                                                            bulkUpdating
+                                                        }
+                                                        onClick={() =>
+                                                            updateOrderStatus(
+                                                                order,
+                                                                next
+                                                            )
+                                                        }
+                                                        className="bg-pink-600 hover:bg-pink-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold"
+                                                    >
+                                                        {updatingId ===
+                                                        order.id
+                                                            ? "⏳ Updating..."
+                                                            : nextButton(
+                                                                order.status
+                                                            )}
+                                                    </button>
+                                                )}
+
+                                                <Link
+                                                    href={`/admin/orders/${order.id}`}
+                                                    className="bg-gray-800 hover:bg-gray-900 text-white text-center px-4 py-3 rounded-xl font-bold"
+                                                >
+                                                    👁 View Order
+                                                </Link>
+
+                                                <Link
+                                                    href={`/admin/orders/${order.id}/invoice`}
+                                                    target="_blank"
+                                                    className="bg-green-600 hover:bg-green-700 text-white text-center px-4 py-3 rounded-xl font-bold"
+                                                >
+                                                    🖨 Invoice
+                                                </Link>
+
+                                                {order.status !==
+                                                    "Delivered" &&
+                                                    order.status !==
+                                                    "Cancelled" && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={
+                                                                updatingId ===
+                                                                order.id
+                                                            }
+                                                            onClick={() =>
+                                                                updateOrderStatus(
+                                                                    order,
+                                                                    "Cancelled"
+                                                                )
+                                                            }
+                                                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-3 rounded-xl font-bold"
+                                                        >
+                                                            ❌ Cancel
+                                                        </button>
+                                                    )}
+
+                                            </div>
+
+                                            <p className="text-xs text-gray-400 mt-3">
+                                                Order placed:{" "}
+                                                {formatDate(
+                                                    order.created_at
+                                                )}
+                                            </p>
+
+                                        </div>
+
+                                    </article>
+                                );
+                            })}
+
+                        </div>
+                    )}
+
+                    {/* PAGINATION */}
+
+                    {totalPages > 1 && (
+                        <div className="bg-white rounded-2xl shadow-md p-4 mt-5 flex items-center justify-between gap-4">
+
+                            <button
+                                type="button"
+                                disabled={page <= 1}
+                                onClick={() =>
+                                    setPage(
+                                        Math.max(
+                                            1,
+                                            page - 1
+                                        )
+                                    )
+                                }
+                                className="px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 disabled:opacity-40 font-bold"
+                            >
+                                ← Previous
+                            </button>
+
+                            <p className="font-semibold text-gray-700">
+                                Page {page} of{" "}
+                                {totalPages}
+                            </p>
+
+                            <button
+                                type="button"
+                                disabled={
+                                    page >=
+                                    totalPages
+                                }
+                                onClick={() =>
+                                    setPage(
+                                        Math.min(
+                                            totalPages,
+                                            page + 1
+                                        )
+                                    )
+                                }
+                                className="px-5 py-3 rounded-xl bg-pink-600 hover:bg-pink-700 disabled:opacity-40 text-white font-bold"
+                            >
+                                Next →
+                            </button>
+
+                        </div>
+                    )}
+
+                </div>
 
             </main>
 

@@ -3,13 +3,31 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 
+// ==========================================
+// ALLOWED ORDER STATUSES
+// ==========================================
+
 const allowedStatuses = [
+    // Normal order flow
     "Pending",
     "Confirmed",
     "Packed",
     "Shipped",
     "Delivered",
+
+    // Cancellation
     "Cancelled",
+
+    // Customer return flow
+    "Return Requested",
+    "Return Approved",
+    "Return Rejected",
+    "Return Received",
+    "Refunded",
+
+    // RTO flow
+    "RTO",
+    "RTO Received",
 ];
 
 export async function POST(req: Request) {
@@ -186,7 +204,9 @@ export async function POST(req: Request) {
             error: findError,
         } = await supabaseAdmin
             .from("orders")
-            .select("id, status, delivered_at")
+            .select(
+                "id, status, delivered_at"
+            )
             .eq("id", id)
             .single();
 
@@ -203,7 +223,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // PREPARE UPDATE
+        // PREPARE ORDER UPDATE
         // ==========================================
 
         const updateData: {
@@ -213,24 +233,34 @@ export async function POST(req: Request) {
             status,
         };
 
-        // When order becomes Delivered for the first time,
-        // record the current timestamp.
+        // ==========================================
+        // DELIVERY TIMESTAMP
+        // ==========================================
+
+        // When an order becomes Delivered for the first
+        // time, save the delivery timestamp.
+
         if (
             status === "Delivered" &&
-            order.status !== "Delivered"
+            !order.delivered_at
         ) {
             updateData.delivered_at =
                 new Date().toISOString();
         }
 
-        // If an order is moved away from Delivered,
-        // clear the delivery timestamp.
-        if (
-            status !== "Delivered" &&
-            order.status === "Delivered"
-        ) {
-            updateData.delivered_at = null;
-        }
+        // IMPORTANT:
+        //
+        // We intentionally DO NOT clear delivered_at
+        // when an order later becomes:
+        //
+        // Return Requested
+        // Return Approved
+        // Return Rejected
+        // Return Received
+        // Refunded
+        //
+        // The delivery timestamp is historical information
+        // and should remain available.
 
         // ==========================================
         // UPDATE ORDER
@@ -266,6 +296,45 @@ export async function POST(req: Request) {
             );
         }
 
+        // ==========================================
+        // SAVE STATUS HISTORY
+        // ==========================================
+
+        // Only create a history record when the status
+        // actually changes.
+
+        if (order.status !== status) {
+            const {
+                error: historyError,
+            } = await supabaseAdmin
+                .from("order_status_history")
+                .insert({
+                    order_id: id,
+                    status,
+                    changed_at:
+                        new Date().toISOString(),
+                });
+
+            if (historyError) {
+                console.error(
+                    "Order Status History Error:",
+                    historyError
+                );
+
+                // The order update succeeded.
+                // Keep the status change even if history
+                // saving fails.
+            } else {
+                console.log(
+                    `📝 Order #${id} history saved: ${status}`
+                );
+            }
+        }
+
+        // ==========================================
+        // LOG STATUS CHANGE
+        // ==========================================
+
         console.log(
             `✅ Order #${id} status changed from ${order.status} to ${status}`
         );
@@ -276,12 +345,17 @@ export async function POST(req: Request) {
             );
         }
 
+        // ==========================================
+        // SUCCESS RESPONSE
+        // ==========================================
+
         return NextResponse.json({
             success: true,
             message:
                 "Order status updated successfully.",
             order: updatedOrder,
         });
+
     } catch (error) {
         console.error(
             "Update Order Status Error:",

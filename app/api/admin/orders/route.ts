@@ -109,7 +109,8 @@ export async function GET(req: Request) {
 
         if (
             !loggedInEmail ||
-            loggedInEmail !== configuredAdminEmail
+            loggedInEmail !==
+            configuredAdminEmail
         ) {
             console.warn(
                 "Unauthorized admin orders request:",
@@ -129,7 +130,7 @@ export async function GET(req: Request) {
         }
 
         // ==========================================
-        // READ QUERY PARAMETERS
+        // QUERY PARAMETERS
         // ==========================================
 
         const { searchParams } =
@@ -137,7 +138,8 @@ export async function GET(req: Request) {
 
         const pageParam =
             Number(
-                searchParams.get("page") || "1"
+                searchParams.get("page") ||
+                "1"
             );
 
         const page = Math.max(
@@ -152,17 +154,26 @@ export async function GET(req: Request) {
                 .get("search")
                 ?.trim() || "";
 
+        const productSearch =
+            searchParams
+                .get("product")
+                ?.trim() || "";
+
         const status =
-            searchParams.get("status") || "All";
+            searchParams.get("status") ||
+            "All";
 
         const payment =
-            searchParams.get("payment") || "All";
+            searchParams.get("payment") ||
+            "All";
 
         const sort =
-            searchParams.get("sort") || "newest";
+            searchParams.get("sort") ||
+            "newest";
 
         const archivedParam =
-            searchParams.get("archived") || "false";
+            searchParams.get("archived") ||
+            "false";
 
         const isArchived =
             archivedParam.toLowerCase() ===
@@ -174,7 +185,9 @@ export async function GET(req: Request) {
 
         if (
             status !== "All" &&
-            !allowedStatuses.includes(status)
+            !allowedStatuses.includes(
+                status
+            )
         ) {
             return NextResponse.json(
                 {
@@ -240,7 +253,114 @@ export async function GET(req: Request) {
             from + PAGE_SIZE - 1;
 
         // ==========================================
-        // BUILD QUERY
+        // PRODUCT SEARCH
+        //
+        // order_items stores the product title
+        // for each order item.
+        //
+        // We first find matching order IDs,
+        // then use those IDs in the orders query.
+        // ==========================================
+
+        let productOrderIds:
+            number[] | null = null;
+
+        if (productSearch) {
+            const safeProductSearch =
+                productSearch
+                    .replace(
+                        /[%_]/g,
+                        ""
+                    )
+                    .replace(
+                        /,/g,
+                        " "
+                    )
+                    .trim();
+
+            if (
+                safeProductSearch
+            ) {
+                const {
+                    data: matchingItems,
+                    error: itemError,
+                } = await supabaseAdmin
+                    .from("order_items")
+                    .select(
+                        "order_id"
+                    )
+                    .ilike(
+                        "title",
+                        `%${safeProductSearch}%`
+                    );
+
+                if (itemError) {
+                    console.error(
+                        "Product order search error:",
+                        itemError
+                    );
+
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message:
+                                "Unable to search orders by product.",
+                            error:
+                            itemError.message,
+                        },
+                        {
+                            status: 500,
+                        }
+                    );
+                }
+
+                productOrderIds =
+                    Array.from(
+                        new Set(
+                            (
+                                matchingItems ||
+                                []
+                            )
+                                .map(
+                                    (
+                                        item
+                                    ) =>
+                                        Number(
+                                            item.order_id
+                                        )
+                                )
+                                .filter(
+                                    (
+                                        id
+                                    ) =>
+                                        Number.isFinite(
+                                            id
+                                        )
+                                )
+                        )
+                    );
+
+                // No order contains this product.
+                if (
+                    productOrderIds.length ===
+                    0
+                ) {
+                    return NextResponse.json({
+                        success: true,
+                        orders: [],
+                        totalOrders: 0,
+                        totalPages: 1,
+                        currentPage: page,
+                        pageSize: PAGE_SIZE,
+                        archived:
+                        isArchived,
+                    });
+                }
+            }
+        }
+
+        // ==========================================
+        // BUILD ORDERS QUERY
         // ==========================================
 
         let query = supabaseAdmin
@@ -252,6 +372,19 @@ export async function GET(req: Request) {
                 "archived",
                 isArchived
             );
+
+        // ==========================================
+        // PRODUCT FILTER
+        // ==========================================
+
+        if (
+            productOrderIds !== null
+        ) {
+            query = query.in(
+                "id",
+                productOrderIds
+            );
+        }
 
         // ==========================================
         // STATUS FILTER
@@ -276,7 +409,7 @@ export async function GET(req: Request) {
         }
 
         // ==========================================
-        // SEARCH
+        // CUSTOMER / ORDER SEARCH
         // ==========================================
 
         if (search) {
@@ -295,7 +428,6 @@ export async function GET(req: Request) {
                     numericSearch
                 );
             } else {
-                // Text search
                 const safeSearch =
                     search
                         .replace(
@@ -305,7 +437,8 @@ export async function GET(req: Request) {
                         .replace(
                             /,/g,
                             " "
-                        );
+                        )
+                        .trim();
 
                 if (safeSearch) {
                     query = query.or(
@@ -385,7 +518,15 @@ export async function GET(req: Request) {
         // ==========================================
 
         console.log(
-            `Admin Orders API: ${isArchived ? "Archived" : "Active"} | Page ${page}/${totalPages} | ${orders?.length || 0} orders | Total ${totalOrders}`
+            `Admin Orders API: ${
+                isArchived
+                    ? "Archived"
+                    : "Active"
+            } | Page ${page}/${totalPages} | ${
+                orders?.length || 0
+            } orders | Total ${totalOrders} | Product: ${
+                productSearch || "All"
+            }`
         );
 
         return NextResponse.json({
@@ -402,7 +543,11 @@ export async function GET(req: Request) {
 
             pageSize: PAGE_SIZE,
 
-            archived: isArchived,
+            archived:
+            isArchived,
+
+            productSearch:
+                productSearch || null,
         });
     } catch (error) {
         console.error(
