@@ -1,9 +1,18 @@
 import type { MetadataRoute } from "next";
+import { supabase } from "../lib/supabase";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = "https://apsraa.shop";
 
-    return [
+    const { data: products, error } = await supabase
+        .from("products")
+        .select("id");
+
+    if (error) {
+        console.error("Sitemap product fetch error:", error);
+    }
+
+    const staticPages: MetadataRoute.Sitemap = [
         {
             url: baseUrl,
             lastModified: new Date(),
@@ -59,4 +68,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.5,
         },
     ];
+
+    const productPages: MetadataRoute.Sitemap = (products ?? []).map(
+        (product) => ({
+            url: `${baseUrl}/product/${product.id}`,
+            lastModified: new Date(),
+            changeFrequency: "weekly",
+            priority: 0.8,
+        })
+    );
+
+    return [...staticPages, ...productPages];
 }
