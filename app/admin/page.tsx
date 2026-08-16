@@ -604,11 +604,10 @@ export default function AdminPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {[
-                                ["Today", stats.today],
-                                ["Last 7 Days", stats.last7Days],
-                                ["Last 30 Days", stats.last30Days],
-                            ].map(([label, period]) => {
-                                const analytics = period as PeriodAnalytics;
+                                { label: "Today", period: stats.today },
+                                { label: "Last 7 Days", period: stats.last7Days },
+                                { label: "Last 30 Days", period: stats.last30Days },
+                            ].map(({ label, period }) => {
                                 const isLast30 = label === "Last 30 Days";
 
                                 return (
@@ -627,14 +626,14 @@ export default function AdminPage() {
                                             }`}
                                         >
                                             ₹
-                                            {analytics.revenue.toLocaleString(
+                                            {period.revenue.toLocaleString(
                                                 "en-IN"
                                             )}
                                         </p>
                                         <p className="text-sm text-slate-500 mt-1">
-                                            {analytics.orders} orders · AOV ₹
+                                            {period.orders} orders · AOV ₹
                                             {Math.round(
-                                                analytics.aov
+                                                period.aov
                                             ).toLocaleString("en-IN")}
                                         </p>
                                     </div>
@@ -891,3 +890,4 @@ export default function AdminPage() {
         </>
     );
 }
+
