@@ -118,7 +118,7 @@ export async function POST(req: Request) {
         // ==========================================
 
         const fromEmail =
-            "APSRAA BY AVNI <onboarding@resend.dev>";
+            "APSRAA BY AVNI <orders@apsraa.shop>";
 
         console.log(
             "RESEND FROM:",
