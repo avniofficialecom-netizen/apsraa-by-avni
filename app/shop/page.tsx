@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/ProductCard";
@@ -6,233 +5,60 @@ import { supabase } from "../../lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-type Product = {
-    id: number | string;
-    image?: string | null;
-    title?: string | null;
-    price?: number | string | null;
-    stock?: number | string | null;
-    category?: string | null;
+type ShopProps = {
+    searchParams: Promise<{
+        collection?: string;
+    }>;
 };
 
-type CategoryDefinition = {
-    value: string;
-    label: string;
-    group: "Jewellery" | "Clothing";
+const COLLECTIONS: Record<
+    string,
+    {
+        title: string;
+        description: string;
+    }
+> = {
+    "new-arrivals": {
+        title: "✨ New Arrivals",
+        description:
+            "Discover our latest jewellery additions.",
+    },
+
+    "best-sellers": {
+        title: "🔥 Best Sellers",
+        description:
+            "Our most loved jewellery pieces.",
+    },
+
+    trending: {
+        title: "💕 Trending",
+        description:
+            "Discover the styles everyone is loving.",
+    },
+
+    "under-299": {
+        title: "💰 Under ₹299",
+        description:
+            "Beautiful jewellery at amazing prices.",
+    },
+
+    "under-499": {
+        title: "💰 Under ₹499",
+        description:
+            "Premium styles at prices you'll love.",
+    },
 };
-
-// ==========================================
-// MASTER CATEGORY LIST
-//
-// Categories are prepared in advance.
-// Empty categories are automatically hidden.
-// ==========================================
-
-const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
-    // JEWELLERY
-    {
-        value: "earrings",
-        label: "Earrings",
-        group: "Jewellery",
-    },
-    {
-        value: "jhumkas",
-        label: "Jhumkas",
-        group: "Jewellery",
-    },
-    {
-        value: "necklaces",
-        label: "Necklaces",
-        group: "Jewellery",
-    },
-    {
-        value: "chokers",
-        label: "Chokers",
-        group: "Jewellery",
-    },
-    {
-        value: "jewellery-sets",
-        label: "Jewellery Sets",
-        group: "Jewellery",
-    },
-    {
-        value: "anklets",
-        label: "Anklets / Payal",
-        group: "Jewellery",
-    },
-    {
-        value: "maang-tikka",
-        label: "Maang Tikka",
-        group: "Jewellery",
-    },
-    {
-        value: "rings",
-        label: "Rings",
-        group: "Jewellery",
-    },
-    {
-        value: "bangles",
-        label: "Bangles / Bracelets",
-        group: "Jewellery",
-    },
-
-    // CLOTHING
-    {
-        value: "kurtis",
-        label: "Kurtis",
-        group: "Clothing",
-    },
-    {
-        value: "cotton-kurtis",
-        label: "Cotton Kurtis",
-        group: "Clothing",
-    },
-    {
-        value: "breastfeeding-kurtis",
-        label: "Breastfeeding / Nursing Kurtis",
-        group: "Clothing",
-    },
-    {
-        value: "kurti-sets",
-        label: "Kurti Sets",
-        group: "Clothing",
-    },
-    {
-        value: "dresses",
-        label: "Dresses",
-        group: "Clothing",
-    },
-    {
-        value: "co-ord-sets",
-        label: "Co-ord Sets",
-        group: "Clothing",
-    },
-];
-
-// ==========================================
-// CATEGORY NORMALIZATION
-//
-// Handles common spelling variations and
-// your existing "earrrings" typo.
-// ==========================================
-
-function normalizeCategory(
-    value: string | null | undefined
-) {
-    const category = (value || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-");
-
-    const aliases: Record<string, string> = {
-        // Earrings
-        earrrings: "earrings",
-        earring: "earrings",
-        earrings: "earrings",
-
-        // Jhumkas
-        jhumka: "jhumkas",
-        jhumkas: "jhumkas",
-
-        // Necklaces
-        necklace: "necklaces",
-        necklaces: "necklaces",
-
-        // Chokers
-        choker: "chokers",
-        chokers: "chokers",
-
-        // Jewellery Sets
-        "jewellery-set": "jewellery-sets",
-        "jewelry-set": "jewellery-sets",
-        "jewellery-sets": "jewellery-sets",
-        "jewelry-sets": "jewellery-sets",
-
-        // Anklets
-        anklet: "anklets",
-        anklets: "anklets",
-        payal: "anklets",
-
-        // Maang Tikka
-        "maang-tikka": "maang-tikka",
-        "maang-tika": "maang-tikka",
-        mangtikka: "maang-tikka",
-
-        // Rings
-        ring: "rings",
-        rings: "rings",
-
-        // Bangles / Bracelets
-        bangle: "bangles",
-        bangles: "bangles",
-        bracelet: "bangles",
-        bracelets: "bangles",
-
-        // Kurtis
-        kurti: "kurtis",
-        kurtis: "kurtis",
-
-        // Cotton Kurtis
-        "cotton-kurti": "cotton-kurtis",
-        "cotton-kurtis": "cotton-kurtis",
-
-        // Breastfeeding / Nursing Kurtis
-        "breastfeeding-kurti":
-            "breastfeeding-kurtis",
-        "breastfeeding-kurtis":
-            "breastfeeding-kurtis",
-        "nursing-kurti":
-            "breastfeeding-kurtis",
-        "nursing-kurtis":
-            "breastfeeding-kurtis",
-
-        // Kurti Sets
-        "kurti-set": "kurti-sets",
-        "kurti-sets": "kurti-sets",
-
-        // Dresses
-        dress: "dresses",
-        dresses: "dresses",
-
-        // Co-ord Sets
-        "co-ord": "co-ord-sets",
-        "co-ord-set": "co-ord-sets",
-        "co-ord-sets": "co-ord-sets",
-    };
-
-    return aliases[category] || category;
-}
-
-function normalizeSearch(value: string) {
-    return value.trim().toLowerCase();
-}
-
-// ==========================================
-// SHOP PAGE
-// ==========================================
 
 export default async function Shop({
                                        searchParams,
-                                   }: {
-    searchParams: Promise<{
-        category?: string;
-        search?: string;
-    }>;
-}) {
+                                   }: ShopProps) {
     const params = await searchParams;
 
-    const selectedCategory =
-        normalizeCategory(params.category);
+    const collection =
+        params?.collection || "";
 
-    const search =
-        params.search?.trim() || "";
-
-    const normalizedSearch =
-        normalizeSearch(search);
-
-    // ==========================================
-    // LOAD PRODUCTS
-    // ==========================================
+    const selectedCollection =
+        COLLECTIONS[collection];
 
     const {
         data: products,
@@ -240,334 +66,168 @@ export default async function Shop({
     } = await supabase
         .from("products")
         .select("*")
-        .order("id", {
+        .order("created_at", {
             ascending: false,
         });
 
-    // ==========================================
-    // NORMALIZE PRODUCTS
-    // ==========================================
-
-    const allProducts: Product[] =
-        (products || []).map((product) => ({
-            ...product,
-            id: Number(product.id),
-            category: normalizeCategory(
-                product.category
-            ),
-        }));
-
-    // ==========================================
-    // FIND AVAILABLE CATEGORIES
-    //
-    // Only categories containing products
-    // are visible to customers.
-    // ==========================================
-
-    const availableCategoryValues =
-        new Set(
-            allProducts
-                .map(
-                    (product) =>
-                        product.category
-                )
-                .filter(Boolean)
-        );
-
-    const availableCategories =
-        CATEGORY_DEFINITIONS.filter(
-            (category) =>
-                availableCategoryValues.has(
-                    category.value
-                )
-        );
-
-    const jewelleryCategories =
-        availableCategories.filter(
-            (category) =>
-                category.group === "Jewellery"
-        );
-
-    const clothingCategories =
-        availableCategories.filter(
-            (category) =>
-                category.group === "Clothing"
-        );
-
-    // ==========================================
-    // CATEGORY FILTER
-    // ==========================================
-
     let filteredProducts =
-        allProducts;
+        products || [];
 
-    if (selectedCategory) {
+    // ==========================================
+    // SMART COLLECTION FILTERS
+    // ==========================================
+
+    if (collection === "new-arrivals") {
+        filteredProducts =
+            filteredProducts.slice(0, 50);
+    }
+
+    if (collection === "best-sellers") {
         filteredProducts =
             filteredProducts.filter(
                 (product) =>
-                    product.category ===
-                    selectedCategory
+                    product.bestseller === true
             );
     }
 
-    // ==========================================
-    // SEARCH FILTER
-    // ==========================================
-
-    if (normalizedSearch) {
+    if (collection === "trending") {
         filteredProducts =
             filteredProducts.filter(
-                (product) => {
-                    const title =
-                        normalizeSearch(
-                            product.title || ""
-                        );
-
-                    const category =
-                        normalizeSearch(
-                            product.category ||
-                            ""
-                        );
-
-                    return (
-                        title.includes(
-                            normalizedSearch
-                        ) ||
-                        category.includes(
-                            normalizedSearch
-                        )
-                    );
-                }
+                (product) =>
+                    product.trending === true
             );
     }
 
-    // ==========================================
-    // CURRENT CATEGORY
-    // ==========================================
+    if (collection === "under-299") {
+        filteredProducts =
+            filteredProducts.filter(
+                (product) =>
+                    Number(product.price) <=
+                    299
+            );
+    }
 
-    const currentCategory =
-        CATEGORY_DEFINITIONS.find(
-            (category) =>
-                category.value ===
-                selectedCategory
-        );
-
-    const pageTitle = currentCategory
-        ? currentCategory.label
-        : search
-            ? `Search results for "${search}"`
-            : "Shop Collection";
+    if (collection === "under-499") {
+        filteredProducts =
+            filteredProducts.filter(
+                (product) =>
+                    Number(product.price) <=
+                    499
+            );
+    }
 
     return (
         <>
-            {/* NAVBAR */}
-
             <div className="print:hidden">
                 <Navbar />
             </div>
 
-            {/* SHOP */}
+            <section className="bg-pink-50 min-h-screen py-12 sm:py-16">
 
-            <section className="bg-pink-50 min-h-screen py-16">
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
 
-                <div className="max-w-7xl mx-auto px-6 md:px-8">
+                    {/* ==========================================
+                        HEADING
+                    ========================================== */}
 
-                    {/* HEADING */}
+                    <div className="text-center">
 
-                    <h1 className="text-4xl md:text-5xl font-bold text-pink-700 text-center">
-                        {pageTitle}
-                    </h1>
+                        <h1 className="text-4xl sm:text-5xl font-bold text-pink-700">
+                            {selectedCollection
+                                ? selectedCollection.title
+                                : "Shop Collection"}
+                        </h1>
 
-                    <p className="text-center text-gray-500 mt-4">
-                        Discover our latest premium jewellery
-                    </p>
+                        <p className="text-gray-500 mt-4">
+                            {selectedCollection
+                                ? selectedCollection.description
+                                : "Discover our latest premium jewellery"}
+                        </p>
 
-                    {/* SEARCH */}
+                    </div>
 
-                    <form
-                        action="/shop"
-                        method="GET"
-                        className="mt-10 max-w-3xl mx-auto"
-                    >
+                    {/* ==========================================
+                        COLLECTION NAVIGATION
+                    ========================================== */}
 
-                        {selectedCategory && (
-                            <input
-                                type="hidden"
-                                name="category"
-                                value={
-                                    selectedCategory
-                                }
-                            />
-                        )}
+                    <div className="mt-8 flex gap-3 overflow-x-auto pb-2 justify-start lg:justify-center">
 
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <a
+                            href="/shop"
+                            className={`shrink-0 px-5 py-2.5 rounded-full font-semibold transition ${
+                                !collection
+                                    ? "bg-pink-600 text-white"
+                                    : "bg-white text-pink-700 border border-pink-200 hover:bg-pink-100"
+                            }`}
+                        >
+                            All Products
+                        </a>
 
-                            <input
-                                type="text"
-                                name="search"
-                                defaultValue={search}
-                                placeholder="Search Jewellery..."
-                                className="flex-1 p-4 rounded-xl border border-gray-300 bg-white outline-none focus:ring-2 focus:ring-pink-500"
-                            />
+                        <a
+                            href="/shop?collection=new-arrivals"
+                            className={`shrink-0 px-5 py-2.5 rounded-full font-semibold transition ${
+                                collection ===
+                                "new-arrivals"
+                                    ? "bg-pink-600 text-white"
+                                    : "bg-white text-pink-700 border border-pink-200 hover:bg-pink-100"
+                            }`}
+                        >
+                            ✨ New Arrivals
+                        </a>
 
-                            <button
-                                type="submit"
-                                className="px-7 py-4 rounded-xl bg-pink-600 text-white font-bold hover:bg-pink-700 transition"
-                            >
-                                Search
-                            </button>
+                        <a
+                            href="/shop?collection=best-sellers"
+                            className={`shrink-0 px-5 py-2.5 rounded-full font-semibold transition ${
+                                collection ===
+                                "best-sellers"
+                                    ? "bg-pink-600 text-white"
+                                    : "bg-white text-pink-700 border border-pink-200 hover:bg-pink-100"
+                            }`}
+                        >
+                            🔥 Best Sellers
+                        </a>
 
-                            {(search ||
-                                selectedCategory) && (
-                                <Link
-                                    href="/shop"
-                                    className="px-7 py-4 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold text-center hover:bg-gray-50 transition"
-                                >
-                                    Clear
-                                </Link>
-                            )}
+                        <a
+                            href="/shop?collection=trending"
+                            className={`shrink-0 px-5 py-2.5 rounded-full font-semibold transition ${
+                                collection ===
+                                "trending"
+                                    ? "bg-pink-600 text-white"
+                                    : "bg-white text-pink-700 border border-pink-200 hover:bg-pink-100"
+                            }`}
+                        >
+                            💕 Trending
+                        </a>
 
-                        </div>
+                        <a
+                            href="/shop?collection=under-299"
+                            className={`shrink-0 px-5 py-2.5 rounded-full font-semibold transition ${
+                                collection ===
+                                "under-299"
+                                    ? "bg-pink-600 text-white"
+                                    : "bg-white text-pink-700 border border-pink-200 hover:bg-pink-100"
+                            }`}
+                        >
+                            💰 Under ₹299
+                        </a>
 
-                    </form>
+                        <a
+                            href="/shop?collection=under-499"
+                            className={`shrink-0 px-5 py-2.5 rounded-full font-semibold transition ${
+                                collection ===
+                                "under-499"
+                                    ? "bg-pink-600 text-white"
+                                    : "bg-white text-pink-700 border border-pink-200 hover:bg-pink-100"
+                            }`}
+                        >
+                            💰 Under ₹499
+                        </a>
 
-                    {/* CATEGORY NAVIGATION */}
+                    </div>
 
-                    {!error && (
-                        <div className="mt-10 space-y-6">
-
-                            {/* ALL */}
-
-                            <div className="flex flex-wrap justify-center gap-3">
-
-                                <Link
-                                    href="/shop"
-                                    className={`px-5 py-2.5 rounded-full font-semibold transition ${
-                                        !selectedCategory
-                                            ? "bg-pink-600 text-white shadow-md"
-                                            : "bg-white text-gray-700 border border-gray-200 hover:border-pink-300 hover:text-pink-600"
-                                    }`}
-                                >
-                                    All Jewellery
-                                </Link>
-
-                            </div>
-
-                            {/* JEWELLERY */}
-
-                            {jewelleryCategories.length >
-                                0 && (
-                                    <div>
-
-                                        <p className="text-center text-xs uppercase tracking-[0.2em] font-bold text-pink-500 mb-3">
-                                            Jewellery
-                                        </p>
-
-                                        <div className="flex flex-wrap justify-center gap-3">
-
-                                            {jewelleryCategories.map(
-                                                (category) => (
-                                                    <Link
-                                                        key={
-                                                            category.value
-                                                        }
-                                                        href={`/shop?category=${encodeURIComponent(
-                                                            category.value
-                                                        )}`}
-                                                        className={`px-5 py-2.5 rounded-full font-semibold transition ${
-                                                            selectedCategory ===
-                                                            category.value
-                                                                ? "bg-pink-600 text-white shadow-md"
-                                                                : "bg-white text-gray-700 border border-gray-200 hover:border-pink-300 hover:text-pink-600"
-                                                        }`}
-                                                    >
-                                                        {
-                                                            category.label
-                                                        }
-                                                    </Link>
-                                                )
-                                            )}
-
-                                        </div>
-
-                                    </div>
-                                )}
-
-                            {/* CLOTHING */}
-
-                            {clothingCategories.length >
-                                0 && (
-                                    <div>
-
-                                        <p className="text-center text-xs uppercase tracking-[0.2em] font-bold text-pink-500 mb-3">
-                                            Clothing
-                                        </p>
-
-                                        <div className="flex flex-wrap justify-center gap-3">
-
-                                            {clothingCategories.map(
-                                                (category) => (
-                                                    <Link
-                                                        key={
-                                                            category.value
-                                                        }
-                                                        href={`/shop?category=${encodeURIComponent(
-                                                            category.value
-                                                        )}`}
-                                                        className={`px-5 py-2.5 rounded-full font-semibold transition ${
-                                                            selectedCategory ===
-                                                            category.value
-                                                                ? "bg-pink-600 text-white shadow-md"
-                                                                : "bg-white text-gray-700 border border-gray-200 hover:border-pink-300 hover:text-pink-600"
-                                                        }`}
-                                                    >
-                                                        {
-                                                            category.label
-                                                        }
-                                                    </Link>
-                                                )
-                                            )}
-
-                                        </div>
-
-                                    </div>
-                                )}
-
-                        </div>
-                    )}
-
-                    {/* RESULT COUNT */}
-
-                    {(selectedCategory ||
-                        search) && (
-                        <div className="mt-8 text-center text-sm text-gray-500">
-
-                            Showing{" "}
-                            <strong className="text-gray-800">
-                                {
-                                    filteredProducts.length
-                                }
-                            </strong>{" "}
-                            {filteredProducts.length ===
-                            1
-                                ? "product"
-                                : "products"}
-
-                            {currentCategory && (
-                                <>
-                                    {" "}in{" "}
-                                    <strong className="text-pink-700">
-                                        {
-                                            currentCategory.label
-                                        }
-                                    </strong>
-                                </>
-                            )}
-
-                        </div>
-                    )}
-
-                    {/* DATABASE ERROR */}
+                    {/* ==========================================
+                        DATABASE ERROR
+                    ========================================== */}
 
                     {error && (
                         <div className="text-center mt-10">
@@ -583,48 +243,45 @@ export default async function Shop({
                         </div>
                     )}
 
-                    {/* NO PRODUCTS */}
+                    {/* ==========================================
+                        NO PRODUCTS
+                    ========================================== */}
 
                     {!error &&
                         filteredProducts.length ===
                         0 && (
-                            <div className="text-center mt-14 bg-white rounded-3xl p-10 shadow-sm">
+                            <div className="text-center mt-16 bg-white rounded-3xl p-10">
 
-                                <p className="text-xl font-semibold text-gray-700">
-                                    {selectedCategory
-                                        ? `No ${
-                                            currentCategory?.label ||
-                                            "products"
-                                        } available yet.`
-                                        : search
-                                            ? `No products found for "${search}".`
-                                            : "No products available."}
-                                </p>
+                                <div className="text-5xl">
+                                    💎
+                                </div>
+
+                                <h2 className="text-2xl font-bold text-gray-800 mt-4">
+                                    No Products Found
+                                </h2>
 
                                 <p className="text-gray-500 mt-2">
-                                    Please check back soon for
-                                    new arrivals.
+                                    There are currently no products in this collection.
                                 </p>
 
-                                {(selectedCategory ||
-                                    search) && (
-                                    <Link
-                                        href="/shop"
-                                        className="inline-block mt-5 px-6 py-3 rounded-xl bg-pink-600 text-white font-semibold hover:bg-pink-700 transition"
-                                    >
-                                        View All Jewellery
-                                    </Link>
-                                )}
+                                <a
+                                    href="/shop"
+                                    className="inline-block mt-6 bg-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-pink-700 transition"
+                                >
+                                    View All Products
+                                </a>
 
                             </div>
                         )}
 
-                    {/* PRODUCT GRID */}
+                    {/* ==========================================
+                        PRODUCT GRID
+                    ========================================== */}
 
                     {!error &&
                         filteredProducts.length >
                         0 && (
-                            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mt-10">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 mt-12">
 
                                 {filteredProducts.map(
                                     (product) => (
@@ -641,12 +298,9 @@ export default async function Shop({
                                             }
                                             title={
                                                 product.title ||
-                                                "Product"
+                                                "Jewellery"
                                             }
-                                            subtitle={`₹${
-                                                product.price ??
-                                                0
-                                            }`}
+                                            subtitle={`₹${product.price ?? 0}`}
                                             stock={
                                                 Number(
                                                     product.stock
@@ -662,8 +316,6 @@ export default async function Shop({
                 </div>
 
             </section>
-
-            {/* FOOTER */}
 
             <Footer />
         </>

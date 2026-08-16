@@ -5,12 +5,14 @@ import Footer from "../components/Footer";
 
 type Product = {
     id: number;
+    created_at: string;
     title: string;
     image: string;
-    price: string;
+    price: string | number;
     stock: number;
     featured: boolean;
     bestseller: boolean;
+    trending: boolean;
 };
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,7 @@ export default async function Home() {
 
         if (supabaseUrl && supabaseKey) {
             const response = await fetch(
-                `${supabaseUrl}/rest/v1/products?select=*&order=id.desc`,
+                `${supabaseUrl}/rest/v1/products?select=*&order=created_at.desc`,
                 {
                     method: "GET",
                     headers: {
@@ -54,13 +56,49 @@ export default async function Home() {
         );
     }
 
-    const featuredProducts = products.filter(
-        (p) => p.featured
-    );
+    // ==========================================
+    // HOMEPAGE COLLECTIONS
+    // ==========================================
 
-    const bestsellerProducts = products.filter(
-        (p) => p.bestseller
-    );
+    const newArrivalProducts =
+        products.slice(0, 8);
+
+    const bestsellerProducts =
+        products
+            .filter(
+                (product) => product.bestseller
+            )
+            .slice(0, 8);
+
+    const trendingProducts =
+        products
+            .filter(
+                (product) => product.trending
+            )
+            .slice(0, 8);
+
+    const under299Products =
+        products
+            .filter(
+                (product) =>
+                    Number(product.price) <= 299
+            )
+            .slice(0, 8);
+
+    const under499Products =
+        products
+            .filter(
+                (product) =>
+                    Number(product.price) <= 499
+            )
+            .slice(0, 8);
+
+    const featuredProducts =
+        products
+            .filter(
+                (product) => product.featured
+            )
+            .slice(0, 8);
 
     return (
         <>
@@ -75,8 +113,6 @@ export default async function Home() {
                 <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
 
                     <div className="min-h-[560px] md:min-h-[calc(100vh-88px)] flex items-center">
-
-                        {/* HERO CONTENT */}
 
                         <div className="w-full md:max-w-xl py-16 md:py-20">
 
@@ -114,11 +150,6 @@ export default async function Home() {
 
                         </div>
 
-                        {/* HERO IMAGE
-                            Hidden on mobile to prevent the desktop
-                            image from creating overflow/empty space.
-                        */}
-
                         <div className="hidden md:block flex-1 ml-10 lg:ml-16">
 
                             <img
@@ -135,48 +166,77 @@ export default async function Home() {
 
             </section>
 
-
             {/* =====================================================
-                FEATURED PRODUCTS
+                NEW ARRIVALS
             ====================================================== */}
 
             <section className="py-16 md:py-24 bg-white">
 
                 <div className="max-w-7xl mx-auto px-5 sm:px-8">
 
-                    <h2 className="text-4xl sm:text-5xl font-bold text-center text-pink-700 leading-tight">
-                        Featured Collection
-                    </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 
-                    <p className="text-center text-gray-500 mt-4">
-                        Handpicked jewellery for every occasion.
-                    </p>
+                        <div className="text-center sm:text-left">
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 mt-12 md:mt-16">
+                            <h2 className="text-4xl sm:text-5xl font-bold text-pink-700 leading-tight">
+                                ✨ New Arrivals
+                            </h2>
 
-                        {featuredProducts.map((product) => (
-                            <ProductCard
-                                key={product.id}
-                                id={product.id}
-                                image={product.image}
-                                title={product.title}
-                                subtitle={`₹${product.price}`}
-                                stock={product.stock}
-                            />
-                        ))}
+                            <p className="text-gray-500 mt-4">
+                                Discover our latest additions.
+                            </p>
+
+                        </div>
+
+                        <Link
+                            href="/shop?collection=new-arrivals"
+                            className="text-pink-600 font-semibold hover:text-pink-800 transition text-center sm:text-right"
+                        >
+                            View All New Arrivals →
+                        </Link>
 
                     </div>
 
-                    {featuredProducts.length === 0 && (
+                    {newArrivalProducts.length > 0 ? (
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                            {newArrivalProducts.map(
+                                (product) => (
+                                    <ProductCard
+                                        key={
+                                            product.id
+                                        }
+                                        id={
+                                            product.id
+                                        }
+                                        image={
+                                            product.image
+                                        }
+                                        title={
+                                            product.title
+                                        }
+                                        subtitle={`₹${product.price}`}
+                                        stock={
+                                            product.stock
+                                        }
+                                    />
+                                )
+                            )}
+
+                        </div>
+
+                    ) : (
+
                         <p className="text-center mt-16 text-gray-500">
-                            No featured products available.
+                            No new arrivals available.
                         </p>
+
                     )}
 
                 </div>
 
             </section>
-
 
             {/* =====================================================
                 BEST SELLERS
@@ -186,39 +246,357 @@ export default async function Home() {
 
                 <div className="max-w-7xl mx-auto px-5 sm:px-8">
 
-                    <h2 className="text-4xl sm:text-5xl font-bold text-center text-pink-700 leading-tight">
-                        Best Sellers
-                    </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
 
-                    <p className="text-center text-gray-500 mt-4">
-                        Loved by our customers.
-                    </p>
+                        <div className="text-center sm:text-left">
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 mt-12 md:mt-16">
+                            <h2 className="text-4xl sm:text-5xl font-bold text-pink-700 leading-tight">
+                                🔥 Best Sellers
+                            </h2>
 
-                        {bestsellerProducts.map((product) => (
-                            <ProductCard
-                                key={product.id}
-                                id={product.id}
-                                image={product.image}
-                                title={product.title}
-                                subtitle={`₹${product.price}`}
-                                stock={product.stock}
-                            />
-                        ))}
+                            <p className="text-gray-500 mt-4">
+                                Loved by our customers.
+                            </p>
+
+                        </div>
+
+                        <Link
+                            href="/shop?collection=best-sellers"
+                            className="text-pink-600 font-semibold hover:text-pink-800 transition text-center sm:text-right"
+                        >
+                            View All Best Sellers →
+                        </Link>
 
                     </div>
 
-                    {bestsellerProducts.length === 0 && (
+                    {bestsellerProducts.length > 0 ? (
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                            {bestsellerProducts.map(
+                                (product) => (
+                                    <ProductCard
+                                        key={
+                                            product.id
+                                        }
+                                        id={
+                                            product.id
+                                        }
+                                        image={
+                                            product.image
+                                        }
+                                        title={
+                                            product.title
+                                        }
+                                        subtitle={`₹${product.price}`}
+                                        stock={
+                                            product.stock
+                                        }
+                                    />
+                                )
+                            )}
+
+                        </div>
+
+                    ) : (
+
                         <p className="text-center mt-16 text-gray-500">
                             No best seller products available.
                         </p>
+
                     )}
 
                 </div>
 
             </section>
 
+            {/* =====================================================
+                TRENDING
+            ====================================================== */}
+
+            <section className="py-16 md:py-24 bg-white">
+
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
+
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+
+                        <div className="text-center sm:text-left">
+
+                            <h2 className="text-4xl sm:text-5xl font-bold text-pink-700 leading-tight">
+                                💕 Trending
+                            </h2>
+
+                            <p className="text-gray-500 mt-4">
+                                Styles everyone is loving right now.
+                            </p>
+
+                        </div>
+
+                        <Link
+                            href="/shop?collection=trending"
+                            className="text-pink-600 font-semibold hover:text-pink-800 transition text-center sm:text-right"
+                        >
+                            View All Trending →
+                        </Link>
+
+                    </div>
+
+                    {trendingProducts.length > 0 ? (
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                            {trendingProducts.map(
+                                (product) => (
+                                    <ProductCard
+                                        key={
+                                            product.id
+                                        }
+                                        id={
+                                            product.id
+                                        }
+                                        image={
+                                            product.image
+                                        }
+                                        title={
+                                            product.title
+                                        }
+                                        subtitle={`₹${product.price}`}
+                                        stock={
+                                            product.stock
+                                        }
+                                    />
+                                )
+                            )}
+
+                        </div>
+
+                    ) : (
+
+                        <p className="text-center mt-16 text-gray-500">
+                            No trending products available.
+                        </p>
+
+                    )}
+
+                </div>
+
+            </section>
+
+            {/* =====================================================
+                UNDER ₹299
+            ====================================================== */}
+
+            <section className="py-16 md:py-24 bg-pink-50">
+
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
+
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+
+                        <div className="text-center sm:text-left">
+
+                            <h2 className="text-4xl sm:text-5xl font-bold text-pink-700 leading-tight">
+                                💰 Under ₹299
+                            </h2>
+
+                            <p className="text-gray-500 mt-4">
+                                Beautiful jewellery at an amazing price.
+                            </p>
+
+                        </div>
+
+                        <Link
+                            href="/shop?collection=under-299"
+                            className="text-pink-600 font-semibold hover:text-pink-800 transition text-center sm:text-right"
+                        >
+                            Shop Under ₹299 →
+                        </Link>
+
+                    </div>
+
+                    {under299Products.length > 0 ? (
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                            {under299Products.map(
+                                (product) => (
+                                    <ProductCard
+                                        key={
+                                            product.id
+                                        }
+                                        id={
+                                            product.id
+                                        }
+                                        image={
+                                            product.image
+                                        }
+                                        title={
+                                            product.title
+                                        }
+                                        subtitle={`₹${product.price}`}
+                                        stock={
+                                            product.stock
+                                        }
+                                    />
+                                )
+                            )}
+
+                        </div>
+
+                    ) : (
+
+                        <p className="text-center mt-16 text-gray-500">
+                            No products under ₹299 currently.
+                        </p>
+
+                    )}
+
+                </div>
+
+            </section>
+
+            {/* =====================================================
+                UNDER ₹499
+            ====================================================== */}
+
+            <section className="py-16 md:py-24 bg-white">
+
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
+
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+
+                        <div className="text-center sm:text-left">
+
+                            <h2 className="text-4xl sm:text-5xl font-bold text-pink-700 leading-tight">
+                                💰 Under ₹499
+                            </h2>
+
+                            <p className="text-gray-500 mt-4">
+                                Premium styles at prices you'll love.
+                            </p>
+
+                        </div>
+
+                        <Link
+                            href="/shop?collection=under-499"
+                            className="text-pink-600 font-semibold hover:text-pink-800 transition text-center sm:text-right"
+                        >
+                            Shop Under ₹499 →
+                        </Link>
+
+                    </div>
+
+                    {under499Products.length > 0 ? (
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                            {under499Products.map(
+                                (product) => (
+                                    <ProductCard
+                                        key={
+                                            product.id
+                                        }
+                                        id={
+                                            product.id
+                                        }
+                                        image={
+                                            product.image
+                                        }
+                                        title={
+                                            product.title
+                                        }
+                                        subtitle={`₹${product.price}`}
+                                        stock={
+                                            product.stock
+                                        }
+                                    />
+                                )
+                            )}
+
+                        </div>
+
+                    ) : (
+
+                        <p className="text-center mt-16 text-gray-500">
+                            No products under ₹499 currently.
+                        </p>
+
+                    )}
+
+                </div>
+
+            </section>
+
+            {/* =====================================================
+                FEATURED COLLECTION
+            ====================================================== */}
+
+            <section className="py-16 md:py-24 bg-white">
+
+                <div className="max-w-7xl mx-auto px-5 sm:px-8">
+
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+
+                        <div className="text-center sm:text-left">
+
+                            <h2 className="text-4xl sm:text-5xl font-bold text-pink-700 leading-tight">
+                                Featured Collection
+                            </h2>
+
+                            <p className="text-gray-500 mt-4">
+                                Handpicked jewellery for every occasion.
+                            </p>
+
+                        </div>
+
+                        <Link
+                            href="/shop"
+                            className="text-pink-600 font-semibold hover:text-pink-800 transition text-center sm:text-right"
+                        >
+                            View All Products →
+                        </Link>
+
+                    </div>
+
+                    {featuredProducts.length > 0 ? (
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:gap-10 mt-12 md:mt-16">
+
+                            {featuredProducts.map(
+                                (product) => (
+                                    <ProductCard
+                                        key={
+                                            product.id
+                                        }
+                                        id={
+                                            product.id
+                                        }
+                                        image={
+                                            product.image
+                                        }
+                                        title={
+                                            product.title
+                                        }
+                                        subtitle={`₹${product.price}`}
+                                        stock={
+                                            product.stock
+                                        }
+                                    />
+                                )
+                            )}
+
+                        </div>
+
+                    ) : (
+
+                        <p className="text-center mt-16 text-gray-500">
+                            No featured products available.
+                        </p>
+
+                    )}
+
+                </div>
+
+            </section>
 
             {/* =====================================================
                 WHY CHOOSE US
@@ -236,11 +614,7 @@ export default async function Home() {
                         We make shopping for jewellery simple, secure and delightful.
                     </p>
 
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mt-12 md:mt-16">
-
-
-                        {/* PREMIUM QUALITY */}
 
                         <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
 
@@ -258,9 +632,6 @@ export default async function Home() {
 
                         </div>
 
-
-                        {/* FAST SHIPPING */}
-
                         <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
 
                             <div className="text-5xl">
@@ -277,9 +648,6 @@ export default async function Home() {
 
                         </div>
 
-
-                        {/* SECURE PAYMENT */}
-
                         <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
 
                             <div className="text-5xl">
@@ -295,9 +663,6 @@ export default async function Home() {
                             </p>
 
                         </div>
-
-
-                        {/* EASY RETURNS */}
 
                         <div className="bg-pink-50 rounded-3xl p-7 md:p-8 text-center shadow-md">
 
@@ -320,11 +685,6 @@ export default async function Home() {
                 </div>
 
             </section>
-
-
-            {/* =====================================================
-                FOOTER
-            ====================================================== */}
 
             <Footer />
         </>

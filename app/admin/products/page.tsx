@@ -19,9 +19,14 @@ type Product = {
 };
 
 export default function ProductsPage() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [search, setSearch] = useState("");
-    const [loading, setLoading] = useState(true);
+    const [products, setProducts] =
+        useState<Product[]>([]);
+
+    const [search, setSearch] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(true);
 
     useEffect(() => {
         loadProducts();
@@ -31,12 +36,13 @@ export default function ProductsPage() {
         try {
             setLoading(true);
 
-            const { data, error } = await supabase
-                .from("products")
-                .select("*")
-                .order("id", {
-                    ascending: false,
-                });
+            const { data, error } =
+                await supabase
+                    .from("products")
+                    .select("*")
+                    .order("id", {
+                        ascending: false,
+                    });
 
             if (error) {
                 console.error(
@@ -54,8 +60,8 @@ export default function ProductsPage() {
         }
     }
 
-    const filteredProducts = products.filter(
-        (product) => {
+    const filteredProducts =
+        products.filter((product) => {
             const query =
                 search.trim().toLowerCase();
 
@@ -69,8 +75,7 @@ export default function ProductsPage() {
                     ?.toLowerCase()
                     .includes(query)
             );
-        }
-    );
+        });
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-pink-50 overflow-x-hidden">
@@ -79,15 +84,13 @@ export default function ProductsPage() {
 
             <main>
 
-                {/* =====================================
-                    HEADER
-                ===================================== */}
+                {/* HEADER */}
 
                 <section className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-6">
 
                     <div className="max-w-7xl mx-auto">
 
-                        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
                             <div>
 
@@ -100,17 +103,32 @@ export default function ProductsPage() {
                                 </h1>
 
                                 <p className="text-sm sm:text-base text-gray-500 mt-2">
-                                    Manage your jewellery catalog
+                                    Manage your APSRAA product catalog
                                 </p>
 
                             </div>
 
-                            <Link
-                                href="/admin/add-product"
-                                className="w-full sm:w-auto text-center bg-pink-600 text-white px-6 py-3.5 rounded-xl font-semibold hover:bg-pink-700 active:scale-[0.98] transition shadow-md"
-                            >
-                                + Add Product
-                            </Link>
+                            <div className="flex flex-col sm:flex-row gap-3">
+
+                                {/* CATEGORIES */}
+
+                                <Link
+                                    href="/admin/products/categories"
+                                    className="w-full sm:w-auto text-center bg-white text-pink-700 border-2 border-pink-200 px-6 py-3.5 rounded-xl font-semibold hover:bg-pink-50 hover:border-pink-300 transition shadow-sm"
+                                >
+                                    🗂️ Categories
+                                </Link>
+
+                                {/* ADD PRODUCT */}
+
+                                <Link
+                                    href="/admin/add-product"
+                                    className="w-full sm:w-auto text-center bg-pink-600 text-white px-6 py-3.5 rounded-xl font-semibold hover:bg-pink-700 active:scale-[0.98] transition shadow-md"
+                                >
+                                    + Add Product
+                                </Link>
+
+                            </div>
 
                         </div>
 
@@ -118,9 +136,7 @@ export default function ProductsPage() {
 
                 </section>
 
-                {/* =====================================
-                    SEARCH + PRODUCT COUNT
-                ===================================== */}
+                {/* SEARCH */}
 
                 <section className="px-4 sm:px-6 lg:px-8 pb-6">
 
@@ -163,17 +179,23 @@ export default function ProductsPage() {
                             <div className="flex items-center justify-between gap-3 mt-4 text-sm">
 
                                 <p className="text-gray-500">
+
                                     Showing{" "}
+
                                     <span className="font-bold text-gray-800">
                                         {
                                             filteredProducts.length
                                         }
                                     </span>{" "}
+
                                     of{" "}
+
                                     <span className="font-bold text-gray-800">
                                         {products.length}
                                     </span>{" "}
+
                                     products
+
                                 </p>
 
                                 {search && (
@@ -196,15 +218,11 @@ export default function ProductsPage() {
 
                 </section>
 
-                {/* =====================================
-                    PRODUCTS
-                ===================================== */}
+                {/* PRODUCTS */}
 
                 <section className="px-4 sm:px-6 lg:px-8 pb-12">
 
                     <div className="max-w-7xl mx-auto">
-
-                        {/* Loading */}
 
                         {loading ? (
 
@@ -225,8 +243,6 @@ export default function ProductsPage() {
                             </div>
 
                         ) : filteredProducts.length === 0 ? (
-
-                            /* No products */
 
                             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md p-10 sm:p-16 text-center">
 
@@ -277,9 +293,7 @@ export default function ProductsPage() {
                                             className="bg-white rounded-2xl sm:rounded-3xl shadow-md overflow-hidden hover:shadow-xl transition"
                                         >
 
-                                            {/* =================================
-                                                IMAGE
-                                            ================================= */}
+                                            {/* IMAGE */}
 
                                             <div className="relative bg-gray-100">
 
@@ -294,8 +308,6 @@ export default function ProductsPage() {
                                                     className="w-full aspect-square sm:aspect-[4/3] object-cover"
                                                 />
 
-                                                {/* Product ID */}
-
                                                 <span className="absolute top-3 left-3 bg-black/70 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
                                                     #
                                                     {
@@ -305,13 +317,11 @@ export default function ProductsPage() {
 
                                             </div>
 
-                                            {/* =================================
-                                                DETAILS
-                                            ================================= */}
+                                            {/* DETAILS */}
 
                                             <div className="p-4 sm:p-6">
 
-                                                {/* Badges */}
+                                                {/* BADGES */}
 
                                                 <div className="flex flex-wrap gap-2 min-h-[28px] mb-3">
 
@@ -329,7 +339,7 @@ export default function ProductsPage() {
 
                                                 </div>
 
-                                                {/* Title */}
+                                                {/* TITLE */}
 
                                                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug line-clamp-2">
                                                     {
@@ -337,7 +347,7 @@ export default function ProductsPage() {
                                                     }
                                                 </h2>
 
-                                                {/* Category */}
+                                                {/* CATEGORY */}
 
                                                 <p className="text-sm text-gray-500 mt-1 line-clamp-1">
                                                     {
@@ -345,7 +355,7 @@ export default function ProductsPage() {
                                                     }
                                                 </p>
 
-                                                {/* Price + Stock */}
+                                                {/* PRICE + STOCK */}
 
                                                 <div className="flex items-end justify-between gap-3 mt-4">
 
@@ -387,9 +397,7 @@ export default function ProductsPage() {
 
                                                 </div>
 
-                                                {/* =================================
-                                                    ACTION BUTTONS
-                                                ================================= */}
+                                                {/* ACTIONS */}
 
                                                 <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mt-5">
 
@@ -401,12 +409,20 @@ export default function ProductsPage() {
                                                     </Link>
 
                                                     <DeleteProductButton
-                                                        id={product.id}
-                                                        onDeleted={(deletedId) => {
+                                                        id={
+                                                            product.id
+                                                        }
+                                                        onDeleted={(
+                                                            deletedId
+                                                        ) => {
                                                             setProducts(
-                                                                (currentProducts) =>
+                                                                (
+                                                                    currentProducts
+                                                                ) =>
                                                                     currentProducts.filter(
-                                                                        (item) =>
+                                                                        (
+                                                                            item
+                                                                        ) =>
                                                                             item.id !==
                                                                             deletedId
                                                                     )
