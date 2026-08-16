@@ -34,11 +34,7 @@ export async function GET(req: Request) {
                     setAll(cookiesToSet) {
                         try {
                             cookiesToSet.forEach(
-                                ({
-                                     name,
-                                     value,
-                                     options,
-                                 }) => {
+                                ({ name, value, options }) => {
                                     cookieStore.set(
                                         name,
                                         value,
@@ -67,8 +63,7 @@ export async function GET(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Unauthorized. Admin login required.",
+                    message: "Unauthorized. Admin login required.",
                 },
                 {
                     status: 401,
@@ -92,8 +87,7 @@ export async function GET(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Admin configuration is missing.",
+                    message: "Admin configuration is missing.",
                 },
                 {
                     status: 500,
@@ -109,8 +103,7 @@ export async function GET(req: Request) {
 
         if (
             !loggedInEmail ||
-            loggedInEmail !==
-            configuredAdminEmail
+            loggedInEmail !== configuredAdminEmail
         ) {
             console.warn(
                 "Unauthorized admin orders request:",
@@ -120,8 +113,7 @@ export async function GET(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Forbidden. Admin access required.",
+                    message: "Forbidden. Admin access required.",
                 },
                 {
                     status: 403,
@@ -133,14 +125,11 @@ export async function GET(req: Request) {
         // QUERY PARAMETERS
         // ==========================================
 
-        const { searchParams } =
-            new URL(req.url);
+        const { searchParams } = new URL(req.url);
 
-        const pageParam =
-            Number(
-                searchParams.get("page") ||
-                "1"
-            );
+        const pageParam = Number(
+            searchParams.get("page") || "1"
+        );
 
         const page = Math.max(
             1,
@@ -150,34 +139,25 @@ export async function GET(req: Request) {
         );
 
         const search =
-            searchParams
-                .get("search")
-                ?.trim() || "";
+            searchParams.get("search")?.trim() || "";
 
         const productSearch =
-            searchParams
-                .get("product")
-                ?.trim() || "";
+            searchParams.get("product")?.trim() || "";
 
         const status =
-            searchParams.get("status") ||
-            "All";
+            searchParams.get("status") || "All";
 
         const payment =
-            searchParams.get("payment") ||
-            "All";
+            searchParams.get("payment") || "All";
 
         const sort =
-            searchParams.get("sort") ||
-            "newest";
+            searchParams.get("sort") || "newest";
 
         const archivedParam =
-            searchParams.get("archived") ||
-            "false";
+            searchParams.get("archived") || "false";
 
         const isArchived =
-            archivedParam.toLowerCase() ===
-            "true";
+            archivedParam.toLowerCase() === "true";
 
         // ==========================================
         // VALIDATE STATUS
@@ -185,15 +165,12 @@ export async function GET(req: Request) {
 
         if (
             status !== "All" &&
-            !allowedStatuses.includes(
-                status
-            )
+            !allowedStatuses.includes(status)
         ) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Invalid order status.",
+                    message: "Invalid order status.",
                 },
                 {
                     status: 400,
@@ -213,8 +190,7 @@ export async function GET(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Invalid payment filter.",
+                    message: "Invalid payment filter.",
                 },
                 {
                     status: 400,
@@ -233,8 +209,7 @@ export async function GET(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Invalid sort option.",
+                    message: "Invalid sort option.",
                 },
                 {
                     status: 400,
@@ -246,49 +221,30 @@ export async function GET(req: Request) {
         // CALCULATE RANGE
         // ==========================================
 
-        const from =
-            (page - 1) * PAGE_SIZE;
-
-        const to =
-            from + PAGE_SIZE - 1;
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
 
         // ==========================================
         // PRODUCT SEARCH
         //
-        // order_items stores the product title
-        // for each order item.
-        //
-        // We first find matching order IDs,
-        // then use those IDs in the orders query.
+        // order_items stores the product title.
         // ==========================================
 
-        let productOrderIds:
-            number[] | null = null;
+        let productOrderIds: number[] | null = null;
 
         if (productSearch) {
-            const safeProductSearch =
-                productSearch
-                    .replace(
-                        /[%_]/g,
-                        ""
-                    )
-                    .replace(
-                        /,/g,
-                        " "
-                    )
-                    .trim();
+            const safeProductSearch = productSearch
+                .replace(/[%_]/g, "")
+                .replace(/,/g, " ")
+                .trim();
 
-            if (
-                safeProductSearch
-            ) {
+            if (safeProductSearch) {
                 const {
                     data: matchingItems,
                     error: itemError,
                 } = await supabaseAdmin
                     .from("order_items")
-                    .select(
-                        "order_id"
-                    )
+                    .select("order_id")
                     .ilike(
                         "title",
                         `%${safeProductSearch}%`
@@ -305,8 +261,7 @@ export async function GET(req: Request) {
                             success: false,
                             message:
                                 "Unable to search orders by product.",
-                            error:
-                            itemError.message,
+                            error: itemError.message,
                         },
                         {
                             status: 500,
@@ -314,37 +269,20 @@ export async function GET(req: Request) {
                     );
                 }
 
-                productOrderIds =
-                    Array.from(
-                        new Set(
-                            (
-                                matchingItems ||
-                                []
+                productOrderIds = Array.from(
+                    new Set(
+                        (matchingItems || [])
+                            .map((item) =>
+                                Number(item.order_id)
                             )
-                                .map(
-                                    (
-                                        item
-                                    ) =>
-                                        Number(
-                                            item.order_id
-                                        )
-                                )
-                                .filter(
-                                    (
-                                        id
-                                    ) =>
-                                        Number.isFinite(
-                                            id
-                                        )
-                                )
-                        )
-                    );
+                            .filter((id) =>
+                                Number.isFinite(id)
+                            )
+                    )
+                );
 
                 // No order contains this product.
-                if (
-                    productOrderIds.length ===
-                    0
-                ) {
+                if (productOrderIds.length === 0) {
                     return NextResponse.json({
                         success: true,
                         orders: [],
@@ -352,8 +290,9 @@ export async function GET(req: Request) {
                         totalPages: 1,
                         currentPage: page,
                         pageSize: PAGE_SIZE,
-                        archived:
-                        isArchived,
+                        archived: isArchived,
+                        productSearch:
+                            productSearch || null,
                     });
                 }
             }
@@ -368,18 +307,13 @@ export async function GET(req: Request) {
             .select("*", {
                 count: "exact",
             })
-            .eq(
-                "archived",
-                isArchived
-            );
+            .eq("archived", isArchived);
 
         // ==========================================
         // PRODUCT FILTER
         // ==========================================
 
-        if (
-            productOrderIds !== null
-        ) {
+        if (productOrderIds !== null) {
             query = query.in(
                 "id",
                 productOrderIds
@@ -413,14 +347,11 @@ export async function GET(req: Request) {
         // ==========================================
 
         if (search) {
-            const numericSearch =
-                Number(search);
+            const numericSearch = Number(search);
 
             // Exact Order ID search
             if (
-                Number.isInteger(
-                    numericSearch
-                ) &&
+                Number.isInteger(numericSearch) &&
                 numericSearch > 0
             ) {
                 query = query.eq(
@@ -428,17 +359,10 @@ export async function GET(req: Request) {
                     numericSearch
                 );
             } else {
-                const safeSearch =
-                    search
-                        .replace(
-                            /[%_]/g,
-                            ""
-                        )
-                        .replace(
-                            /,/g,
-                            " "
-                        )
-                        .trim();
+                const safeSearch = search
+                    .replace(/[%_]/g, "")
+                    .replace(/,/g, " ")
+                    .trim();
 
                 if (safeSearch) {
                     query = query.or(
@@ -455,8 +379,7 @@ export async function GET(req: Request) {
         query = query.order(
             "id",
             {
-                ascending:
-                    sort === "oldest",
+                ascending: sort === "oldest",
             }
         );
 
@@ -470,7 +393,7 @@ export async function GET(req: Request) {
         );
 
         // ==========================================
-        // EXECUTE
+        // EXECUTE ORDERS QUERY
         // ==========================================
 
         const {
@@ -488,8 +411,7 @@ export async function GET(req: Request) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                    error.message,
+                    message: error.message,
                 },
                 {
                     status: 500,
@@ -498,20 +420,203 @@ export async function GET(req: Request) {
         }
 
         // ==========================================
+        // FETCH ORDER ITEMS
+        // ==========================================
+
+        const orderIds = (orders || [])
+            .map((order) => Number(order.id))
+            .filter((id) => Number.isFinite(id));
+
+        let orderItems: Array<{
+            id: number;
+            order_id: number;
+            product_id: number | null;
+            title: string | null;
+            price: string | null;
+            quantity: number | null;
+        }> = [];
+
+        if (orderIds.length > 0) {
+            const {
+                data: items,
+                error: orderItemsError,
+            } = await supabaseAdmin
+                .from("order_items")
+                .select(
+                    "id, order_id, product_id, title, price, quantity"
+                )
+                .in("order_id", orderIds)
+                .order("id", {
+                    ascending: true,
+                });
+
+            if (orderItemsError) {
+                console.error(
+                    "Admin Order Items Fetch Error:",
+                    orderItemsError
+                );
+
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Unable to load order items.",
+                        error:
+                        orderItemsError.message,
+                    },
+                    {
+                        status: 500,
+                    }
+                );
+            }
+
+            orderItems = (items || []).map(
+                (item) => ({
+                    id: Number(item.id),
+                    order_id: Number(item.order_id),
+                    product_id:
+                        item.product_id !== null &&
+                        item.product_id !== undefined
+                            ? Number(item.product_id)
+                            : null,
+                    title: item.title ?? null,
+                    price: item.price ?? null,
+                    quantity:
+                        item.quantity !== null &&
+                        item.quantity !== undefined
+                            ? Number(item.quantity)
+                            : null,
+                })
+            );
+        }
+
+        // ==========================================
+        // FETCH PRODUCT IMAGES
+        //
+        // order_items does not store the image.
+        // We use product_id -> products.id.
+        // ==========================================
+
+        const productIds = Array.from(
+            new Set(
+                orderItems
+                    .map((item) => item.product_id)
+                    .filter(
+                        (id): id is number =>
+                            id !== null &&
+                            Number.isFinite(id)
+                    )
+            )
+        );
+
+        const productImageMap =
+            new Map<number, string | null>();
+
+        if (productIds.length > 0) {
+            const {
+                data: products,
+                error: productsError,
+            } = await supabaseAdmin
+                .from("products")
+                .select("id, image")
+                .in("id", productIds);
+
+            if (productsError) {
+                console.error(
+                    "Admin Product Image Fetch Error:",
+                    productsError
+                );
+
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Unable to load product images.",
+                        error:
+                        productsError.message,
+                    },
+                    {
+                        status: 500,
+                    }
+                );
+            }
+
+            (products || []).forEach(
+                (product) => {
+                    productImageMap.set(
+                        Number(product.id),
+                        product.image || null
+                    );
+                }
+            );
+        }
+
+        // ==========================================
+        // GROUP ITEMS BY ORDER
+        // ==========================================
+
+        const itemsByOrder = new Map<
+            number,
+            Array<{
+                id: number;
+                product_id: number | null;
+                title: string | null;
+                price: string | null;
+                quantity: number | null;
+                image: string | null;
+            }>
+        >();
+
+        orderItems.forEach((item) => {
+            const existing =
+                itemsByOrder.get(item.order_id) || [];
+
+            existing.push({
+                id: item.id,
+                product_id: item.product_id,
+                title: item.title,
+                price: item.price,
+                quantity: item.quantity,
+                image:
+                    item.product_id !== null
+                        ? productImageMap.get(
+                        item.product_id
+                    ) || null
+                        : null,
+            });
+
+            itemsByOrder.set(
+                item.order_id,
+                existing
+            );
+        });
+
+        // ==========================================
+        // ATTACH ITEMS TO ORDERS
+        // ==========================================
+
+        const ordersWithItems = (orders || []).map(
+            (order) => ({
+                ...order,
+                items:
+                    itemsByOrder.get(
+                        Number(order.id)
+                    ) || [],
+            })
+        );
+
+        // ==========================================
         // TOTALS
         // ==========================================
 
-        const totalOrders =
-            count ?? 0;
+        const totalOrders = count ?? 0;
 
-        const totalPages =
-            Math.max(
-                1,
-                Math.ceil(
-                    totalOrders /
-                    PAGE_SIZE
-                )
-            );
+        const totalPages = Math.max(
+            1,
+            Math.ceil(
+                totalOrders / PAGE_SIZE
+            )
+        );
 
         // ==========================================
         // SUCCESS
@@ -523,7 +628,7 @@ export async function GET(req: Request) {
                     ? "Archived"
                     : "Active"
             } | Page ${page}/${totalPages} | ${
-                orders?.length || 0
+                ordersWithItems.length
             } orders | Total ${totalOrders} | Product: ${
                 productSearch || "All"
             }`
@@ -532,8 +637,7 @@ export async function GET(req: Request) {
         return NextResponse.json({
             success: true,
 
-            orders:
-                orders ?? [],
+            orders: ordersWithItems,
 
             totalOrders,
 
@@ -543,8 +647,7 @@ export async function GET(req: Request) {
 
             pageSize: PAGE_SIZE,
 
-            archived:
-            isArchived,
+            archived: isArchived,
 
             productSearch:
                 productSearch || null,
@@ -558,8 +661,7 @@ export async function GET(req: Request) {
         return NextResponse.json(
             {
                 success: false,
-                message:
-                    "Internal server error.",
+                message: "Internal server error.",
             },
             {
                 status: 500,

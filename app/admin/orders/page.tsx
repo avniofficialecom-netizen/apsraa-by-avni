@@ -5,6 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import AdminNavbar from "../../../components/AdminNavbar";
 import Footer from "../../../components/Footer";
 
+type OrderItem = {
+    id: number;
+    product_id: number | null;
+    title: string | null;
+    price: string | null;
+    quantity: number | null;
+    image: string | null;
+};
+
 type Order = {
     id: number;
     customer_name: string;
@@ -16,6 +25,7 @@ type Order = {
     payment_status?: string | null;
     created_at: string;
     archived?: boolean;
+    items?: OrderItem[];
 };
 
 const STATUS_FLOW = [
@@ -809,6 +819,41 @@ export default function OrdersPage() {
     }
 
     // ==========================================
+    // ORDER ITEM PRICE HELPERS
+    // ==========================================
+
+    function itemPriceNumber(value: string | null) {
+        if (!value) {
+            return 0;
+        }
+
+        const cleaned = value
+            .replace(/₹/g, "")
+            .replace(/,/g, "")
+            .trim();
+
+        const numberValue = Number(cleaned);
+
+        return Number.isFinite(numberValue)
+            ? numberValue
+            : 0;
+    }
+
+    function formatItemTotal(
+        price: string | null,
+        quantity: number | null
+    ) {
+        const unitPrice = itemPriceNumber(price);
+        const qty = quantity && quantity > 0 ? quantity : 0;
+
+        if (!unitPrice || !qty) {
+            return price || "₹0";
+        }
+
+        return `₹${(unitPrice * qty).toLocaleString("en-IN")}`;
+    }
+
+    // ==========================================
     // PAGE
     // ==========================================
 
@@ -1324,6 +1369,120 @@ export default function OrdersPage() {
                                                         order.address
                                                     }
                                                 </p>
+
+                                            </div>
+
+                                            {/* ORDER ITEMS */}
+
+                                            <div className="mt-5 bg-pink-50/60 border border-pink-100 rounded-2xl p-4">
+
+                                                <div className="flex items-center justify-between gap-3 mb-3">
+
+                                                    <div>
+                                                        <p className="text-xs uppercase text-pink-500 font-bold tracking-wide">
+                                                            Order Items
+                                                        </p>
+
+                                                        <p className="text-sm text-gray-500 mt-1">
+                                                            {order.items?.length || 0} item
+                                                            {(order.items?.length || 0) !== 1
+                                                                ? "s"
+                                                                : ""}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="text-right">
+                                                        <p className="text-xs uppercase text-gray-400">
+                                                            Order Total
+                                                        </p>
+
+                                                        <p className="font-extrabold text-pink-700 text-lg">
+                                                            ₹{order.total}
+                                                        </p>
+                                                    </div>
+
+                                                </div>
+
+                                                {order.items && order.items.length > 0 ? (
+                                                    <div className="space-y-3">
+
+                                                        {order.items.map((item) => (
+                                                            <div
+                                                                key={item.id}
+                                                                className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row gap-3 sm:items-center"
+                                                            >
+
+                                                                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0 flex items-center justify-center">
+
+                                                                    {item.image ? (
+                                                                        <img
+                                                                            src={item.image}
+                                                                            alt={item.title || "Product image"}
+                                                                            className="w-full h-full object-cover"
+                                                                            loading="lazy"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="text-2xl text-gray-400">
+                                                                            💎
+                                                                        </div>
+                                                                    )}
+
+                                                                </div>
+
+                                                                <div className="flex-1 min-w-0">
+
+                                                                    <p className="font-bold text-gray-900 break-words">
+                                                                        {item.title || "Product"}
+                                                                    </p>
+
+                                                                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+
+                                                                        <span>
+                                                                            Product ID:{" "}
+                                                                            <strong className="text-gray-700">
+                                                                                {item.product_id ?? "-"}
+                                                                            </strong>
+                                                                        </span>
+
+                                                                        <span>
+                                                                            Qty:{" "}
+                                                                            <strong className="text-gray-700">
+                                                                                {item.quantity ?? 0}
+                                                                            </strong>
+                                                                        </span>
+
+                                                                    </div>
+
+                                                                </div>
+
+                                                                <div className="sm:text-right sm:min-w-[150px]">
+
+                                                                    <p className="text-xs uppercase text-gray-400">
+                                                                        Unit Price
+                                                                    </p>
+
+                                                                    <p className="font-bold text-gray-900">
+                                                                        {item.price || "₹0"}
+                                                                    </p>
+
+                                                                    <p className="text-sm text-green-600 font-extrabold mt-1">
+                                                                        {formatItemTotal(
+                                                                            item.price,
+                                                                            item.quantity
+                                                                        )}
+                                                                    </p>
+
+                                                                </div>
+
+                                                            </div>
+                                                        ))}
+
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-white border border-dashed border-gray-300 rounded-xl p-4 text-sm text-gray-500">
+                                                        No item details are available for this order.
+                                                    </div>
+                                                )}
 
                                             </div>
 
