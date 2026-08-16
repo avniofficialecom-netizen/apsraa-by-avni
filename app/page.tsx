@@ -104,9 +104,9 @@ export default async function Home() {
         <>
             <Navbar />
 
-            {/* =====================================================
-                HERO SECTION
-            ====================================================== */}
+            {/* ==========================================
+                HERO
+            ========================================== */}
 
             <section className="bg-gradient-to-r from-pink-50 to-white">
 
@@ -139,8 +139,10 @@ export default async function Home() {
                                     Shop Collection
                                 </Link>
 
+                                {/* EXPLORE CATEGORIES */}
+
                                 <Link
-                                    href="/shop"
+                                    href="/products/categories"
                                     className="inline-flex items-center justify-center border-2 border-pink-600 text-pink-600 px-7 sm:px-8 py-3.5 sm:py-4 rounded-full hover:bg-pink-600 hover:text-white transition font-medium"
                                 >
                                     Explore Categories
@@ -166,9 +168,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
+            {/* ==========================================
                 NEW ARRIVALS
-            ====================================================== */}
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-white">
 
@@ -238,9 +240,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
+            {/* ==========================================
                 BEST SELLERS
-            ====================================================== */}
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-pink-50">
 
@@ -310,9 +312,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
+            {/* ==========================================
                 TRENDING
-            ====================================================== */}
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-white">
 
@@ -382,9 +384,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
+            {/* ==========================================
                 UNDER ₹299
-            ====================================================== */}
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-pink-50">
 
@@ -454,9 +456,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
+            {/* ==========================================
                 UNDER ₹499
-            ====================================================== */}
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-white">
 
@@ -526,9 +528,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
+            {/* ==========================================
                 FEATURED COLLECTION
-            ====================================================== */}
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-white">
 
@@ -598,9 +600,9 @@ export default async function Home() {
 
             </section>
 
-            {/* =====================================================
-                WHY CHOOSE US
-            ====================================================== */}
+            {/* ==========================================
+                WHY CHOOSE APSRAA
+            ========================================== */}
 
             <section className="py-16 md:py-24 bg-white">
 
