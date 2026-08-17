@@ -6,6 +6,24 @@ import { supabaseAdmin } from "../../../lib/supabase-admin";
 type CartItem = {
     id: number;
     quantity: number;
+    variantId?: number;
+};
+
+type Product = {
+    id: number;
+    title: string;
+    price: number | string;
+    stock: number;
+};
+
+type Variant = {
+    id: number;
+    product_id: number;
+    sku: string | null;
+    size: string | null;
+    color: string | null;
+    stock: number;
+    price: number | string | null;
 };
 
 export async function POST(req: Request) {
@@ -86,7 +104,9 @@ export async function POST(req: Request) {
             );
         }
 
-        if (!customerEmail.includes("@")) {
+        if (
+            !customerEmail.includes("@")
+        ) {
             return NextResponse.json(
                 {
                     success: false,
@@ -103,7 +123,22 @@ export async function POST(req: Request) {
 
         const cartItems: CartItem[] =
             Array.isArray(items)
-                ? items
+                ? items.map((item: any) => ({
+                    id: Number(item.id),
+                    quantity: Number(
+                        item.quantity
+                    ),
+                    variantId:
+                        item.variantId !==
+                        undefined &&
+                        item.variantId !==
+                        null &&
+                        item.variantId !== ""
+                            ? Number(
+                                item.variantId
+                            )
+                            : undefined,
+                }))
                 : [];
 
         if (cartItems.length === 0) {
@@ -117,11 +152,68 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
+        // VALIDATE CART ITEMS
+        // ==========================================
+
+        for (const item of cartItems) {
+            if (
+                !Number.isInteger(item.id) ||
+                item.id <= 0
+            ) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Invalid product ID.",
+                    },
+                    { status: 400 }
+                );
+            }
+
+            if (
+                !Number.isInteger(
+                    item.quantity
+                ) ||
+                item.quantity <= 0
+            ) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Invalid product quantity.",
+                    },
+                    { status: 400 }
+                );
+            }
+
+            if (
+                item.variantId !==
+                undefined &&
+                (
+                    !Number.isInteger(
+                        item.variantId
+                    ) ||
+                    item.variantId <= 0
+                )
+            ) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Invalid variant ID.",
+                    },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // ==========================================
         // RAZORPAY CREDENTIALS
         // ==========================================
 
         const keyId =
-            process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+            process.env
+                .NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
         const keySecret =
             process.env.RAZORPAY_KEY_SECRET;
@@ -187,13 +279,12 @@ export async function POST(req: Request) {
             );
         }
 
-        const signaturesMatch =
-            crypto.timingSafeEqual(
+        if (
+            !crypto.timingSafeEqual(
                 expectedBuffer,
                 receivedBuffer
-            );
-
-        if (!signaturesMatch) {
+            )
+        ) {
             console.error(
                 "❌ Razorpay signature verification failed."
             );
@@ -228,7 +319,7 @@ export async function POST(req: Request) {
             );
 
         // ==========================================
-        // 3. PAYMENT MUST BELONG TO THIS ORDER
+        // 3. PAYMENT MUST BELONG TO ORDER
         // ==========================================
 
         if (
@@ -321,7 +412,7 @@ export async function POST(req: Request) {
             } = await supabaseAdmin
                 .from("order_items")
                 .select(
-                    "id, product_id, title, price, quantity"
+                    "id, product_id, variant_id, title, price, quantity"
                 )
                 .eq(
                     "order_id",
@@ -343,53 +434,12 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // 6. GET REAL PRODUCTS FROM DATABASE
+        // 6. GET PRODUCTS
         // ==========================================
-
-        const normalizedItems =
-            cartItems.map((item) => ({
-                id: Number(item.id),
-                quantity:
-                    Number(item.quantity),
-            }));
-
-        for (const item of normalizedItems) {
-            if (
-                !Number.isInteger(
-                    item.id
-                ) ||
-                item.id <= 0
-            ) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            "Invalid product ID.",
-                    },
-                    { status: 400 }
-                );
-            }
-
-            if (
-                !Number.isInteger(
-                    item.quantity
-                ) ||
-                item.quantity <= 0
-            ) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            "Invalid product quantity.",
-                    },
-                    { status: 400 }
-                );
-            }
-        }
 
         const productIds = [
             ...new Set(
-                normalizedItems.map(
+                cartItems.map(
                     (item) => item.id
                 )
             ),
@@ -439,19 +489,98 @@ export async function POST(req: Request) {
             );
         }
 
+        const typedProducts =
+            products as Product[];
+
         // ==========================================
-        // 7. SERVER-SIDE PRICE + STOCK CHECK
+        // 7. GET VARIANTS
+        // ==========================================
+
+        const variantIds = [
+            ...new Set(
+                cartItems
+                    .map(
+                        (item) =>
+                            item.variantId
+                    )
+                    .filter(
+                        (
+                            id
+                        ): id is number =>
+                            id !==
+                            undefined
+                    )
+            ),
+        ];
+
+        let variants: Variant[] = [];
+
+        if (variantIds.length > 0) {
+            const {
+                data: variantData,
+                error: variantError,
+            } = await supabaseAdmin
+                .from("product_variants")
+                .select(
+                    "id, product_id, sku, size, color, stock, price"
+                )
+                .in(
+                    "id",
+                    variantIds
+                );
+
+            if (variantError) {
+                console.error(
+                    "Variant lookup error:",
+                    variantError
+                );
+
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "Unable to verify product variants.",
+                    },
+                    { status: 500 }
+                );
+            }
+
+            variants =
+                (variantData ||
+                    []) as Variant[];
+
+            if (
+                variants.length !==
+                variantIds.length
+            ) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            "One or more selected variants could not be found.",
+                    },
+                    { status: 400 }
+                );
+            }
+        }
+
+        // ==========================================
+        // 8. SERVER-SIDE PRICE + STOCK
         // ==========================================
 
         let total = 0;
 
-        const orderItems = [];
+        const orderItems: {
+            product_id: number;
+            variant_id: number | null;
+            title: string;
+            price: string;
+            quantity: number;
+        }[] = [];
 
-        for (
-            const item of normalizedItems
-            ) {
+        for (const item of cartItems) {
             const product =
-                products.find(
+                typedProducts.find(
                     (p) =>
                         p.id ===
                         item.id
@@ -468,15 +597,166 @@ export async function POST(req: Request) {
                 );
             }
 
+            // ==========================================
+            // VARIANT PRODUCT
+            // ==========================================
+
             if (
-                Number(product.stock) <
+                item.variantId !==
+                undefined
+            ) {
+                const variant =
+                    variants.find(
+                        (v) =>
+                            v.id ===
+                            item.variantId
+                    );
+
+                if (!variant) {
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message:
+                                "Selected variant could not be found.",
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                if (
+                    variant.product_id !==
+                    product.id
+                ) {
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message:
+                                "Selected variant does not belong to this product.",
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                const variantStock =
+                    Number(
+                        variant.stock
+                    );
+
+                if (
+                    !Number.isFinite(
+                        variantStock
+                    ) ||
+                    variantStock <
+                    item.quantity
+                ) {
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message:
+                                `${product.title} selected variant has only ${variantStock} item(s) available.`,
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                const variantPrice =
+                    variant.price !==
+                    null &&
+                    variant.price !==
+                    undefined &&
+                    String(
+                        variant.price
+                    ).trim() !== ""
+                        ? Number(
+                            String(
+                                variant.price
+                            )
+                                .replace(
+                                    /₹/g,
+                                    ""
+                                )
+                                .replace(
+                                    /,/g,
+                                    ""
+                                )
+                                .trim()
+                        )
+                        : Number(
+                            String(
+                                product.price
+                            )
+                                .replace(
+                                    /₹/g,
+                                    ""
+                                )
+                                .replace(
+                                    /,/g,
+                                    ""
+                                )
+                                .trim()
+                        );
+
+                if (
+                    !Number.isFinite(
+                        variantPrice
+                    ) ||
+                    variantPrice < 0
+                ) {
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message:
+                                `Invalid price for ${product.title}.`,
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                total +=
+                    variantPrice *
+                    item.quantity;
+
+                orderItems.push({
+                    product_id:
+                    product.id,
+
+                    variant_id:
+                    variant.id,
+
+                    title:
+                    product.title,
+
+                    price:
+                        variantPrice.toString(),
+
+                    quantity:
+                    item.quantity,
+                });
+
+                continue;
+            }
+
+            // ==========================================
+            // NORMAL PRODUCT WITHOUT VARIANT
+            // ==========================================
+
+            const stock =
+                Number(
+                    product.stock
+                );
+
+            if (
+                !Number.isFinite(
+                    stock
+                ) ||
+                stock <
                 item.quantity
             ) {
                 return NextResponse.json(
                     {
                         success: false,
                         message:
-                            `${product.title} has only ${product.stock} item(s) available.`,
+                            `${product.title} has only ${stock} item(s) available.`,
                     },
                     { status: 400 }
                 );
@@ -522,13 +802,14 @@ export async function POST(req: Request) {
                 product_id:
                 product.id,
 
+                variant_id:
+                    null,
+
                 title:
                 product.title,
 
                 price:
-                    String(
-                        product.price
-                    ),
+                    price.toString(),
 
                 quantity:
                 item.quantity,
@@ -536,7 +817,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // 8. VERIFY PAYMENT AMOUNT
+        // 9. VERIFY PAYMENT AMOUNT
         // ==========================================
 
         const expectedAmount =
@@ -592,7 +873,7 @@ export async function POST(req: Request) {
         );
 
         // ==========================================
-        // 9. CREATE ORDER
+        // 10. CREATE ORDER
         // ==========================================
 
         const fullAddress =
@@ -603,11 +884,9 @@ export async function POST(req: Request) {
             ]
                 .filter(Boolean)
                 .join(", ") +
-            (
-                customerPincode
-                    ? ` - ${customerPincode}`
-                    : ""
-            );
+            (customerPincode
+                ? ` - ${customerPincode}`
+                : "");
 
         const {
             data: order,
@@ -675,7 +954,7 @@ export async function POST(req: Request) {
         );
 
         // ==========================================
-        // 10. CREATE ORDER ITEMS
+        // 11. CREATE ORDER ITEMS
         // ==========================================
 
         const itemsToInsert =
@@ -686,6 +965,9 @@ export async function POST(req: Request) {
 
                     product_id:
                     item.product_id,
+
+                    variant_id:
+                    item.variant_id,
 
                     title:
                     item.title,
@@ -698,6 +980,11 @@ export async function POST(req: Request) {
                 })
             );
 
+        console.log(
+            "ORDER ITEMS TO INSERT:",
+            itemsToInsert
+        );
+
         const {
             data: savedItems,
             error: itemsError,
@@ -707,7 +994,7 @@ export async function POST(req: Request) {
                 itemsToInsert
             )
             .select(
-                "id, product_id, title, price, quantity"
+                "id, product_id, variant_id, title, price, quantity"
             );
 
         if (itemsError) {
@@ -736,7 +1023,8 @@ export async function POST(req: Request) {
         }
 
         console.log(
-            "✅ ORDER ITEMS CREATED."
+            "✅ ORDER ITEMS CREATED:",
+            savedItems
         );
 
         // ==========================================
@@ -752,10 +1040,8 @@ export async function POST(req: Request) {
             order,
 
             items:
-                savedItems ||
-                [],
+                savedItems || [],
         });
-
     } catch (error) {
         console.error(
             "❌ VERIFY PAYMENT ERROR:",

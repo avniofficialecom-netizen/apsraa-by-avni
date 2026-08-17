@@ -11,351 +11,367 @@ import type { ReactNode } from "react";
 
 import { supabase } from "../../lib/supabase";
 
-
 type CartItem = {
     id: number;
     title: string;
     price: string;
     image: string;
     quantity: number;
+
+    // Variant information
+    variantId?: number;
+    sku?: string;
+    size?: string;
+    color?: string;
 };
 
+type AddToCartItem = Omit<
+    CartItem,
+    "quantity"
+>;
 
 type CartContextType = {
     cart: CartItem[];
 
     addToCart: (
-        item: Omit<CartItem, "quantity">
-    ) => void;
+        item: AddToCartItem
+    ) => Promise<void>;
 
     increaseQuantity: (
-        id: number
-    ) => void;
+        id: number,
+        variantId?: number
+    ) => Promise<void>;
 
     decreaseQuantity: (
-        id: number
+        id: number,
+        variantId?: number
     ) => void;
 
     removeFromCart: (
-        id: number
+        id: number,
+        variantId?: number
     ) => void;
 
     clearCart: () => void;
 };
-
 
 const CartContext =
     createContext<CartContextType | undefined>(
         undefined
     );
 
-
 export function CartProvider({
                                  children,
                              }: {
     children: ReactNode;
 }) {
-
     const [cart, setCart] =
         useState<CartItem[]>([]);
 
-
-    // =========================================================
-    // LOAD CART FROM LOCAL STORAGE
-    // =========================================================
+    // ==========================================
+    // LOAD CART
+    // ==========================================
 
     useEffect(() => {
-
         try {
-
             const savedCart =
                 localStorage.getItem("cart");
 
-            if (savedCart) {
-
-                const parsedCart =
-                    JSON.parse(savedCart);
-
-                if (Array.isArray(parsedCart)) {
-
-                    setCart(parsedCart);
-
-                }
-
+            if (!savedCart) {
+                return;
             }
 
-        } catch (error) {
+            const parsedCart =
+                JSON.parse(savedCart);
 
+            if (Array.isArray(parsedCart)) {
+                setCart(parsedCart);
+            }
+        } catch (error) {
             console.error(
                 "Cart loading error:",
                 error
             );
 
             localStorage.removeItem("cart");
-
         }
-
     }, []);
 
-
-    // =========================================================
-    // SAVE CART TO LOCAL STORAGE
-    // =========================================================
+    // ==========================================
+    // SAVE CART
+    // ==========================================
 
     useEffect(() => {
-
         localStorage.setItem(
             "cart",
             JSON.stringify(cart)
         );
-
     }, [cart]);
 
+    // ==========================================
+    // GET STOCK
+    // ==========================================
 
-    // =========================================================
-    // GET CURRENT PRODUCT STOCK
-    // =========================================================
-
-    const getProductStock = async (
-        id: number
+    const getStock = async (
+        productId: number,
+        variantId?: number
     ): Promise<number | null> => {
-
         try {
+            // --------------------------------------
+            // VARIANT STOCK
+            // --------------------------------------
 
-            const { data, error } =
-                await supabase
-                    .from("products")
+            if (
+                variantId !== undefined
+            ) {
+                const {
+                    data,
+                    error,
+                } = await supabase
+                    .from("product_variants")
                     .select("stock")
-                    .eq("id", id)
+                    .eq(
+                        "id",
+                        variantId
+                    )
+                    .eq(
+                        "product_id",
+                        productId
+                    )
                     .single();
 
+                if (error) {
+                    console.error(
+                        "Variant stock error:",
+                        error
+                    );
+
+                    return null;
+                }
+
+                if (
+                    !data ||
+                    typeof data.stock !==
+                    "number"
+                ) {
+                    return null;
+                }
+
+                return data.stock;
+            }
+
+            // --------------------------------------
+            // NORMAL PRODUCT STOCK
+            // --------------------------------------
+
+            const {
+                data,
+                error,
+            } = await supabase
+                .from("products")
+                .select("stock")
+                .eq(
+                    "id",
+                    productId
+                )
+                .single();
 
             if (error) {
-
                 console.error(
-                    "Stock check error:",
+                    "Product stock error:",
                     error
                 );
 
                 return null;
-
             }
-
 
             if (
-                data === null ||
-                typeof data.stock !== "number"
+                !data ||
+                typeof data.stock !==
+                "number"
             ) {
-
                 return null;
-
             }
 
-
             return data.stock;
-
         } catch (error) {
-
             console.error(
                 "Stock request failed:",
                 error
             );
 
             return null;
-
         }
-
     };
 
+    // ==========================================
+    // SAME CART ITEM?
+    // ==========================================
 
-    // =========================================================
+    const isSameCartItem = (
+        item: CartItem,
+        id: number,
+        variantId?: number
+    ) => {
+        return (
+            item.id === id &&
+            (
+                item.variantId ??
+                null
+            ) ===
+            (
+                variantId ??
+                null
+            )
+        );
+    };
+
+    // ==========================================
     // ADD TO CART
-    // =========================================================
+    // ==========================================
 
     const addToCart = async (
-        item: Omit<CartItem, "quantity">
+        item: AddToCartItem
     ) => {
-
-        // -----------------------------------------------------
-        // CHECK CURRENT DATABASE STOCK
-        // -----------------------------------------------------
-
         const stock =
-            await getProductStock(item.id);
-
+            await getStock(
+                item.id,
+                item.variantId
+            );
 
         if (stock === null) {
-
             alert(
                 "Unable to check product availability. Please try again."
             );
 
             return;
-
         }
 
-
         if (stock <= 0) {
-
             alert(
-                "This product is currently out of stock."
+                "This product variant is currently out of stock."
             );
 
             return;
-
         }
 
-
-        // -----------------------------------------------------
-        // CHECK CURRENT CART QUANTITY
-        // -----------------------------------------------------
-
         const existingItem =
-            cart.find(
-                (product) =>
-                    product.id === item.id
+            cart.find((cartItem) =>
+                isSameCartItem(
+                    cartItem,
+                    item.id,
+                    item.variantId
+                )
             );
 
-
         const currentQuantity =
-            existingItem?.quantity ?? 0;
-
+            existingItem?.quantity ??
+            0;
 
         if (
-            currentQuantity >= stock
+            currentQuantity >=
+            stock
         ) {
-
             alert(
                 `Only ${stock} item(s) available.`
             );
 
             return;
-
         }
 
-
-        // -----------------------------------------------------
-        // ADD ITEM
-        // -----------------------------------------------------
-
-        setCart((prev) => {
-
+        setCart((previousCart) => {
             const existing =
-                prev.find(
-                    (product) =>
-                        product.id === item.id
+                previousCart.find(
+                    (cartItem) =>
+                        isSameCartItem(
+                            cartItem,
+                            item.id,
+                            item.variantId
+                        )
                 );
-
 
             if (existing) {
-
-                return prev.map(
-                    (product) =>
-                        product.id === item.id
+                return previousCart.map(
+                    (cartItem) =>
+                        isSameCartItem(
+                            cartItem,
+                            item.id,
+                            item.variantId
+                        )
                             ? {
-                                ...product,
+                                ...cartItem,
                                 quantity:
-                                    product.quantity +
+                                    cartItem.quantity +
                                     1,
                             }
-                            : product
+                            : cartItem
                 );
-
             }
 
-
             return [
-                ...prev,
+                ...previousCart,
                 {
                     ...item,
                     quantity: 1,
                 },
             ];
-
         });
-
     };
 
-
-    // =========================================================
-    // INCREASE QUANTITY
-    // =========================================================
+    // ==========================================
+    // INCREASE
+    // ==========================================
 
     const increaseQuantity = async (
-        id: number
+        id: number,
+        variantId?: number
     ) => {
-
-        // -----------------------------------------------------
-        // GET CURRENT DATABASE STOCK
-        // -----------------------------------------------------
-
         const stock =
-            await getProductStock(id);
-
+            await getStock(
+                id,
+                variantId
+            );
 
         if (stock === null) {
-
             alert(
                 "Unable to check product availability. Please try again."
             );
 
             return;
-
         }
-
-
-        if (stock <= 0) {
-
-            alert(
-                "This product is currently out of stock."
-            );
-
-            return;
-
-        }
-
-
-        // -----------------------------------------------------
-        // GET CURRENT CART QUANTITY
-        // -----------------------------------------------------
 
         const currentItem =
-            cart.find(
-                (item) =>
-                    item.id === id
+            cart.find((item) =>
+                isSameCartItem(
+                    item,
+                    id,
+                    variantId
+                )
             );
-
 
         if (!currentItem) {
             return;
         }
 
-
-        // -----------------------------------------------------
-        // STOCK LIMIT
-        // -----------------------------------------------------
-
         if (
-            currentItem.quantity >= stock
+            currentItem.quantity >=
+            stock
         ) {
-
             alert(
                 `Only ${stock} item(s) available.`
             );
 
             return;
-
         }
 
-
-        // -----------------------------------------------------
-        // INCREASE
-        // -----------------------------------------------------
-
-        setCart((prev) =>
-            prev.map(
+        setCart((previousCart) =>
+            previousCart.map(
                 (item) =>
-                    item.id === id
+                    isSameCartItem(
+                        item,
+                        id,
+                        variantId
+                    )
                         ? {
                             ...item,
                             quantity:
@@ -365,72 +381,67 @@ export function CartProvider({
                         : item
             )
         );
-
     };
 
-
-    // =========================================================
-    // DECREASE QUANTITY
-    // =========================================================
+    // ==========================================
+    // DECREASE
+    // ==========================================
 
     const decreaseQuantity = (
-        id: number
+        id: number,
+        variantId?: number
     ) => {
-
-        setCart((prev) =>
-            prev
-                .map(
-                    (item) =>
-                        item.id === id
-                            ? {
-                                ...item,
-                                quantity:
-                                    item.quantity -
-                                    1,
-                            }
-                            : item
+        setCart((previousCart) =>
+            previousCart
+                .map((item) =>
+                    isSameCartItem(
+                        item,
+                        id,
+                        variantId
+                    )
+                        ? {
+                            ...item,
+                            quantity:
+                                item.quantity -
+                                1,
+                        }
+                        : item
                 )
                 .filter(
                     (item) =>
                         item.quantity > 0
                 )
         );
-
     };
 
-
-    // =========================================================
-    // REMOVE ITEM
-    // =========================================================
+    // ==========================================
+    // REMOVE
+    // ==========================================
 
     const removeFromCart = (
-        id: number
+        id: number,
+        variantId?: number
     ) => {
-
-        setCart((prev) =>
-            prev.filter(
+        setCart((previousCart) =>
+            previousCart.filter(
                 (item) =>
-                    item.id !== id
+                    !isSameCartItem(
+                        item,
+                        id,
+                        variantId
+                    )
             )
         );
-
     };
 
-
-    // =========================================================
-    // CLEAR CART
-    // =========================================================
+    // ==========================================
+    // CLEAR
+    // ==========================================
 
     const clearCart = () => {
-
         setCart([]);
-
+        localStorage.removeItem("cart");
     };
-
-
-    // =========================================================
-    // PROVIDER
-    // =========================================================
 
     return (
         <CartContext.Provider
@@ -446,25 +457,17 @@ export function CartProvider({
             {children}
         </CartContext.Provider>
     );
-
 }
 
-
 export function useCart() {
-
     const context =
         useContext(CartContext);
 
-
     if (!context) {
-
         throw new Error(
             "useCart must be used inside CartProvider"
         );
-
     }
 
-
     return context;
-
 }

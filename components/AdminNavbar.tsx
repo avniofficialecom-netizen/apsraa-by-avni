@@ -12,20 +12,6 @@ export default function AdminNavbar() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
 
-    async function logout() {
-        if (loggingOut) return;
-
-        setLoggingOut(true);
-
-        try {
-            await supabase.auth.signOut();
-            router.replace("/admin/login");
-        } catch (error) {
-            console.error("Logout error:", error);
-            setLoggingOut(false);
-        }
-    }
-
     const navItems = [
         {
             name: "Dashboard",
@@ -36,6 +22,11 @@ export default function AdminNavbar() {
             name: "Products",
             href: "/admin/products",
             icon: "💎",
+        },
+        {
+            name: "Inventory",
+            href: "/admin/inventory",
+            icon: "📋",
         },
         {
             name: "Orders",
@@ -61,59 +52,68 @@ export default function AdminNavbar() {
         setMenuOpen(false);
     }
 
+    async function logout() {
+        if (loggingOut) return;
+
+        setLoggingOut(true);
+
+        try {
+            await supabase.auth.signOut();
+            router.replace("/admin/login");
+        } catch (error) {
+            console.error("Logout error:", error);
+            setLoggingOut(false);
+        }
+    }
+
     return (
-        <nav className="apsraa-navbar">
-
-            {/* ================================
-                TOP BAR
-            ================================= */}
-
-            <div className="apsraa-navbar-top">
-
+        <nav className="sticky top-0 z-[9999] w-full bg-slate-900 text-white shadow-[0_4px_18px_rgba(0,0,0,0.16)]">
+            <div className="mx-auto flex min-h-[76px] w-full max-w-[1400px] items-center px-7 max-[1120px]:px-[18px] max-md:min-h-16 max-md:px-3">
+                {/* Logo */}
                 <Link
                     href="/admin"
-                    className="apsraa-logo"
                     onClick={closeMenu}
+                    className="shrink-0 whitespace-nowrap text-[27px] font-extrabold tracking-[-0.6px] text-pink-400 no-underline max-[1120px]:text-[23px] max-md:text-xl max-[400px]:text-[19px]"
                 >
                     APSRAA ADMIN
                 </Link>
 
                 {/* Desktop Navigation */}
-
-                <div className="apsraa-desktop-nav">
-
+                <div className="ml-auto mr-6 flex shrink-0 items-center justify-end gap-3 max-[1120px]:mr-3 max-[1120px]:gap-1 max-md:hidden">
                     {navItems.map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={
+                            className={[
+                                "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-3 text-[15px] font-medium no-underline transition-all",
+                                "hover:-translate-y-px hover:bg-slate-800 hover:text-white",
+                                "max-[1120px]:gap-1 max-[1120px]:px-2.5 max-[1120px]:py-2 max-[1120px]:text-sm",
                                 isActive(item.href)
-                                    ? "apsraa-desktop-link active"
-                                    : "apsraa-desktop-link"
-                            }
+                                    ? "bg-pink-600 text-white"
+                                    : "text-gray-200",
+                            ].join(" ")}
                         >
-                            {item.name}
+                            <span className="text-base leading-none max-[1120px]:text-sm">
+                                {item.icon}
+                            </span>
+                            <span>{item.name}</span>
                         </Link>
                     ))}
-
                 </div>
 
                 {/* Desktop Logout */}
-
                 <button
                     type="button"
                     onClick={logout}
                     disabled={loggingOut}
-                    className="apsraa-desktop-logout"
+                    className="shrink-0 whitespace-nowrap rounded-xl border-0 bg-pink-600 px-[21px] py-3 text-[15px] font-semibold text-white transition-all hover:-translate-y-px hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60 max-[1120px]:px-3.5 max-[1120px]:py-2.5 max-[1120px]:text-sm max-md:hidden"
                 >
                     {loggingOut ? "Logging..." : "Logout"}
                 </button>
 
                 {/* Mobile Menu Button */}
-
                 <button
                     type="button"
-                    className="apsraa-menu-button"
                     onClick={() =>
                         setMenuOpen((value) => !value)
                     }
@@ -123,35 +123,32 @@ export default function AdminNavbar() {
                             : "Open menu"
                     }
                     aria-expanded={menuOpen}
+                    className="ml-auto hidden h-11 w-11 items-center justify-center rounded-xl border-0 bg-pink-600 text-[23px] text-white max-md:flex max-[400px]:h-[42px] max-[400px]:w-[42px] max-[400px]:text-[21px]"
                 >
                     {menuOpen ? "✕" : "☰"}
                 </button>
-
             </div>
 
-            {/* ================================
-                MOBILE MENU
-            ================================= */}
-
+            {/* Mobile Navigation */}
             {menuOpen && (
-                <div className="apsraa-mobile-menu">
-
+                <div className="grid w-full grid-cols-2 gap-2 border-t border-slate-700 bg-slate-900 p-2 md:hidden">
                     {navItems.map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
                             onClick={closeMenu}
-                            className={
+                            className={[
+                                "flex min-h-12 w-full items-center gap-2 rounded-xl bg-slate-800 px-3 text-[15px] font-medium text-gray-200 no-underline",
+                                "hover:bg-slate-700",
                                 isActive(item.href)
-                                    ? "apsraa-mobile-item active"
-                                    : "apsraa-mobile-item"
-                            }
+                                    ? "bg-pink-600 text-white"
+                                    : "",
+                            ].join(" ")}
                         >
-                            <span className="apsraa-mobile-icon">
+                            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[17px]">
                                 {item.icon}
                             </span>
-
-                            <span className="apsraa-mobile-text">
+                            <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                 {item.name}
                             </span>
                         </Link>
@@ -161,424 +158,20 @@ export default function AdminNavbar() {
                         type="button"
                         onClick={logout}
                         disabled={loggingOut}
-                        className="apsraa-mobile-item apsraa-mobile-logout"
+                        className="col-span-2 flex min-h-12 w-full items-center gap-2 rounded-xl border-0 bg-slate-800 px-3 text-left text-[15px] font-medium text-gray-200 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        <span className="apsraa-mobile-icon">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[17px]">
                             🚪
                         </span>
 
-                        <span className="apsraa-mobile-text">
+                        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                             {loggingOut
                                 ? "Logging out..."
                                 : "Logout"}
                         </span>
                     </button>
-
                 </div>
             )}
-
-            {/* ================================
-                STYLES
-            ================================= */}
-
-            <style jsx>{`
-
-                /* ==================================
-                   MAIN NAVBAR
-                ================================== */
-
-                .apsraa-navbar {
-                    position: sticky;
-                    top: 0;
-                    z-index: 9999;
-
-                    width: 100%;
-
-                    background: #0f172a;
-                    color: white;
-
-                    box-shadow:
-                        0 4px 18px rgba(0, 0, 0, 0.16);
-                }
-
-                .apsraa-navbar-top {
-                    width: 100%;
-                    max-width: 1280px;
-
-                    height: 76px;
-
-                    margin: 0 auto;
-
-                    padding: 0 28px;
-
-                    display: flex;
-                    align-items: center;
-
-                    box-sizing: border-box;
-                }
-
-                /* ==================================
-                   LOGO
-                ================================== */
-
-                .apsraa-logo {
-                    color: #f472b6;
-
-                    text-decoration: none;
-
-                    font-size: 27px;
-                    font-weight: 800;
-
-                    letter-spacing: -0.6px;
-
-                    white-space: nowrap;
-
-                    flex-shrink: 0;
-                }
-
-                /* ==================================
-                   DESKTOP NAV
-                ================================== */
-
-                .apsraa-desktop-nav {
-                    display: flex;
-                    align-items: center;
-
-                    gap: 4px;
-
-                    margin-left: auto;
-                }
-
-                .apsraa-desktop-link {
-                    color: #e5e7eb;
-
-                    text-decoration: none;
-
-                    padding: 10px 14px;
-
-                    border-radius: 10px;
-
-                    font-size: 15px;
-                    font-weight: 500;
-
-                    white-space: nowrap;
-
-                    transition:
-                        background 0.2s ease,
-                        color 0.2s ease;
-                }
-
-                .apsraa-desktop-link:hover {
-                    background: #1e293b;
-                    color: white;
-                }
-
-                .apsraa-desktop-link.active {
-                    background: #db2777;
-                    color: white;
-                }
-
-                /* ==================================
-                   DESKTOP LOGOUT
-                ================================== */
-
-                .apsraa-desktop-logout {
-                    margin-left: 18px;
-
-                    padding: 12px 21px;
-
-                    border: none;
-                    border-radius: 12px;
-
-                    background: #db2777;
-                    color: white;
-
-                    font-family: inherit;
-
-                    font-size: 15px;
-                    font-weight: 600;
-
-                    cursor: pointer;
-
-                    white-space: nowrap;
-                }
-
-                .apsraa-desktop-logout:hover {
-                    background: #be185d;
-                }
-
-                .apsraa-desktop-logout:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                }
-
-                /* ==================================
-                   MOBILE BUTTON
-                ================================== */
-
-                .apsraa-menu-button {
-                    display: none;
-
-                    width: 44px;
-                    height: 44px;
-
-                    margin-left: auto;
-
-                    border: none;
-                    border-radius: 12px;
-
-                    background: #db2777;
-                    color: white;
-
-                    align-items: center;
-                    justify-content: center;
-
-                    font-size: 23px;
-
-                    cursor: pointer;
-                }
-
-                /* ==================================
-                   MOBILE MENU DEFAULT
-                ================================== */
-
-                .apsraa-mobile-menu {
-                    display: none;
-                }
-
-                /* ==================================
-                   MOBILE
-                ================================== */
-
-                @media (max-width: 767px) {
-
-                    .apsraa-navbar-top {
-                        height: 64px;
-
-                        padding: 0 12px;
-                    }
-
-                    .apsraa-logo {
-                        font-size: 20px;
-                    }
-
-                    .apsraa-desktop-nav {
-                        display: none;
-                    }
-
-                    .apsraa-desktop-logout {
-                        display: none;
-                    }
-
-                    .apsraa-menu-button {
-                        display: flex;
-                    }
-
-                    /* ==============================
-                       MOBILE MENU
-
-                       2 COLUMNS
-                    ============================== */
-
-                    .apsraa-mobile-menu {
-
-                        display: grid;
-
-                        grid-template-columns:
-                            repeat(2, minmax(0, 1fr));
-
-                        gap: 8px;
-
-                        width: 100%;
-
-                        padding: 10px;
-
-                        background: #0f172a;
-
-                        border-top:
-                            1px solid #334155;
-
-                        box-sizing: border-box;
-                    }
-
-                    /* ==============================
-                       MOBILE ITEMS
-                    ============================== */
-
-                    .apsraa-mobile-item {
-
-                        width: 100%;
-                        height: 48px;
-                        min-height: 48px;
-
-                        display: flex;
-
-                        flex-direction: row;
-
-                        align-items: center;
-
-                        justify-content: flex-start;
-
-                        gap: 8px;
-
-                        padding: 0 11px;
-
-                        margin: 0;
-
-                        border: none;
-                        border-radius: 10px;
-
-                        background: #1e293b;
-
-                        color: #e5e7eb;
-
-                        text-decoration: none;
-
-                        font-family: inherit;
-
-                        font-size: 15px;
-                        font-weight: 500;
-
-                        line-height: 1;
-
-                        box-sizing: border-box;
-
-                        white-space: nowrap;
-
-                        cursor: pointer;
-                    }
-
-                    .apsraa-mobile-item:hover {
-                        background: #334155;
-                    }
-
-                    .apsraa-mobile-item.active {
-                        background: #db2777;
-                        color: white;
-                    }
-
-                    /* ==============================
-                       ICON
-                    ============================== */
-
-                    .apsraa-mobile-icon {
-
-                        width: 24px;
-                        min-width: 24px;
-
-                        height: 24px;
-
-                        display: inline-flex;
-
-                        align-items: center;
-                        justify-content: center;
-
-                        flex: 0 0 24px;
-
-                        font-size: 17px;
-
-                        line-height: 1;
-                    }
-
-                    /* ==============================
-                       TEXT
-                    ============================== */
-
-                    .apsraa-mobile-text {
-
-                        display: block;
-
-                        flex: 1;
-
-                        min-width: 0;
-
-                        overflow: hidden;
-
-                        text-overflow: ellipsis;
-
-                        white-space: nowrap;
-
-                        line-height: 1;
-                    }
-
-                    /* ==============================
-                       LOGOUT
-
-                       Full width bottom row
-                    ============================== */
-
-                    .apsraa-mobile-logout {
-
-                        grid-column: 1 / -1;
-
-                        width: 100%;
-
-                        margin-top: 2px;
-
-                        background: #1e293b;
-                    }
-
-                    .apsraa-mobile-logout:hover {
-                        background: #334155;
-                    }
-
-                    .apsraa-mobile-logout:disabled {
-                        opacity: 0.6;
-                        cursor: not-allowed;
-                    }
-                }
-
-                /* ==================================
-                   VERY SMALL PHONES
-                ================================== */
-
-                @media (max-width: 400px) {
-
-                    .apsraa-navbar-top {
-                        height: 64px;
-
-                        padding: 0 10px;
-                    }
-
-                    .apsraa-logo {
-                        font-size: 19px;
-                    }
-
-                    .apsraa-menu-button {
-                        width: 42px;
-                        height: 42px;
-
-                        font-size: 21px;
-                    }
-
-                    .apsraa-mobile-menu {
-                        padding: 8px;
-                        gap: 7px;
-                    }
-
-                    .apsraa-mobile-item {
-                        height: 46px;
-                        min-height: 46px;
-
-                        padding: 0 9px;
-
-                        gap: 7px;
-
-                        font-size: 14px;
-                    }
-
-                    .apsraa-mobile-icon {
-                        width: 23px;
-                        min-width: 23px;
-
-                        flex-basis: 23px;
-
-                        font-size: 16px;
-                    }
-                }
-
-            `}</style>
-
         </nav>
     );
 }

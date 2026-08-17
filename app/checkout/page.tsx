@@ -85,7 +85,9 @@ export default function Checkout() {
         value: string
     ) => {
         const cleanValue =
-            value.replace(/\D/g, "").slice(0, 10);
+            value
+                .replace(/\D/g, "")
+                .slice(0, 10);
 
         setPhone(cleanValue);
     };
@@ -98,13 +100,13 @@ export default function Checkout() {
         value: string
     ) => {
         const cleanPincode =
-            value.replace(/\D/g, "").slice(0, 6);
+            value
+                .replace(/\D/g, "")
+                .slice(0, 6);
 
         setPincode(cleanPincode);
-
         setPincodeVerified(false);
         setPincodeError("");
-
         setCity("");
         setState("");
 
@@ -115,76 +117,41 @@ export default function Checkout() {
         setPincodeLoading(true);
 
         try {
-            const apiUrl =
-                "https://api.postalpincode.in/pincode/" +
-                cleanPincode;
-
-            const response =
-                await fetch(apiUrl);
-
-            if (!response.ok) {
-                throw new Error(
-                    "PIN verification request failed."
-                );
-            }
+            const response = await fetch(
+                `/api/pincode/${cleanPincode}`,
+                {
+                    method: "GET",
+                    cache: "no-store",
+                }
+            );
 
             const data =
                 await response.json();
 
             if (
-                !Array.isArray(data) ||
-                data.length === 0 ||
-                data[0]?.Status !== "Success" ||
-                !Array.isArray(data[0]?.PostOffice) ||
-                data[0].PostOffice.length === 0
+                !response.ok ||
+                !data?.success
             ) {
                 setPincodeVerified(false);
 
                 setPincodeError(
-                    "Invalid PIN Code. Please check and try again."
+                    data?.message ||
+                    "Unable to verify PIN code."
                 );
 
                 return;
             }
 
-            const postOffice =
-                data[0].PostOffice[0];
-
-            const detectedCity =
-                postOffice.District ||
-                postOffice.Block ||
-                postOffice.Name ||
-                "";
-
-            const detectedState =
-                postOffice.State || "";
-
-            setCity(detectedCity);
-            setState(detectedState);
-
+            setCity(data.city || "");
+            setState(data.state || "");
             setPincodeVerified(true);
             setPincodeError("");
 
             console.log(
-                "================================"
-            );
-            console.log(
-                "✅ PIN CODE VERIFIED"
-            );
-            console.log(
-                "PIN:",
-                cleanPincode
-            );
-            console.log(
-                "CITY:",
-                detectedCity
-            );
-            console.log(
-                "STATE:",
-                detectedState
-            );
-            console.log(
-                "================================"
+                "PIN CODE VERIFIED:",
+                cleanPincode,
+                data.city,
+                data.state
             );
         } catch (error) {
             console.error(
@@ -272,7 +239,9 @@ export default function Checkout() {
             return;
         }
 
-        if (cleanAddress.length < 10) {
+        if (
+            cleanAddress.length < 10
+        ) {
             alert(
                 "Please enter your complete delivery address, including house/flat number and street/locality."
             );
@@ -354,6 +323,28 @@ export default function Checkout() {
             }
 
             // ==========================================
+            // PREPARE CART ITEMS
+            // ==========================================
+
+            const orderItems =
+                cart.map((item) => ({
+                    id: item.id,
+                    quantity: item.quantity,
+
+                    // IMPORTANT:
+                    // Carry selected variant
+                    // into the payment flow.
+                    variantId:
+                        item.variantId ??
+                        undefined,
+                }));
+
+            console.log(
+                "CHECKOUT ITEMS:",
+                orderItems
+            );
+
+            // ==========================================
             // CREATE RAZORPAY ORDER
             // ==========================================
 
@@ -375,15 +366,7 @@ export default function Checkout() {
                         body:
                             JSON.stringify({
                                 items:
-                                    cart.map(
-                                        (item) => ({
-                                            id:
-                                            item.id,
-
-                                            quantity:
-                                            item.quantity,
-                                        })
-                                    ),
+                                orderItems,
                             }),
                     }
                 );
@@ -531,6 +514,9 @@ export default function Checkout() {
                                                             cleanPincode,
                                                         },
 
+                                                    // IMPORTANT:
+                                                    // Send variantId
+                                                    // to verify-payment.
                                                     items:
                                                         cart.map(
                                                             (
@@ -541,6 +527,10 @@ export default function Checkout() {
 
                                                                 quantity:
                                                                 item.quantity,
+
+                                                                variantId:
+                                                                    item.variantId ??
+                                                                    undefined,
                                                             })
                                                         ),
                                                 }
@@ -1016,15 +1006,11 @@ export default function Checkout() {
                                 className="w-full border-2 border-gray-200 rounded-xl p-4 focus:border-pink-500 focus:outline-none transition"
                             />
 
-                            {/* LOADING */}
-
                             {pincodeLoading && (
                                 <p className="text-sm text-gray-500 mt-2">
                                     🔄 Verifying PIN code...
                                 </p>
                             )}
-
-                            {/* VERIFIED */}
 
                             {pincodeVerified &&
                                 !pincodeLoading && (
@@ -1041,8 +1027,6 @@ export default function Checkout() {
 
                                     </div>
                                 )}
-
-                            {/* ERROR */}
 
                             {pincodeError && (
                                 <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3">
@@ -1080,7 +1064,7 @@ export default function Checkout() {
                                     (item) => (
 
                                         <div
-                                            key={item.id}
+                                            key={`${item.id}-${item.variantId ?? "product"}`}
                                             className="flex justify-between gap-4 border-b border-gray-100 pb-4"
                                         >
 
@@ -1090,6 +1074,26 @@ export default function Checkout() {
                                                     {item.title}
                                                 </p>
 
+                                                {(item.size ||
+                                                    item.color ||
+                                                    item.sku) && (
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {item.size
+                                                            ? `Size: ${item.size}`
+                                                            : ""}
+                                                        {item.size &&
+                                                        item.color
+                                                            ? " • "
+                                                            : ""}
+                                                        {item.color
+                                                            ? `Color: ${item.color}`
+                                                            : ""}
+                                                        {item.sku
+                                                            ? ` • SKU: ${item.sku}`
+                                                            : ""}
+                                                    </p>
+                                                )}
+
                                                 <p className="text-sm text-gray-500 mt-1">
                                                     Qty:{" "}
                                                     {item.quantity}
@@ -1098,7 +1102,21 @@ export default function Checkout() {
                                             </div>
 
                                             <span className="font-semibold text-gray-800 whitespace-nowrap">
-                                                {item.price}
+                                                ₹
+                                                {Number(
+                                                        String(
+                                                            item.price
+                                                        )
+                                                            .replace(
+                                                                "₹",
+                                                                ""
+                                                            )
+                                                            .replace(
+                                                                /,/g,
+                                                                ""
+                                                            )
+                                                    ) *
+                                                    item.quantity}
                                             </span>
 
                                         </div>
@@ -1119,12 +1137,11 @@ export default function Checkout() {
                             </span>
 
                             <span className="text-pink-700">
-                                ₹{total}
+                                ₹
+                                {total.toFixed(2)}
                             </span>
 
                         </div>
-
-                        {/* PAYMENT NOTE */}
 
                         <div className="mt-5 bg-pink-50 rounded-xl p-4">
 
@@ -1133,8 +1150,6 @@ export default function Checkout() {
                             </p>
 
                         </div>
-
-                        {/* PAYMENT BUTTON */}
 
                         <button
                             type="button"
