@@ -42,8 +42,11 @@ export default function ProductDetails({
     const [variantsLoading, setVariantsLoading] =
         useState(true);
 
-    const [selectedVariantId, setSelectedVariantId] =
-        useState<number | null>(null);
+    const [selectedSize, setSelectedSize] =
+        useState<string | null>(null);
+
+    const [selectedColor, setSelectedColor] =
+        useState<string | null>(null);
 
     const [showAddedMessage, setShowAddedMessage] =
         useState(false);
@@ -51,7 +54,7 @@ export default function ProductDetails({
     const [quantity, setQuantity] = useState(1);
 
     // ==========================================
-    // LOAD PRODUCT VARIANTS
+    // LOAD VARIANTS
     // ==========================================
 
     useEffect(() => {
@@ -79,46 +82,22 @@ export default function ProductDetails({
                 return;
             }
 
-            const loadedVariants =
-                (data || []) as Variant[];
+            setVariants((data || []) as Variant[]);
 
-            setVariants(loadedVariants);
-
-            const firstAvailable =
-                loadedVariants.find(
-                    (variant) =>
-                        Number(variant.stock) > 0
-                );
-
-            if (firstAvailable) {
-                setSelectedVariantId(
-                    firstAvailable.id
-                );
-            }
+            /*
+             * IMPORTANT:
+             * Do NOT automatically select a variant.
+             *
+             * Customer must select Size / Color.
+             */
+            setSelectedSize(null);
+            setSelectedColor(null);
 
             setVariantsLoading(false);
         }
 
         loadVariants();
     }, [product.id]);
-
-    // ==========================================
-    // SELECTED VARIANT
-    // ==========================================
-
-    const selectedVariant = useMemo(() => {
-        if (selectedVariantId === null) {
-            return null;
-        }
-
-        return (
-            variants.find(
-                (variant) =>
-                    variant.id ===
-                    selectedVariantId
-            ) || null
-        );
-    }, [variants, selectedVariantId]);
 
     // ==========================================
     // VARIANT OPTIONS
@@ -128,21 +107,73 @@ export default function ProductDetails({
         return Array.from(
             new Set(
                 variants
-                    .map((variant) => variant.size)
-                    .filter(Boolean)
+                    .map(
+                        (variant) =>
+                            variant.size
+                    )
+                    .filter(
+                        (
+                            value
+                        ): value is string =>
+                            Boolean(value)
+                    )
             )
-        ) as string[];
+        );
     }, [variants]);
 
     const colors = useMemo(() => {
         return Array.from(
             new Set(
                 variants
-                    .map((variant) => variant.color)
-                    .filter(Boolean)
+                    .map(
+                        (variant) =>
+                            variant.color
+                    )
+                    .filter(
+                        (
+                            value
+                        ): value is string =>
+                            Boolean(value)
+                    )
             )
-        ) as string[];
+        );
     }, [variants]);
+
+    // ==========================================
+    // EXACT SELECTED VARIANT
+    // ==========================================
+
+    const selectedVariant = useMemo(() => {
+        if (variants.length === 0) {
+            return null;
+        }
+
+        return (
+            variants.find((variant) => {
+
+                const sizeMatches =
+                    sizes.length === 0 ||
+                    variant.size ===
+                    selectedSize;
+
+                const colorMatches =
+                    colors.length === 0 ||
+                    variant.color ===
+                    selectedColor;
+
+                return (
+                    sizeMatches &&
+                    colorMatches
+                );
+            }) || null
+        );
+    }, [
+        variants,
+        selectedSize,
+        selectedColor,
+        sizes.length,
+        colors.length,
+    ]);
 
     // ==========================================
     // CART ITEM
@@ -167,8 +198,12 @@ export default function ProductDetails({
     // ==========================================
 
     const effectiveStock =
-        selectedVariant
-            ? Number(selectedVariant.stock) || 0
+        variants.length > 0
+            ? selectedVariant
+                ? Number(
+                selectedVariant.stock
+            ) || 0
+                : 0
             : Number(product.stock) || 0;
 
     const availableStock = Math.max(
@@ -181,9 +216,8 @@ export default function ProductDetails({
     // ==========================================
 
     const effectivePrice =
-        selectedVariant &&
-        selectedVariant.price !== null &&
-        selectedVariant.price !== undefined
+        selectedVariant?.price !== null &&
+        selectedVariant?.price !== undefined
             ? Number(selectedVariant.price)
             : Number(product.price);
 
@@ -206,13 +240,70 @@ export default function ProductDetails({
     }, [availableStock]);
 
     // ==========================================
-    // CHANGE VARIANT
+    // SIZE AVAILABILITY
     // ==========================================
 
-    const selectVariant = (
-        variantId: number
+    const isSizeAvailable = (
+        size: string
     ) => {
-        setSelectedVariantId(variantId);
+        return variants.some(
+            (variant) =>
+                variant.size === size &&
+                Number(variant.stock) > 0 &&
+                (
+                    !selectedColor ||
+                    variant.color ===
+                    selectedColor
+                )
+        );
+    };
+
+    // ==========================================
+    // COLOR AVAILABILITY
+    // ==========================================
+
+    const isColorAvailable = (
+        color: string
+    ) => {
+        return variants.some(
+            (variant) =>
+                variant.color === color &&
+                Number(variant.stock) > 0 &&
+                (
+                    !selectedSize ||
+                    variant.size ===
+                    selectedSize
+                )
+        );
+    };
+
+    // ==========================================
+    // SELECT SIZE
+    // ==========================================
+
+    const handleSizeSelect = (
+        size: string
+    ) => {
+        if (!isSizeAvailable(size)) {
+            return;
+        }
+
+        setSelectedSize(size);
+        setQuantity(1);
+    };
+
+    // ==========================================
+    // SELECT COLOR
+    // ==========================================
+
+    const handleColorSelect = (
+        color: string
+    ) => {
+        if (!isColorAvailable(color)) {
+            return;
+        }
+
+        setSelectedColor(color);
         setQuantity(1);
     };
 
@@ -227,7 +318,9 @@ export default function ProductDetails({
     };
 
     const increaseQuantity = () => {
-        if (quantity >= availableStock) {
+        if (
+            quantity >= availableStock
+        ) {
             return;
         }
 
@@ -240,20 +333,62 @@ export default function ProductDetails({
     };
 
     // ==========================================
-    // VALIDATE SELECTION
+    // VALIDATION
     // ==========================================
 
     const validateBeforeCart = () => {
-        if (
-            variants.length > 0 &&
-            !selectedVariant
-        ) {
-            alert(
-                "Please select a product variant."
-            );
+        // ----------------------------------------
+        // VARIANT PRODUCT
+        // ----------------------------------------
 
-            return false;
+        if (variants.length > 0) {
+
+            if (
+                sizes.length > 0 &&
+                !selectedSize
+            ) {
+                alert(
+                    "Please select a size."
+                );
+
+                return false;
+            }
+
+            if (
+                colors.length > 0 &&
+                !selectedColor
+            ) {
+                alert(
+                    "Please select a color."
+                );
+
+                return false;
+            }
+
+            if (!selectedVariant) {
+                alert(
+                    "This size and color combination is not available."
+                );
+
+                return false;
+            }
+
+            if (
+                Number(
+                    selectedVariant.stock
+                ) <= 0
+            ) {
+                alert(
+                    "This variant is currently out of stock."
+                );
+
+                return false;
+            }
         }
+
+        // ----------------------------------------
+        // STOCK
+        // ----------------------------------------
 
         if (effectiveStock <= 0) {
             alert(
@@ -271,7 +406,10 @@ export default function ProductDetails({
             return false;
         }
 
-        if (quantity > availableStock) {
+        if (
+            quantity >
+            availableStock
+        ) {
             alert(
                 `Only ${availableStock} item(s) are available.`
             );
@@ -283,7 +421,7 @@ export default function ProductDetails({
     };
 
     // ==========================================
-    // CART ITEM DATA
+    // CART ITEM
     // ==========================================
 
     const getCartItemData = () => ({
@@ -291,14 +429,18 @@ export default function ProductDetails({
         title: product.title,
         price: String(effectivePrice),
         image: product.image,
+
         variantId:
         selectedVariant?.id,
+
         sku:
             selectedVariant?.sku ||
             undefined,
+
         size:
             selectedVariant?.size ||
             undefined,
+
         color:
             selectedVariant?.color ||
             undefined,
@@ -308,19 +450,19 @@ export default function ProductDetails({
     // ADD TO CART
     // ==========================================
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
         if (!validateBeforeCart()) {
             return;
         }
 
-        for (
-            let i = 0;
-            i < quantity;
-            i++
-        ) {
-            addToCart(
-                getCartItemData()
+        const success =
+            await addToCart(
+                getCartItemData(),
+                quantity
             );
+
+        if (!success) {
+            return;
         }
 
         setShowAddedMessage(true);
@@ -334,21 +476,22 @@ export default function ProductDetails({
     // BUY NOW
     // ==========================================
 
-    const handleBuyNow = () => {
+    const handleBuyNow = async () => {
         if (!validateBeforeCart()) {
             return;
         }
 
-        for (
-            let i = 0;
-            i < quantity;
-            i++
-        ) {
-            addToCart(
-                getCartItemData()
+        const success =
+            await addToCart(
+                getCartItemData(),
+                quantity
             );
+
+        if (!success) {
+            return;
         }
 
+        // DIRECTLY TO CHECKOUT
         router.push("/checkout");
     };
 
@@ -356,12 +499,14 @@ export default function ProductDetails({
         <div className="relative">
 
             {/* ==========================================
-                ADDED TO CART POPUP
+                ADDED TO CART MESSAGE
             ========================================== */}
 
             {showAddedMessage && (
                 <div className="fixed top-6 right-6 z-[9999] w-[min(92vw,390px)]">
+
                     <div className="bg-white rounded-2xl shadow-2xl border border-pink-100 p-5">
+
                         <div className="flex items-start gap-4">
 
                             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-2xl flex-shrink-0">
@@ -374,13 +519,14 @@ export default function ProductDetails({
                                     Added to Cart!
                                 </h3>
 
-                                <p className="text-gray-500 text-sm mt-1 line-clamp-2">
+                                <p className="text-gray-500 text-sm mt-1">
                                     {quantity} ×{" "}
                                     {product.title}
                                 </p>
 
                                 {selectedVariant && (
                                     <p className="text-xs text-gray-400 mt-1">
+
                                         {selectedVariant.size
                                             ? `Size: ${selectedVariant.size}`
                                             : ""}
@@ -393,6 +539,7 @@ export default function ProductDetails({
                                         {selectedVariant.color
                                             ? `Color: ${selectedVariant.color}`
                                             : ""}
+
                                     </p>
                                 )}
 
@@ -407,6 +554,7 @@ export default function ProductDetails({
                                 >
                                     View Cart →
                                 </button>
+
                             </div>
 
                             <button
@@ -423,7 +571,9 @@ export default function ProductDetails({
                             </button>
 
                         </div>
+
                     </div>
+
                 </div>
             )}
 
@@ -473,7 +623,9 @@ export default function ProductDetails({
                 {product.description}
             </p>
 
-            {/* VARIANT SELECTION */}
+            {/* ==========================================
+                VARIANTS
+            ========================================== */}
 
             {!variantsLoading &&
                 variants.length > 0 && (
@@ -492,28 +644,14 @@ export default function ProductDetails({
 
                                     {sizes.map(
                                         (size) => {
-                                            const matchingVariants =
-                                                variants.filter(
-                                                    (
-                                                        variant
-                                                    ) =>
-                                                        variant.size ===
-                                                        size
-                                                );
 
                                             const available =
-                                                matchingVariants.some(
-                                                    (
-                                                        variant
-                                                    ) =>
-                                                        Number(
-                                                            variant.stock
-                                                        ) >
-                                                        0
+                                                isSizeAvailable(
+                                                    size
                                                 );
 
                                             const selected =
-                                                selectedVariant?.size ===
+                                                selectedSize ===
                                                 size;
 
                                             return (
@@ -525,26 +663,11 @@ export default function ProductDetails({
                                                     disabled={
                                                         !available
                                                     }
-                                                    onClick={() => {
-                                                        const firstAvailable =
-                                                            matchingVariants.find(
-                                                                (
-                                                                    variant
-                                                                ) =>
-                                                                    Number(
-                                                                        variant.stock
-                                                                    ) >
-                                                                    0
-                                                            );
-
-                                                        if (
-                                                            firstAvailable
-                                                        ) {
-                                                            selectVariant(
-                                                                firstAvailable.id
-                                                            );
-                                                        }
-                                                    }}
+                                                    onClick={() =>
+                                                        handleSizeSelect(
+                                                            size
+                                                        )
+                                                    }
                                                     className={`px-5 py-3 rounded-xl border-2 font-semibold transition ${
                                                         selected
                                                             ? "border-pink-600 bg-pink-600 text-white"
@@ -560,6 +683,7 @@ export default function ProductDetails({
                                     )}
 
                                 </div>
+
                             </div>
                         )}
 
@@ -576,28 +700,14 @@ export default function ProductDetails({
 
                                     {colors.map(
                                         (color) => {
-                                            const matchingVariants =
-                                                variants.filter(
-                                                    (
-                                                        variant
-                                                    ) =>
-                                                        variant.color ===
-                                                        color
-                                                );
 
                                             const available =
-                                                matchingVariants.some(
-                                                    (
-                                                        variant
-                                                    ) =>
-                                                        Number(
-                                                            variant.stock
-                                                        ) >
-                                                        0
+                                                isColorAvailable(
+                                                    color
                                                 );
 
                                             const selected =
-                                                selectedVariant?.color ===
+                                                selectedColor ===
                                                 color;
 
                                             return (
@@ -609,26 +719,11 @@ export default function ProductDetails({
                                                     disabled={
                                                         !available
                                                     }
-                                                    onClick={() => {
-                                                        const firstAvailable =
-                                                            matchingVariants.find(
-                                                                (
-                                                                    variant
-                                                                ) =>
-                                                                    Number(
-                                                                        variant.stock
-                                                                    ) >
-                                                                    0
-                                                            );
-
-                                                        if (
-                                                            firstAvailable
-                                                        ) {
-                                                            selectVariant(
-                                                                firstAvailable.id
-                                                            );
-                                                        }
-                                                    }}
+                                                    onClick={() =>
+                                                        handleColorSelect(
+                                                            color
+                                                        )
+                                                    }
                                                     className={`px-5 py-3 rounded-xl border-2 font-semibold transition ${
                                                         selected
                                                             ? "border-pink-600 bg-pink-600 text-white"
@@ -644,6 +739,7 @@ export default function ProductDetails({
                                     )}
 
                                 </div>
+
                             </div>
                         )}
 
@@ -685,8 +781,26 @@ export default function ProductDetails({
                             </div>
                         )}
 
+                        {/* INVALID COMBINATION */}
+
+                        {selectedSize &&
+                            selectedColor &&
+                            !selectedVariant && (
+                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-5 py-4 rounded-xl">
+                                    This size and color combination is not available.
+                                </div>
+                            )}
+
                     </div>
                 )}
+
+            {/* VARIANT LOADING */}
+
+            {variantsLoading && (
+                <div className="mt-8 text-sm text-gray-500">
+                    Loading available options...
+                </div>
+            )}
 
             {/* STOCK */}
 
@@ -696,14 +810,38 @@ export default function ProductDetails({
                     Stock:
                 </span>{" "}
 
-                {effectiveStock > 0 ? (
-                    <span className="text-green-600 font-bold">
-                        {effectiveStock} Available
-                    </span>
+                {variants.length > 0 ? (
+
+                    selectedVariant ? (
+
+                        effectiveStock > 0 ? (
+                            <span className="text-green-600 font-bold">
+                                {effectiveStock} Available
+                            </span>
+                        ) : (
+                            <span className="text-red-600 font-bold">
+                                ❌ Out of Stock
+                            </span>
+                        )
+
+                    ) : (
+                        <span className="text-gray-500">
+                            Select your options
+                        </span>
+                    )
+
                 ) : (
-                    <span className="text-red-600 font-bold">
-                        ❌ Out of Stock
-                    </span>
+
+                    effectiveStock > 0 ? (
+                        <span className="text-green-600 font-bold">
+                            {effectiveStock} Available
+                        </span>
+                    ) : (
+                        <span className="text-red-600 font-bold">
+                            ❌ Out of Stock
+                        </span>
+                    )
+
                 )}
 
             </div>
@@ -795,86 +933,46 @@ export default function ProductDetails({
                     </div>
                 )}
 
-            {/* ACTION BUTTONS */}
+            {/* ==========================================
+                ONLY TWO PURCHASE BUTTONS
+            ========================================== */}
 
             <div className="flex gap-4 mt-10 flex-wrap">
 
-                {effectiveStock > 0 &&
-                (
-                    variants.length === 0 ||
-                    selectedVariant
-                ) ? (
-                    <>
-                        <button
-                            type="button"
-                            onClick={
-                                handleAddToCart
-                            }
-                            disabled={
-                                availableStock <=
-                                0
-                            }
-                            className={`flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg transition ${
-                                availableStock <=
-                                0
-                                    ? "bg-gray-400 text-white cursor-not-allowed"
-                                    : "border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
-                            }`}
-                        >
-                            {availableStock <=
-                            0
-                                ? "❌ Maximum Stock Added"
-                                : "🛒 Add to Cart"}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={
-                                handleBuyNow
-                            }
-                            disabled={
-                                availableStock <=
-                                0
-                            }
-                            className={`flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg transition ${
-                                availableStock <=
-                                0
-                                    ? "bg-gray-400 text-white cursor-not-allowed"
-                                    : "bg-pink-600 text-white hover:bg-pink-700 shadow-md hover:shadow-lg"
-                            }`}
-                        >
-                            ⚡ Buy Now
-                        </button>
-                    </>
-                ) : variants.length > 0 &&
-                !selectedVariant ? (
-                    <div className="w-full bg-yellow-50 border border-yellow-200 text-yellow-800 px-5 py-4 rounded-xl font-semibold">
-                        Please select a variant before
-                        adding this product to your
-                        cart.
-                    </div>
-                ) : (
-                    <button
-                        type="button"
-                        disabled
-                        className="w-full bg-gray-400 text-white px-8 py-4 rounded-xl font-semibold text-lg cursor-not-allowed"
-                    >
-                        ❌ Out of Stock
-                    </button>
-                )}
-
-                {/* WISHLIST */}
+                <button
+                    type="button"
+                    onClick={
+                        handleAddToCart
+                    }
+                    className="flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg border-2 border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white transition"
+                >
+                    🛒 Add to Cart
+                </button>
 
                 <button
                     type="button"
-                    className="w-full border-2 border-pink-200 text-pink-600 px-8 py-4 rounded-xl font-semibold hover:bg-pink-50 transition"
+                    onClick={
+                        handleBuyNow
+                    }
+                    className="flex-1 min-w-[220px] px-8 py-4 rounded-xl font-semibold text-lg bg-pink-600 text-white hover:bg-pink-700 shadow-md hover:shadow-lg transition"
                 >
-                    ❤️ Wishlist
+                    ⚡ Buy Now
                 </button>
 
             </div>
 
-            {/* DELIVERY & TRUST */}
+            {/* WISHLIST */}
+
+            <button
+                type="button"
+                className="w-full mt-4 border-2 border-pink-200 text-pink-600 px-8 py-4 rounded-xl font-semibold hover:bg-pink-50 transition"
+            >
+                ❤️ Wishlist
+            </button>
+
+            {/* ==========================================
+                DELIVERY & TRUST
+            ========================================== */}
 
             <div className="mt-10 border-t border-pink-100 pt-8">
 
@@ -885,6 +983,7 @@ export default function ProductDetails({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
                         <div className="text-2xl">
                             🚚
                         </div>
@@ -898,9 +997,11 @@ export default function ProductDetails({
                                 We deliver across India.
                             </p>
                         </div>
+
                     </div>
 
                     <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
                         <div className="text-2xl">
                             📦
                         </div>
@@ -914,9 +1015,11 @@ export default function ProductDetails({
                                 Your jewellery is packed carefully before dispatch.
                             </p>
                         </div>
+
                     </div>
 
                     <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
                         <div className="text-2xl">
                             🔒
                         </div>
@@ -930,9 +1033,11 @@ export default function ProductDetails({
                                 Payments are processed through our secure checkout.
                             </p>
                         </div>
+
                     </div>
 
                     <div className="flex items-start gap-4 bg-white border border-pink-100 rounded-2xl p-4">
+
                         <div className="text-2xl">
                             💎
                         </div>
@@ -946,6 +1051,7 @@ export default function ProductDetails({
                                 Handle and store your jewellery carefully to maintain its finish.
                             </p>
                         </div>
+
                     </div>
 
                 </div>

@@ -18,7 +18,6 @@ type CartItem = {
     image: string;
     quantity: number;
 
-    // Variant information
     variantId?: number;
     sku?: string;
     size?: string;
@@ -34,8 +33,9 @@ type CartContextType = {
     cart: CartItem[];
 
     addToCart: (
-        item: AddToCartItem
-    ) => Promise<void>;
+        item: AddToCartItem,
+        quantity?: number
+    ) => Promise<boolean>;
 
     increaseQuantity: (
         id: number,
@@ -122,7 +122,8 @@ export function CartProvider({
             // --------------------------------------
 
             if (
-                variantId !== undefined
+                variantId !== undefined &&
+                variantId !== null
             ) {
                 const {
                     data,
@@ -130,10 +131,7 @@ export function CartProvider({
                 } = await supabase
                     .from("product_variants")
                     .select("stock")
-                    .eq(
-                        "id",
-                        variantId
-                    )
+                    .eq("id", variantId)
                     .eq(
                         "product_id",
                         productId
@@ -170,10 +168,7 @@ export function CartProvider({
             } = await supabase
                 .from("products")
                 .select("stock")
-                .eq(
-                    "id",
-                    productId
-                )
+                .eq("id", productId)
                 .single();
 
             if (error) {
@@ -205,7 +200,7 @@ export function CartProvider({
     };
 
     // ==========================================
-    // SAME CART ITEM?
+    // SAME CART ITEM
     // ==========================================
 
     const isSameCartItem = (
@@ -215,14 +210,8 @@ export function CartProvider({
     ) => {
         return (
             item.id === id &&
-            (
-                item.variantId ??
-                null
-            ) ===
-            (
-                variantId ??
-                null
-            )
+            (item.variantId ?? null) ===
+            (variantId ?? null)
         );
     };
 
@@ -231,8 +220,16 @@ export function CartProvider({
     // ==========================================
 
     const addToCart = async (
-        item: AddToCartItem
-    ) => {
+        item: AddToCartItem,
+        requestedQuantity = 1
+    ): Promise<boolean> => {
+        const quantityToAdd = Math.max(
+            1,
+            Math.floor(
+                Number(requestedQuantity) || 1
+            )
+        );
+
         const stock =
             await getStock(
                 item.id,
@@ -244,7 +241,7 @@ export function CartProvider({
                 "Unable to check product availability. Please try again."
             );
 
-            return;
+            return false;
         }
 
         if (stock <= 0) {
@@ -252,7 +249,7 @@ export function CartProvider({
                 "This product variant is currently out of stock."
             );
 
-            return;
+            return false;
         }
 
         const existingItem =
@@ -265,18 +262,27 @@ export function CartProvider({
             );
 
         const currentQuantity =
-            existingItem?.quantity ??
-            0;
+            existingItem?.quantity ?? 0;
 
-        if (
-            currentQuantity >=
-            stock
-        ) {
+        const newQuantity =
+            currentQuantity +
+            quantityToAdd;
+
+        if (newQuantity > stock) {
+            const remaining =
+                Math.max(
+                    0,
+                    stock -
+                    currentQuantity
+                );
+
             alert(
-                `Only ${stock} item(s) available.`
+                remaining > 0
+                    ? `Only ${remaining} item(s) can be added.`
+                    : `Only ${stock} item(s) available.`
             );
 
-            return;
+            return false;
         }
 
         setCart((previousCart) => {
@@ -302,7 +308,7 @@ export function CartProvider({
                                 ...cartItem,
                                 quantity:
                                     cartItem.quantity +
-                                    1,
+                                    quantityToAdd,
                             }
                             : cartItem
                 );
@@ -312,10 +318,13 @@ export function CartProvider({
                 ...previousCart,
                 {
                     ...item,
-                    quantity: 1,
+                    quantity:
+                    quantityToAdd,
                 },
             ];
         });
+
+        return true;
     };
 
     // ==========================================
@@ -442,6 +451,10 @@ export function CartProvider({
         setCart([]);
         localStorage.removeItem("cart");
     };
+
+    // ==========================================
+    // PROVIDER
+    // ==========================================
 
     return (
         <CartContext.Provider
