@@ -7,11 +7,20 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 
 function SuccessContent() {
-    const searchParams =
-        useSearchParams();
+    const searchParams = useSearchParams();
 
-    const orderId =
-        searchParams.get("orderId");
+    const orderId = searchParams.get("orderId");
+
+    const paymentMethod =
+        (
+            searchParams.get("paymentMethod") ||
+            ""
+        ).toLowerCase();
+
+    const isCOD =
+        paymentMethod === "cod" ||
+        paymentMethod === "cash_on_delivery" ||
+        paymentMethod === "cashondelivery";
 
     return (
         <>
@@ -31,8 +40,14 @@ function SuccessContent() {
 
                             {/* Success Icon */}
 
-                            <div className="mx-auto w-24 h-24 rounded-full bg-green-100 flex items-center justify-center text-5xl mb-6">
-                                ✓
+                            <div
+                                className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center text-5xl mb-6 ${
+                                    isCOD
+                                        ? "bg-yellow-100"
+                                        : "bg-green-100"
+                                }`}
+                            >
+                                {isCOD ? "📦" : "✓"}
                             </div>
 
                             {/* Heading */}
@@ -75,20 +90,44 @@ function SuccessContent() {
 
                                     <div className="border-t border-pink-200 my-5" />
 
+                                    {/* PAYMENT STATUS */}
+
                                     <div className="flex items-center gap-3">
 
-                                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                                            ✓
+                                        <div
+                                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                                isCOD
+                                                    ? "bg-yellow-100"
+                                                    : "bg-green-100"
+                                            }`}
+                                        >
+                                            {isCOD ? "₹" : "✓"}
                                         </div>
 
                                         <div>
-                                            <p className="font-semibold text-gray-800">
-                                                Payment Successful
-                                            </p>
 
-                                            <p className="text-sm text-gray-500">
-                                                Your payment has been received and your order has been created.
-                                            </p>
+                                            {isCOD ? (
+                                                <>
+                                                    <p className="font-semibold text-gray-800">
+                                                        Payment Pending
+                                                    </p>
+
+                                                    <p className="text-sm text-gray-500">
+                                                        Cash on Delivery selected. You will pay when your order is delivered.
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="font-semibold text-gray-800">
+                                                        Payment Successful
+                                                    </p>
+
+                                                    <p className="text-sm text-gray-500">
+                                                        Your payment has been received and your order has been created.
+                                                    </p>
+                                                </>
+                                            )}
+
                                         </div>
 
                                     </div>
@@ -226,13 +265,19 @@ function SuccessContent() {
                     </div>
 
 
-                    {/* SECURITY MESSAGE */}
+                    {/* SECURITY / PAYMENT MESSAGE */}
 
                     <div className="text-center mt-6 px-4">
 
-                        <p className="text-sm text-gray-500">
-                            🔒 Your payment was processed securely by Razorpay.
-                        </p>
+                        {isCOD ? (
+                            <p className="text-sm text-gray-500">
+                                📦 Cash on Delivery — Please pay when your order is delivered.
+                            </p>
+                        ) : (
+                            <p className="text-sm text-gray-500">
+                                🔒 Your payment was processed securely by Razorpay.
+                            </p>
+                        )}
 
                         <p className="text-xs text-gray-400 mt-2">
                             Please keep your order number for future reference.

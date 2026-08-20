@@ -7,12 +7,25 @@ export async function POST(req: Request) {
         const body = await req.json();
 
         const orderId = Number(body.orderId);
+
         const razorpayPaymentId = String(
             body.razorpay_payment_id || ""
         ).trim();
+
         const razorpaySignature = String(
             body.razorpay_signature || ""
         ).trim();
+
+        // Accept COD from different possible field names
+        const requestedPaymentMethod = String(
+            body.paymentMethod ||
+            body.payment_method ||
+            body.method ||
+            ""
+        )
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
 
         // ==========================================
         // VALIDATE ORDER ID
@@ -30,8 +43,214 @@ export async function POST(req: Request) {
             );
         }
 
+        console.log(
+            "========== SECURE REDUCE ORDER STOCK =========="
+        );
+
+        console.log("ORDER ID:", orderId);
+        console.log(
+            "REQUESTED PAYMENT METHOD:",
+            requestedPaymentMethod || "not provided"
+        );
+
         // ==========================================
-        // VALIDATE RAZORPAY PAYMENT INFORMATION
+        // CHECK ORDER
+        // ==========================================
+
+        const {
+            data: order,
+            error: orderError,
+        } = await supabaseAdmin
+            .from("orders")
+            .select(
+                `
+                id,
+                payment_status,
+                stock_reduced,
+                razorpay_order_id,
+                razorpay_payment_id,
+                payment_method
+                `
+            )
+            .eq("id", orderId)
+            .single();
+
+        if (orderError || !order) {
+            console.error(
+                "Order lookup error:",
+                orderError
+            );
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Order not found.",
+                },
+                {
+                    status: 404,
+                }
+            );
+        }
+
+        // ==========================================
+        // DETERMINE PAYMENT METHOD
+        // ==========================================
+
+        const storedPaymentMethod = String(
+            order.payment_method || ""
+        )
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
+
+        const paymentMethod =
+            requestedPaymentMethod ||
+            storedPaymentMethod;
+
+        const isCOD =
+            paymentMethod === "cod" ||
+            paymentMethod === "cash_on_delivery" ||
+            paymentMethod === "cashondelivery";
+
+        console.log(
+            "STORED PAYMENT METHOD:",
+            storedPaymentMethod || "not set"
+        );
+
+        console.log(
+            "FINAL PAYMENT METHOD:",
+            paymentMethod || "not set"
+        );
+
+        // ==========================================
+        // ALREADY REDUCED
+        // ==========================================
+
+        if (order.stock_reduced === true) {
+            console.log(
+                "ℹ️ Stock already reduced for order:",
+                orderId
+            );
+
+            return NextResponse.json({
+                success: true,
+                alreadyReduced: true,
+                message:
+                    "Stock was already reduced for this order.",
+            });
+        }
+
+        // ==========================================
+        // COD
+        // ==========================================
+        //
+        // COD does NOT have a Razorpay payment ID
+        // or Razorpay signature.
+        //
+        // COD payment remains pending because
+        // customer pays on delivery.
+        //
+        // Stock can still be reserved/reduced when
+        // the COD order is successfully created.
+        // ==========================================
+
+        if (isCOD) {
+            console.log(
+                "🟢 COD ORDER - Razorpay verification skipped."
+            );
+
+            // COD should normally remain pending
+            const paymentStatus = String(
+                order.payment_status || ""
+            ).toLowerCase();
+
+            console.log(
+                "COD PAYMENT STATUS:",
+                paymentStatus
+            );
+
+            // ==========================================
+            // REDUCE STOCK FOR COD
+            // ==========================================
+
+            const {
+                data,
+                error,
+            } = await supabaseAdmin.rpc(
+                "reduce_order_stock",
+                {
+                    p_order_id: orderId,
+                }
+            );
+
+            if (error) {
+                console.error(
+                    "COD stock reduction RPC error:",
+                    error
+                );
+
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            error.message ||
+                            "Unable to reduce stock for COD order.",
+                    },
+                    {
+                        status: 500,
+                    }
+                );
+            }
+
+            console.log(
+                "✅ COD STOCK REDUCED:",
+                data
+            );
+
+            return NextResponse.json({
+                success: true,
+                paymentMethod: "cod",
+                alreadyReduced:
+                    data?.already_reduced ||
+                    false,
+                message:
+                    data?.already_reduced
+                        ? "Stock was already reduced for this COD order."
+                        : "COD order stock updated successfully.",
+            });
+        }
+
+        // ==========================================
+        // RAZORPAY / ONLINE PAYMENT
+        // ==========================================
+        //
+        // Everything below this point is ONLY for
+        // online Razorpay payments.
+        // ==========================================
+
+        // ==========================================
+        // PAYMENT MUST BE PAID
+        // ==========================================
+
+        if (
+            String(
+                order.payment_status || ""
+            ).toLowerCase() !== "paid"
+        ) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Only paid online orders can reduce stock.",
+                },
+                {
+                    status: 400,
+                }
+            );
+        }
+
+        // ==========================================
+        // RAZORPAY PAYMENT INFORMATION REQUIRED
         // ==========================================
 
         if (
@@ -70,74 +289,6 @@ export async function POST(req: Request) {
                 },
                 {
                     status: 500,
-                }
-            );
-        }
-
-        console.log(
-            "========== SECURE REDUCE ORDER STOCK =========="
-        );
-
-        console.log(
-            "ORDER ID:",
-            orderId
-        );
-
-        // ==========================================
-        // CHECK ORDER
-        // ==========================================
-
-        const {
-            data: order,
-            error: orderError,
-        } = await supabaseAdmin
-            .from("orders")
-            .select(
-                `
-                id,
-                payment_status,
-                stock_reduced,
-                razorpay_order_id,
-                razorpay_payment_id
-                `
-            )
-            .eq("id", orderId)
-            .single();
-
-        if (orderError || !order) {
-            console.error(
-                "Order lookup error:",
-                orderError
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "Order not found.",
-                },
-                {
-                    status: 404,
-                }
-            );
-        }
-
-        // ==========================================
-        // PAYMENT MUST BE PAID
-        // ==========================================
-
-        if (
-            String(
-                order.payment_status || ""
-            ).toLowerCase() !== "paid"
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Only paid orders can reduce stock.",
-                },
-                {
-                    status: 400,
                 }
             );
         }
@@ -256,25 +407,7 @@ export async function POST(req: Request) {
         );
 
         // ==========================================
-        // ALREADY REDUCED
-        // ==========================================
-
-        if (order.stock_reduced === true) {
-            console.log(
-                "ℹ️ Stock already reduced for order:",
-                orderId
-            );
-
-            return NextResponse.json({
-                success: true,
-                alreadyReduced: true,
-                message:
-                    "Stock was already reduced for this order.",
-            });
-        }
-
-        // ==========================================
-        // DATABASE TRANSACTION
+        // REDUCE STOCK FOR RAZORPAY
         // ==========================================
 
         const {
@@ -313,6 +446,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
             success: true,
+            paymentMethod: "razorpay",
             alreadyReduced:
                 data?.already_reduced ||
                 false,

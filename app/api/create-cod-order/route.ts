@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
-import Razorpay from "razorpay";
 import { supabaseAdmin } from "../../../lib/supabase-admin";
 
 type CartItem = {
@@ -31,35 +29,9 @@ export async function POST(req: Request) {
         const body = await req.json();
 
         const {
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
             customer,
             items,
         } = body;
-
-        console.log(
-            "========== VERIFY PAYMENT + CREATE ORDER =========="
-        );
-
-        // ==========================================
-        // BASIC PAYMENT VALIDATION
-        // ==========================================
-
-        if (
-            !razorpay_order_id ||
-            !razorpay_payment_id ||
-            !razorpay_signature
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Missing Razorpay payment information.",
-                },
-                { status: 400 }
-            );
-        }
 
         // ==========================================
         // CUSTOMER VALIDATION
@@ -92,31 +64,52 @@ export async function POST(req: Request) {
             !customerName ||
             !customerPhone ||
             !customerEmail ||
-            !customerAddress
+            !customerAddress ||
+            !customerCity ||
+            !customerState ||
+            !customerPincode
         ) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Customer details are incomplete.",
+                    message: "Customer details are incomplete.",
                 },
                 { status: 400 }
             );
         }
 
-        if (!customerEmail.includes("@")) {
+        if (!/^[6-9]\d{9}$/.test(customerPhone)) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Invalid customer email.",
+                    message: "Invalid mobile number.",
+                },
+                { status: 400 }
+            );
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Invalid email address.",
+                },
+                { status: 400 }
+            );
+        }
+
+        if (!/^\d{6}$/.test(customerPincode)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Invalid PIN code.",
                 },
                 { status: 400 }
             );
         }
 
         // ==========================================
-        // CART VALIDATION
+        // CART
         // ==========================================
 
         const cartItems: CartItem[] =
@@ -124,6 +117,7 @@ export async function POST(req: Request) {
                 ? items.map((item: any) => ({
                     id: Number(item.id),
                     quantity: Number(item.quantity),
+
                     variantId:
                         item.variantId !== undefined &&
                         item.variantId !== null &&
@@ -144,7 +138,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // VALIDATE CART ITEMS
+        // VALIDATE ITEMS
         // ==========================================
 
         for (const item of cartItems) {
@@ -155,8 +149,7 @@ export async function POST(req: Request) {
                 return NextResponse.json(
                     {
                         success: false,
-                        message:
-                            "Invalid product ID.",
+                        message: "Invalid product ID.",
                     },
                     { status: 400 }
                 );
@@ -169,8 +162,7 @@ export async function POST(req: Request) {
                 return NextResponse.json(
                     {
                         success: false,
-                        message:
-                            "Invalid product quantity.",
+                        message: "Invalid product quantity.",
                     },
                     { status: 400 }
                 );
@@ -186,8 +178,7 @@ export async function POST(req: Request) {
                 return NextResponse.json(
                     {
                         success: false,
-                        message:
-                            "Invalid variant ID.",
+                        message: "Invalid variant ID.",
                     },
                     { status: 400 }
                 );
@@ -195,238 +186,31 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // RAZORPAY CREDENTIALS
+        // PREVENT DUPLICATE CART ITEMS
         // ==========================================
 
-        const keyId =
-            process.env
-                .NEXT_PUBLIC_RAZORPAY_KEY_ID;
-
-        const keySecret =
-            process.env.RAZORPAY_KEY_SECRET;
-
-        if (!keyId || !keySecret) {
-            console.error(
-                "❌ Razorpay credentials are missing."
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Razorpay is not configured correctly.",
-                },
-                { status: 500 }
-            );
-        }
-
-        // ==========================================
-        // 1. VERIFY RAZORPAY SIGNATURE
-        // ==========================================
-
-        const signatureBody =
-            razorpay_order_id +
-            "|" +
-            razorpay_payment_id;
-
-        const expectedSignature =
-            crypto
-                .createHmac(
-                    "sha256",
-                    keySecret
-                )
-                .update(signatureBody)
-                .digest("hex");
-
-        const expectedBuffer =
-            Buffer.from(
-                expectedSignature,
-                "utf8"
-            );
-
-        const receivedBuffer =
-            Buffer.from(
-                String(razorpay_signature),
-                "utf8"
-            );
-
-        if (
-            expectedBuffer.length !==
-            receivedBuffer.length
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Signature mismatch.",
-                },
-                { status: 400 }
-            );
-        }
-
-        if (
-            !crypto.timingSafeEqual(
-                expectedBuffer,
-                receivedBuffer
-            )
-        ) {
-            console.error(
-                "❌ Razorpay signature verification failed."
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Signature mismatch.",
-                },
-                { status: 400 }
-            );
-        }
-
-        console.log(
-            "✅ Razorpay signature verified."
+        const itemKeys = cartItems.map(
+            (item) =>
+                `${item.id}:${item.variantId ?? "product"}`
         );
 
-        // ==========================================
-        // 2. VERIFY PAYMENT WITH RAZORPAY
-        // ==========================================
-
-        const razorpay =
-            new Razorpay({
-                key_id: keyId,
-                key_secret: keySecret,
-            });
-
-        const payment =
-            await razorpay.payments.fetch(
-                razorpay_payment_id
-            );
-
-        // ==========================================
-        // 3. PAYMENT MUST BELONG TO ORDER
-        // ==========================================
-
-        if (
-            payment.order_id !==
-            razorpay_order_id
-        ) {
-            console.error(
-                "❌ Payment/order mismatch."
-            );
-
+        if (new Set(itemKeys).size !== itemKeys.length) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Payment and order do not match.",
+                    message: "Duplicate cart items are not allowed.",
                 },
                 { status: 400 }
             );
         }
 
         // ==========================================
-        // 4. PAYMENT MUST BE CAPTURED
-        // ==========================================
-
-        if (
-            payment.status !==
-            "captured"
-        ) {
-            console.error(
-                "❌ Payment not captured:",
-                payment.status
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        `Payment is not captured. Current status: ${payment.status}`,
-                },
-                { status: 400 }
-            );
-        }
-
-        console.log(
-            "✅ Payment captured."
-        );
-
-        // ==========================================
-        // 5. PREVENT DUPLICATE ORDER
-        // ==========================================
-
-        const {
-            data: existingOrder,
-            error: existingOrderError,
-        } = await supabaseAdmin
-            .from("orders")
-            .select(
-                "id, customer_name, email, phone, address, total, status, payment_status, payment_method, razorpay_order_id, razorpay_payment_id, created_at"
-            )
-            .eq(
-                "razorpay_payment_id",
-                razorpay_payment_id
-            )
-            .maybeSingle();
-
-        if (existingOrderError) {
-            console.error(
-                "Existing order lookup error:",
-                existingOrderError
-            );
-
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Unable to check existing order.",
-                },
-                { status: 500 }
-            );
-        }
-
-        if (existingOrder) {
-            console.log(
-                "ℹ️ Order already exists:",
-                existingOrder.id
-            );
-
-            const {
-                data: existingItems,
-            } = await supabaseAdmin
-                .from("order_items")
-                .select(
-                    "id, product_id, variant_id, title, price, quantity"
-                )
-                .eq(
-                    "order_id",
-                    existingOrder.id
-                )
-                .order("id", {
-                    ascending: true,
-                });
-
-            return NextResponse.json({
-                success: true,
-                alreadyCreated: true,
-                message:
-                    "Order already exists.",
-                order: existingOrder,
-                items:
-                    existingItems || [],
-            });
-        }
-
-        // ==========================================
-        // 6. GET PRODUCTS
+        // PRODUCTS
         // ==========================================
 
         const productIds = [
             ...new Set(
-                cartItems.map(
-                    (item) => item.id
-                )
+                cartItems.map((item) => item.id)
             ),
         ];
 
@@ -435,25 +219,19 @@ export async function POST(req: Request) {
             error: productsError,
         } = await supabaseAdmin
             .from("products")
-            .select(
-                "id, title, price, stock"
-            )
-            .in(
-                "id",
-                productIds
-            );
+            .select("id, title, price, stock")
+            .in("id", productIds);
 
         if (productsError) {
             console.error(
-                "Product lookup error:",
+                "COD product lookup error:",
                 productsError
             );
 
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Unable to verify products.",
+                    message: "Unable to verify products.",
                 },
                 { status: 500 }
             );
@@ -461,8 +239,7 @@ export async function POST(req: Request) {
 
         if (
             !products ||
-            products.length !==
-            productIds.length
+            products.length !== productIds.length
         ) {
             return NextResponse.json(
                 {
@@ -478,7 +255,7 @@ export async function POST(req: Request) {
             products as Product[];
 
         // ==========================================
-        // 7. GET VARIANTS
+        // VARIANTS
         // ==========================================
 
         const variantIds = [
@@ -492,8 +269,7 @@ export async function POST(req: Request) {
                         (
                             id
                         ): id is number =>
-                            id !==
-                            undefined
+                            id !== undefined
                     )
             ),
         ];
@@ -509,14 +285,11 @@ export async function POST(req: Request) {
                 .select(
                     "id, product_id, sku, size, color, stock, price"
                 )
-                .in(
-                    "id",
-                    variantIds
-                );
+                .in("id", variantIds);
 
             if (variantError) {
                 console.error(
-                    "Variant lookup error:",
+                    "COD variant lookup error:",
                     variantError
                 );
 
@@ -531,8 +304,7 @@ export async function POST(req: Request) {
             }
 
             variants =
-                (variantData ||
-                    []) as Variant[];
+                (variantData || []) as Variant[];
 
             if (
                 variants.length !==
@@ -550,7 +322,7 @@ export async function POST(req: Request) {
         }
 
         // ==========================================
-        // 8. SERVER-SIDE PRICE + STOCK
+        // SERVER-SIDE TOTAL
         // ==========================================
 
         let total = 0;
@@ -567,16 +339,14 @@ export async function POST(req: Request) {
             const product =
                 typedProducts.find(
                     (p) =>
-                        p.id ===
-                        item.id
+                        p.id === item.id
                 );
 
             if (!product) {
                 return NextResponse.json(
                     {
                         success: false,
-                        message:
-                            "Product not found.",
+                        message: "Product not found.",
                     },
                     { status: 400 }
                 );
@@ -586,10 +356,7 @@ export async function POST(req: Request) {
             // VARIANT PRODUCT
             // ==========================================
 
-            if (
-                item.variantId !==
-                undefined
-            ) {
+            if (item.variantId !== undefined) {
                 const variant =
                     variants.find(
                         (v) =>
@@ -622,70 +389,43 @@ export async function POST(req: Request) {
                     );
                 }
 
-                const variantStock =
-                    Number(
-                        variant.stock
-                    );
+                const stock =
+                    Number(variant.stock);
 
                 if (
-                    !Number.isFinite(
-                        variantStock
-                    ) ||
-                    variantStock <
-                    item.quantity
+                    !Number.isFinite(stock) ||
+                    stock < item.quantity
                 ) {
                     return NextResponse.json(
                         {
                             success: false,
                             message:
-                                `${product.title} selected variant has only ${variantStock} item(s) available.`,
+                                `${product.title} selected variant has only ${stock} item(s) available.`,
                         },
                         { status: 400 }
                     );
                 }
 
                 const variantPrice =
-                    variant.price !==
-                    null &&
-                    variant.price !==
-                    undefined &&
-                    String(
-                        variant.price
-                    ).trim() !== ""
+                    variant.price !== null &&
+                    variant.price !== undefined &&
+                    String(variant.price).trim() !== ""
                         ? Number(
-                            String(
-                                variant.price
-                            )
-                                .replace(
-                                    /₹/g,
-                                    ""
-                                )
-                                .replace(
-                                    /,/g,
-                                    ""
-                                )
+                            String(variant.price)
+                                .replace(/₹/g, "")
+                                .replace(/,/g, "")
                                 .trim()
                         )
                         : Number(
-                            String(
-                                product.price
-                            )
-                                .replace(
-                                    /₹/g,
-                                    ""
-                                )
-                                .replace(
-                                    /,/g,
-                                    ""
-                                )
+                            String(product.price)
+                                .replace(/₹/g, "")
+                                .replace(/,/g, "")
                                 .trim()
                         );
 
                 if (
-                    !Number.isFinite(
-                        variantPrice
-                    ) ||
-                    variantPrice < 0
+                    !Number.isFinite(variantPrice) ||
+                    variantPrice <= 0
                 ) {
                     return NextResponse.json(
                         {
@@ -722,20 +462,15 @@ export async function POST(req: Request) {
             }
 
             // ==========================================
-            // NORMAL PRODUCT WITHOUT VARIANT
+            // NORMAL PRODUCT
             // ==========================================
 
             const stock =
-                Number(
-                    product.stock
-                );
+                Number(product.stock);
 
             if (
-                !Number.isFinite(
-                    stock
-                ) ||
-                stock <
-                item.quantity
+                !Number.isFinite(stock) ||
+                stock < item.quantity
             ) {
                 return NextResponse.json(
                     {
@@ -749,25 +484,15 @@ export async function POST(req: Request) {
 
             const price =
                 Number(
-                    String(
-                        product.price
-                    )
-                        .replace(
-                            /₹/g,
-                            ""
-                        )
-                        .replace(
-                            /,/g,
-                            ""
-                        )
+                    String(product.price)
+                        .replace(/₹/g, "")
+                        .replace(/,/g, "")
                         .trim()
                 );
 
             if (
-                !Number.isFinite(
-                    price
-                ) ||
-                price < 0
+                !Number.isFinite(price) ||
+                price <= 0
             ) {
                 return NextResponse.json(
                     {
@@ -801,64 +526,21 @@ export async function POST(req: Request) {
             });
         }
 
-        // ==========================================
-        // 9. VERIFY PAYMENT AMOUNT
-        // ==========================================
-
-        const expectedAmount =
-            Math.round(
-                total * 100
-            );
-
-        const paidAmount =
-            Number(
-                payment.amount
-            );
-
         if (
-            paidAmount !==
-            expectedAmount
+            !Number.isFinite(total) ||
+            total <= 0
         ) {
-            console.error(
-                "❌ PAYMENT AMOUNT MISMATCH",
-                {
-                    paidAmount,
-                    expectedAmount,
-                }
-            );
-
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Payment amount does not match the order total.",
+                    message: "Invalid order total.",
                 },
                 { status: 400 }
             );
         }
 
-        if (
-            payment.currency &&
-            payment.currency !==
-            "INR"
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message:
-                        "Invalid payment currency.",
-                },
-                { status: 400 }
-            );
-        }
-
-        console.log(
-            "✅ SERVER TOTAL VERIFIED:",
-            total
-        );
-
         // ==========================================
-        // 10. CREATE ORDER
+        // ADDRESS
         // ==========================================
 
         const fullAddress =
@@ -869,9 +551,11 @@ export async function POST(req: Request) {
             ]
                 .filter(Boolean)
                 .join(", ") +
-            (customerPincode
-                ? ` - ${customerPincode}`
-                : "");
+            ` - ${customerPincode}`;
+
+        // ==========================================
+        // CREATE COD ORDER
+        // ==========================================
 
         const {
             data: order,
@@ -897,28 +581,21 @@ export async function POST(req: Request) {
                 status:
                     "Pending",
 
-                razorpay_order_id:
-                razorpay_order_id,
-
-                razorpay_payment_id:
-                razorpay_payment_id,
-
-                payment_status:
-                    "Paid",
-
-                // ==================================
                 // IMPORTANT:
-                // ONLINE RAZORPAY PAYMENT
-                // ==================================
+                // COD is not paid yet.
+                payment_status:
+                    "Pending",
 
+                // IMPORTANT:
+                // Explicitly mark this order as COD.
                 payment_method:
-                    "online",
+                    "cod",
 
                 stock_reduced:
                     false,
             })
             .select(
-                "id, customer_name, email, phone, address, total, status, payment_status, payment_method, razorpay_order_id, razorpay_payment_id, created_at"
+                "id, customer_name, email, phone, address, total, status, payment_status, payment_method, created_at"
             )
             .single();
 
@@ -927,7 +604,7 @@ export async function POST(req: Request) {
             !order
         ) {
             console.error(
-                "ORDER CREATION ERROR:",
+                "COD order creation error:",
                 orderError
             );
 
@@ -935,24 +612,14 @@ export async function POST(req: Request) {
                 {
                     success: false,
                     message:
-                        "Payment succeeded, but the order could not be created.",
+                        "Unable to create COD order.",
                 },
                 { status: 500 }
             );
         }
 
-        console.log(
-            "✅ ONLINE ORDER CREATED:",
-            order.id
-        );
-
-        console.log(
-            "✅ PAYMENT METHOD:",
-            order.payment_method
-        );
-
         // ==========================================
-        // 11. CREATE ORDER ITEMS
+        // CREATE ORDER ITEMS
         // ==========================================
 
         const itemsToInsert =
@@ -978,30 +645,70 @@ export async function POST(req: Request) {
                 })
             );
 
-        console.log(
-            "ORDER ITEMS TO INSERT:",
-            itemsToInsert
-        );
-
         const {
             data: savedItems,
             error: itemsError,
         } = await supabaseAdmin
             .from("order_items")
-            .insert(
-                itemsToInsert
-            )
+            .insert(itemsToInsert)
             .select(
                 "id, product_id, variant_id, title, price, quantity"
             );
 
         if (itemsError) {
             console.error(
-                "ORDER ITEMS ERROR:",
+                "COD order items error:",
                 itemsError
             );
 
-            // Roll back the order
+            await supabaseAdmin
+                .from("orders")
+                .delete()
+                .eq("id", order.id);
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Unable to save COD order items.",
+                },
+                { status: 500 }
+            );
+        }
+
+        // ==========================================
+        // REDUCE STOCK
+        // ==========================================
+
+        const {
+            data: stockResult,
+            error: stockError,
+        } = await supabaseAdmin.rpc(
+            "reduce_order_stock",
+            {
+                p_order_id:
+                order.id,
+            }
+        );
+
+        if (
+            stockError ||
+            !stockResult?.success
+        ) {
+            console.error(
+                "COD stock reduction error:",
+                stockError ||
+                stockResult
+            );
+
+            await supabaseAdmin
+                .from("order_items")
+                .delete()
+                .eq(
+                    "order_id",
+                    order.id
+                );
+
             await supabaseAdmin
                 .from("orders")
                 .delete()
@@ -1014,16 +721,53 @@ export async function POST(req: Request) {
                 {
                     success: false,
                     message:
-                        "Payment succeeded, but order items could not be saved.",
+                        stockError?.message ||
+                        "Unable to reserve stock for this COD order.",
                 },
                 { status: 500 }
             );
         }
 
-        console.log(
-            "✅ ORDER ITEMS CREATED:",
-            savedItems
-        );
+        // ==========================================
+        // SEND ORDER EMAIL
+        // ==========================================
+
+        try {
+            const origin =
+                new URL(req.url).origin;
+
+            await fetch(
+                `${origin}/api/send-order-email`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+
+                    body:
+                        JSON.stringify({
+                            orderId:
+                            order.id,
+
+                            email:
+                            customerEmail,
+
+                            phone:
+                            customerPhone,
+                        }),
+                }
+            );
+        } catch (emailError) {
+            console.error(
+                "COD order email error:",
+                emailError
+            );
+
+            // Email failure must not cancel
+            // an already-created COD order.
+        }
 
         // ==========================================
         // SUCCESS
@@ -1033,17 +777,16 @@ export async function POST(req: Request) {
             success: true,
 
             message:
-                "Payment verified and order created successfully.",
+                "COD order placed successfully.",
 
             order,
 
             items:
                 savedItems || [],
         });
-
     } catch (error) {
         console.error(
-            "❌ VERIFY PAYMENT ERROR:",
+            "Create COD order error:",
             error
         );
 
@@ -1053,7 +796,7 @@ export async function POST(req: Request) {
                 message:
                     error instanceof Error
                         ? error.message
-                        : "Unable to verify payment.",
+                        : "Unable to create COD order.",
             },
             { status: 500 }
         );
