@@ -26,6 +26,18 @@ export default function Navbar() {
         setMenuOpen(false);
     }
 
+    function goHome() {
+        setMenuOpen(false);
+
+        // Always start Home at the very top
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+
+        router.push("/");
+    }
+
     return (
         <nav className="sticky top-0 z-50 bg-white shadow-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -34,10 +46,11 @@ export default function Navbar() {
                 <div className="flex items-center justify-between py-4 md:py-5">
 
                     {/* LOGO */}
-                    <Link
-                        href="/"
-                        onClick={closeMenu}
-                        className="text-2xl md:text-3xl font-bold text-pink-700 tracking-wide leading-tight"
+                    <button
+                        type="button"
+                        onClick={goHome}
+                        className="text-2xl md:text-3xl font-bold text-pink-700 tracking-wide leading-tight text-left"
+                        aria-label="APSRAA BY AVNI Home"
                     >
                         <span className="md:hidden">
                             APSRAA
@@ -48,17 +61,18 @@ export default function Navbar() {
                         <span className="hidden md:inline">
                             APSRAA BY AVNI
                         </span>
-                    </Link>
+                    </button>
 
                     {/* ================= DESKTOP NAVIGATION ================= */}
                     <div className="hidden md:flex items-center gap-6 lg:gap-8 text-gray-700 font-medium">
 
-                        <Link
-                            href="/"
+                        <button
+                            type="button"
+                            onClick={goHome}
                             className="hover:text-pink-700 transition"
                         >
                             Home
-                        </Link>
+                        </button>
 
                         <Link
                             href="/shop"
@@ -106,6 +120,7 @@ export default function Navbar() {
                         </Link>
 
                         <button
+                            type="button"
                             onClick={logout}
                             className="bg-gray-900 text-white px-5 py-2 rounded-full hover:bg-black transition"
                         >
@@ -117,7 +132,9 @@ export default function Navbar() {
                     {/* ================= MOBILE MENU BUTTON ================= */}
                     <button
                         type="button"
-                        onClick={() => setMenuOpen(!menuOpen)}
+                        onClick={() =>
+                            setMenuOpen(!menuOpen)
+                        }
                         className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl bg-pink-50 text-pink-700 text-2xl"
                         aria-label="Open navigation menu"
                         aria-expanded={menuOpen}
@@ -133,13 +150,13 @@ export default function Navbar() {
 
                         <div className="flex flex-col gap-2 pt-4">
 
-                            <Link
-                                href="/"
-                                onClick={closeMenu}
-                                className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
+                            <button
+                                type="button"
+                                onClick={goHome}
+                                className="text-left px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
                             >
                                 🏠 Home
-                            </Link>
+                            </button>
 
                             <Link
                                 href="/shop"

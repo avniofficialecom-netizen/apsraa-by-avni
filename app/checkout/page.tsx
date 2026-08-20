@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -35,6 +35,44 @@ export default function Checkout() {
 
     const [processing, setProcessing] =
         useState(false);
+
+    // ==========================================
+    // REMEMBER CUSTOMER NAME & EMAIL
+    // ==========================================
+
+    useEffect(() => {
+        const savedName =
+            localStorage.getItem("apsraa_checkout_name");
+
+        const savedEmail =
+            localStorage.getItem("apsraa_checkout_email");
+
+        if (savedName) {
+            setName(savedName);
+        }
+
+        if (savedEmail) {
+            setEmail(savedEmail);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (name.trim()) {
+            localStorage.setItem(
+                "apsraa_checkout_name",
+                name.trim()
+            );
+        }
+    }, [name]);
+
+    useEffect(() => {
+        if (email.trim()) {
+            localStorage.setItem(
+                "apsraa_checkout_email",
+                email.trim()
+            );
+        }
+    }, [email]);
 
     // ==========================================
     // CART TOTAL
@@ -331,9 +369,6 @@ export default function Checkout() {
                     id: item.id,
                     quantity: item.quantity,
 
-                    // IMPORTANT:
-                    // Carry selected variant
-                    // into the payment flow.
                     variantId:
                         item.variantId ??
                         undefined,
@@ -514,9 +549,6 @@ export default function Checkout() {
                                                             cleanPincode,
                                                         },
 
-                                                    // IMPORTANT:
-                                                    // Send variantId
-                                                    // to verify-payment.
                                                     items:
                                                         cart.map(
                                                             (
