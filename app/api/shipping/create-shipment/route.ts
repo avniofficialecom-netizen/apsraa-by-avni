@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 type OrderItem = {
@@ -30,6 +32,99 @@ type ShiprocketOrderResponse = {
 export async function POST(req: Request) {
     try {
         // ==========================================
+        // ADMIN AUTHENTICATION
+        // ==========================================
+
+        const cookieStore = await cookies();
+
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return cookieStore.getAll();
+                    },
+
+                    setAll(cookiesToSet) {
+                        try {
+                            cookiesToSet.forEach(
+                                ({
+                                    name,
+                                    value,
+                                    options,
+                                }) => {
+                                    cookieStore.set(
+                                        name,
+                                        value,
+                                        options
+                                    );
+                                }
+                            );
+                        } catch {
+                            // Middleware may handle cookie updates.
+                        }
+                    },
+                },
+            }
+        );
+
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Unauthorized. Admin login required.",
+                },
+                { status: 401 }
+            );
+        }
+
+        const adminEmail =
+            process.env.ADMIN_EMAIL ||
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+        if (!adminEmail) {
+            console.error(
+                "Admin email environment variable is missing."
+            );
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Admin configuration is missing.",
+                },
+                { status: 500 }
+            );
+        }
+
+        const loggedInEmail =
+            user.email?.trim().toLowerCase();
+
+        const configuredAdminEmail =
+            adminEmail.trim().toLowerCase();
+
+        if (
+            !loggedInEmail ||
+            loggedInEmail !== configuredAdminEmail
+        ) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Forbidden. Admin access required.",
+                },
+                { status: 403 }
+            );
+        }
+
+        // ==========================================
         // GET REQUEST
         // ==========================================
 
@@ -57,6 +152,11 @@ export async function POST(req: Request) {
         console.log(
             "APSRAA ORDER ID:",
             orderId
+        );
+
+        console.log(
+            "ADMIN:",
+            user.email
         );
 
         // ==========================================
@@ -193,7 +293,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // COD is allowed with Pending payment.
         if (
             paymentMethod !== "cod" &&
             paymentMethod !== "online"
@@ -336,13 +435,13 @@ export async function POST(req: Request) {
         ) {
             const lastPart =
                 addressParts[
-                addressParts.length - 1
-                    ];
+                    addressParts.length - 1
+                ];
 
             const secondLastPart =
                 addressParts[
-                addressParts.length - 2
-                    ];
+                    addressParts.length - 2
+                ];
 
             const stateAndPin =
                 lastPart.split("-");
@@ -393,9 +492,9 @@ export async function POST(req: Request) {
                     },
                     body: JSON.stringify({
                         email:
-                        shiprocketEmail,
+                            shiprocketEmail,
                         password:
-                        shiprocketPassword,
+                            shiprocketPassword,
                     }),
                     cache: "no-store",
                 }
@@ -404,8 +503,8 @@ export async function POST(req: Request) {
         const authData =
             (await authResponse.json()) as
                 ShiprocketAuthResponse & {
-                message?: string;
-            };
+                    message?: string;
+                };
 
         if (
             !authResponse.ok ||
@@ -439,7 +538,7 @@ export async function POST(req: Request) {
             typedItems.map(
                 (item) => ({
                     name:
-                    item.title,
+                        item.title,
 
                     sku:
                         item.variant_id
@@ -490,12 +589,6 @@ export async function POST(req: Request) {
             order_date:
                 new Date().toISOString(),
 
-            // ======================================
-            // IMPORTANT:
-            // This is your VERIFIED Shiprocket
-            // pickup address nickname.
-            // ======================================
-
             pickup_location:
                 "Home",
 
@@ -506,13 +599,13 @@ export async function POST(req: Request) {
                 `APSRAA Order #${order.id}`,
 
             billing_customer_name:
-            order.customer_name,
+                order.customer_name,
 
             billing_last_name:
                 "",
 
             billing_address:
-            shippingAddress,
+                shippingAddress,
 
             billing_address_2:
                 "",
@@ -521,58 +614,58 @@ export async function POST(req: Request) {
                 "91",
 
             billing_city:
-            city,
+                city,
 
             billing_pincode:
-            pincode,
+                pincode,
 
             billing_state:
-            state,
+                state,
 
             billing_country:
                 "India",
 
             billing_email:
-            order.email,
+                order.email,
 
             billing_phone:
-            order.phone,
+                order.phone,
 
             shipping_is_billing:
                 true,
 
             shipping_customer_name:
-            order.customer_name,
+                order.customer_name,
 
             shipping_last_name:
                 "",
 
             shipping_address:
-            shippingAddress,
+                shippingAddress,
 
             shipping_address_2:
                 "",
 
             shipping_city:
-            city,
+                city,
 
             shipping_pincode:
-            pincode,
+                pincode,
 
             shipping_country:
                 "India",
 
             shipping_state:
-            state,
+                state,
 
             shipping_email:
-            order.email,
+                order.email,
 
             shipping_phone:
-            order.phone,
+                order.phone,
 
             order_items:
-            products,
+                products,
 
             payment_method:
                 isCOD
@@ -592,11 +685,7 @@ export async function POST(req: Request) {
                 0,
 
             sub_total:
-            orderTotal,
-
-            // ======================================
-            // TEMPORARY PACKAGE DIMENSIONS
-            // ======================================
+                orderTotal,
 
             length:
                 15,
@@ -617,7 +706,7 @@ export async function POST(req: Request) {
                 "",
 
             cod_amount:
-            codAmount,
+                codAmount,
         };
 
         // ==========================================
@@ -710,16 +799,16 @@ export async function POST(req: Request) {
             .from("orders")
             .update({
                 shipment_id:
-                shipmentId,
+                    shipmentId,
 
                 shipping_status:
-                shippingStatus,
+                    shippingStatus,
 
                 shipping_created_at:
                     new Date().toISOString(),
 
                 cod_amount:
-                codAmount,
+                    codAmount,
             })
             .eq(
                 "id",
@@ -753,7 +842,7 @@ export async function POST(req: Request) {
                     message:
                         "Shipment was created in Shiprocket, but APSRAA could not save the shipment details.",
                     shipment_id:
-                    shipmentId,
+                        shipmentId,
                 },
                 { status: 500 }
             );
@@ -770,7 +859,7 @@ export async function POST(req: Request) {
                 "Shiprocket shipment created successfully.",
 
             order:
-            updatedOrder,
+                updatedOrder,
 
             shiprocket: {
                 order_id:

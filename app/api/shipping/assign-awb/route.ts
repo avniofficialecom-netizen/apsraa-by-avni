@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 type ShiprocketAuthResponse = {
@@ -8,6 +10,99 @@ type ShiprocketAuthResponse = {
 
 export async function POST(req: Request) {
     try {
+        // ==========================================
+        // ADMIN AUTHENTICATION
+        // ==========================================
+
+        const cookieStore = await cookies();
+
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    getAll() {
+                        return cookieStore.getAll();
+                    },
+
+                    setAll(cookiesToSet) {
+                        try {
+                            cookiesToSet.forEach(
+                                ({
+                                    name,
+                                    value,
+                                    options,
+                                }) => {
+                                    cookieStore.set(
+                                        name,
+                                        value,
+                                        options
+                                    );
+                                }
+                            );
+                        } catch {
+                            // Middleware may handle cookie updates.
+                        }
+                    },
+                },
+            }
+        );
+
+        const {
+            data: { user },
+            error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Unauthorized. Admin login required.",
+                },
+                { status: 401 }
+            );
+        }
+
+        const adminEmail =
+            process.env.ADMIN_EMAIL ||
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+        if (!adminEmail) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Admin configuration is missing.",
+                },
+                { status: 500 }
+            );
+        }
+
+        const loggedInEmail =
+            user.email?.trim().toLowerCase();
+
+        const configuredAdminEmail =
+            adminEmail.trim().toLowerCase();
+
+        if (
+            !loggedInEmail ||
+            loggedInEmail !== configuredAdminEmail
+        ) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Forbidden. Admin access required.",
+                },
+                { status: 403 }
+            );
+        }
+
+        // ==========================================
+        // REQUEST
+        // ==========================================
+
         const body = await req.json();
 
         const orderId = Number(body.orderId);
@@ -110,11 +205,11 @@ export async function POST(req: Request) {
                         "AWB is already assigned.",
                     shipment: {
                         shipment_id:
-                        order.shipment_id,
+                            order.shipment_id,
                         awb_number:
-                        order.awb_number,
+                            order.awb_number,
                         courier_name:
-                        order.courier_name,
+                            order.courier_name,
                     },
                 },
                 { status: 409 }
@@ -150,9 +245,7 @@ export async function POST(req: Request) {
 
         try {
             authData =
-                JSON.parse(
-                    authText
-                );
+                JSON.parse(authText);
         } catch {
             // Keep empty object if Shiprocket
             // doesn't return JSON.
@@ -170,9 +263,9 @@ export async function POST(req: Request) {
                         authData.message ||
                         "Shiprocket authentication failed.",
                     shiprocket_status:
-                    authResponse.status,
+                        authResponse.status,
                     shiprocket_response:
-                    authText,
+                        authText,
                 },
                 { status: 502 }
             );
@@ -184,12 +277,10 @@ export async function POST(req: Request) {
 
         const payload = {
             shipment_id:
-                Number(
-                    order.shipment_id
-                ),
+                Number(order.shipment_id),
 
             courier_id:
-            courierId,
+                courierId,
         };
 
         console.log(
@@ -212,9 +303,7 @@ export async function POST(req: Request) {
                     },
 
                     body:
-                        JSON.stringify(
-                            payload
-                        ),
+                        JSON.stringify(payload),
 
                     cache: "no-store",
                 }
@@ -230,9 +319,7 @@ export async function POST(req: Request) {
 
         try {
             assignData =
-                JSON.parse(
-                    assignText
-                );
+                JSON.parse(assignText);
         } catch {
             // Keep raw response below.
         }
@@ -263,13 +350,13 @@ export async function POST(req: Request) {
                                 : "Shiprocket rejected the AWB assignment.",
 
                     shiprocket_status:
-                    assignResponse.status,
+                        assignResponse.status,
 
                     shiprocket_response:
-                    assignData,
+                        assignData,
 
                     raw_response:
-                    assignText,
+                        assignText,
                 },
                 { status: 502 }
             );
@@ -299,7 +386,7 @@ export async function POST(req: Request) {
                     message:
                         "Shiprocket accepted the request but did not return an AWB.",
                     shiprocket_response:
-                    assignData,
+                        assignData,
                 },
                 { status: 502 }
             );
@@ -321,13 +408,13 @@ export async function POST(req: Request) {
             .from("orders")
             .update({
                 awb_number:
-                awb,
+                    awb,
 
                 courier_name:
-                courierName,
+                    courierName,
 
                 tracking_url:
-                trackingUrl,
+                    trackingUrl,
 
                 shipping_status:
                     "awb_assigned",
@@ -352,9 +439,9 @@ export async function POST(req: Request) {
                     message:
                         "AWB was created in Shiprocket, but APSRAA could not save it.",
                     awb_number:
-                    awb,
+                        awb,
                     courier_name:
-                    courierName,
+                        courierName,
                 },
                 { status: 500 }
             );
@@ -367,23 +454,23 @@ export async function POST(req: Request) {
                 "Courier assigned and AWB generated successfully.",
 
             order:
-            updatedOrder,
+                updatedOrder,
 
             shipment: {
                 shipment_id:
-                order.shipment_id,
+                    order.shipment_id,
 
                 awb_number:
-                awb,
+                    awb,
 
                 courier_id:
-                courierId,
+                    courierId,
 
                 courier_name:
-                courierName,
+                    courierName,
 
                 tracking_url:
-                trackingUrl,
+                    trackingUrl,
 
                 pickup_scheduled_date:
                     assignData.pickup_scheduled_date ||
