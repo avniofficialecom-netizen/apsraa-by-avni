@@ -23,6 +23,13 @@ type Order = {
     total: string;
     status: string;
     payment_status?: string | null;
+    payment_method?: string | null;
+    refund_status?: string | null;
+    razorpay_refund_id?: string | null;
+    refund_amount?: string | number | null;
+    refund_created_at?: string | null;
+    cancelled_at?: string | null;
+    cancellation_reason?: string | null;
     created_at: string;
     archived?: boolean;
     items?: OrderItem[];
@@ -819,6 +826,64 @@ export default function OrdersPage() {
     }
 
     // ==========================================
+    // REFUND DISPLAY HELPERS
+    // ==========================================
+
+    function refundStatusLabel(order: Order) {
+        const status = String(order.refund_status || "")
+            .trim()
+            .toLowerCase();
+
+        if (String(order.payment_method || "").toLowerCase() === "cod") {
+            return "Not Required";
+        }
+
+        if (status === "processed") return "Processed";
+        if (status === "pending" || status === "created") return "Pending";
+        if (status === "failed") return "Failed";
+
+        if (order.status === "Cancelled" && order.payment_status === "Paid") {
+            return "Not Recorded";
+        }
+
+        return "Not Applicable";
+    }
+
+    function refundStatusClass(order: Order) {
+        switch (refundStatusLabel(order)) {
+            case "Processed":
+                return "bg-green-100 text-green-700 border-green-200";
+            case "Pending":
+                return "bg-yellow-100 text-yellow-700 border-yellow-200";
+            case "Failed":
+                return "bg-red-100 text-red-700 border-red-200";
+            case "Not Required":
+                return "bg-gray-100 text-gray-700 border-gray-200";
+            case "Not Recorded":
+                return "bg-orange-100 text-orange-700 border-orange-200";
+            default:
+                return "bg-gray-100 text-gray-600 border-gray-200";
+        }
+    }
+
+    function formatRefundAmount(value: string | number | null | undefined) {
+        if (value === null || value === undefined || value === "") {
+            return "—";
+        }
+
+        const amount = Number(value);
+
+        if (!Number.isFinite(amount)) {
+            return `₹${String(value)}`;
+        }
+
+        return `₹${amount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}`;
+    }
+
+    // ==========================================
     // ORDER ITEM PRICE HELPERS
     // ==========================================
 
@@ -1355,6 +1420,70 @@ export default function OrdersPage() {
                                                 </div>
 
                                             </div>
+
+                                            {/* REFUND / CANCELLATION AUDIT */}
+
+                                            {order.status === "Cancelled" && (
+                                                <div className="mt-5 bg-white border-2 border-red-100 rounded-2xl p-4">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                                                        <div>
+                                                            <p className="text-xs uppercase tracking-wide text-red-500 font-bold">
+                                                                Cancellation & Refund
+                                                            </p>
+                                                            <p className="text-sm text-gray-500 mt-1">
+                                                                Payment and refund status for this specific order.
+                                                            </p>
+                                                        </div>
+
+                                                        <span className={`inline-flex w-fit px-3 py-1.5 rounded-full border text-xs font-extrabold ${refundStatusClass(order)}`}>
+                                                            Refund: {refundStatusLabel(order)}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs uppercase text-gray-400">Payment</p>
+                                                            <p className="font-bold text-gray-900 mt-1">
+                                                                {order.payment_status || "—"}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs uppercase text-gray-400">Refund Amount</p>
+                                                            <p className="font-bold text-gray-900 mt-1">
+                                                                {formatRefundAmount(order.refund_amount)}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs uppercase text-gray-400">Razorpay Refund ID</p>
+                                                            <p className="font-mono text-xs font-semibold text-gray-800 mt-1 break-all">
+                                                                {order.razorpay_refund_id || "—"}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="bg-gray-50 rounded-xl p-3">
+                                                            <p className="text-xs uppercase text-gray-400">Refund Date</p>
+                                                            <p className="font-semibold text-gray-800 mt-1">
+                                                                {order.refund_created_at
+                                                                    ? formatDate(order.refund_created_at)
+                                                                    : "—"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {order.cancelled_at && (
+                                                        <div className="mt-3 text-xs text-gray-500">
+                                                            Cancelled: <strong>{formatDate(order.cancelled_at)}</strong>
+                                                            {order.cancellation_reason && (
+                                                                <>
+                                                                    {" "}· Reason: <strong>{order.cancellation_reason}</strong>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {/* ADDRESS */}
 

@@ -17,12 +17,86 @@ type Variant = {
     stock: string;
 };
 
+const CORE_COLORS = [
+    "White",
+    "Pearl",
+    "Ivory",
+    "Cream",
+    "Beige",
+    "Pink",
+    "Blush",
+    "Rose",
+    "Red",
+    "Coral",
+    "Orange",
+    "Yellow",
+    "Gold",
+    "Champagne",
+    "Brown",
+    "Copper",
+    "Bronze",
+    "Green",
+    "Mint",
+    "Olive",
+    "Emerald",
+    "Teal",
+    "Blue",
+    "Sky Blue",
+    "Royal Blue",
+    "Navy",
+    "Purple",
+    "Lavender",
+    "Plum",
+    "Silver",
+    "Grey",
+    "Black",
+    "Multicolour",
+];
+
+const COLOR_HEX: Record<string, string> = {
+    White: "#ffffff",
+    Pearl: "#eee8d8",
+    Ivory: "#fff8dc",
+    Cream: "#f5e8c8",
+    Beige: "#d8c3a5",
+    Pink: "#ec78a8",
+    Blush: "#f4b6c2",
+    Rose: "#d66a8a",
+    Red: "#d62828",
+    Coral: "#f47c6c",
+    Orange: "#f28c28",
+    Yellow: "#f4d03f",
+    Gold: "#d4af37",
+    Champagne: "#e8d3a3",
+    Brown: "#795548",
+    Copper: "#b87333",
+    Bronze: "#cd7f32",
+    Green: "#3f9b4f",
+    Mint: "#98e0c0",
+    Olive: "#808000",
+    Emerald: "#087f5b",
+    Teal: "#159a9c",
+    Blue: "#4a90e2",
+    "Sky Blue": "#87ceeb",
+    "Royal Blue": "#4169e1",
+    Navy: "#1f3a70",
+    Purple: "#7e57c2",
+    Lavender: "#b39ddb",
+    Plum: "#7b3f6f",
+    Silver: "#c0c0c0",
+    Grey: "#808080",
+    Black: "#111111",
+    Multicolour:
+        "linear-gradient(135deg,#ef4444,#f59e0b,#22c55e,#3b82f6,#a855f7)",
+};
+
 const JEWELLERY_CATEGORIES: CategoryOption[] = [
     { value: "earrings", label: "Earrings" },
     { value: "jhumkas", label: "Jhumkas" },
     { value: "necklaces", label: "Necklaces" },
+    { value: "chains", label: "Chains" },
     { value: "chokers", label: "Chokers" },
-    { value: "jewellery-sets", label: "Jewellery Sets" },
+    { value: "jewellery-sets", label: "Necklace Sets" },
     { value: "anklets", label: "Anklets / Payal" },
     { value: "maang-tikka", label: "Maang Tikka" },
     { value: "rings", label: "Rings" },
@@ -39,28 +113,6 @@ const CLOTHING_CATEGORIES: CategoryOption[] = [
     { value: "kurti-sets", label: "Kurti Sets" },
     { value: "dresses", label: "Dresses" },
     { value: "co-ord-sets", label: "Co-ord Sets" },
-];
-
-const JEWELLERY_COLORS = [
-    "Gold",
-    "Silver",
-    "Rose Gold",
-    "Black",
-    "White",
-    "Multicolor",
-];
-
-const CLOTHING_COLORS = [
-    "Black",
-    "White",
-    "Pink",
-    "Red",
-    "Green",
-    "Blue",
-    "Yellow",
-    "Maroon",
-    "Beige",
-    "Multicolor",
 ];
 
 const CLOTHING_SIZES = [
@@ -91,8 +143,7 @@ export default function AddProduct() {
     const [description, setDescription] = useState("");
 
     const [image, setImage] = useState("");
-    const [imageFile, setImageFile] =
-        useState<File | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
 
     const [uploading, setUploading] = useState(false);
 
@@ -101,7 +152,7 @@ export default function AddProduct() {
     const [trending, setTrending] = useState(false);
 
     // ==========================================
-    // ATTRIBUTES
+    // MANUAL COLORS
     // ==========================================
 
     const [color, setColor] = useState("");
@@ -109,14 +160,19 @@ export default function AddProduct() {
     const [selectedColors, setSelectedColors] =
         useState<string[]>([]);
 
+    // ==========================================
+    // CLOTHING SIZES
+    // ==========================================
+
     const [selectedSizes, setSelectedSizes] =
         useState<string[]>([]);
 
-    const [stockBySize, setStockBySize] =
-        useState<Record<string, string>>({});
-
     const [stockByVariant, setStockByVariant] =
         useState<Record<string, string>>({});
+
+    // ==========================================
+    // ATTRIBUTES
+    // ==========================================
 
     const [material, setMaterial] = useState("");
     const [plating, setPlating] = useState("");
@@ -133,7 +189,7 @@ export default function AddProduct() {
             : CLOTHING_CATEGORIES;
 
     // ==========================================
-    // DEPARTMENT
+    // DEPARTMENT CHANGE
     // ==========================================
 
     function handleDepartmentChange(
@@ -145,7 +201,6 @@ export default function AddProduct() {
         setColor("");
         setSelectedColors([]);
         setSelectedSizes([]);
-        setStockBySize({});
         setStockByVariant({});
 
         setMaterial("");
@@ -158,7 +213,23 @@ export default function AddProduct() {
     }
 
     // ==========================================
-    // SIZE SELECTION
+    // IMAGE
+    // ==========================================
+
+    function handleImageChange(
+        event: React.ChangeEvent<HTMLInputElement>
+    ) {
+        const file = event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+        setImageFile(file);
+    }
+
+    // ==========================================
+    // SIZE
     // ==========================================
 
     function toggleSize(size: string) {
@@ -168,36 +239,11 @@ export default function AddProduct() {
                     (item) => item !== size
                 );
 
-                setStockBySize((stocks) => {
-                    const next = { ...stocks };
-                    delete next[size];
-                    return next;
-                });
-
-                return updated;
-            }
-
-            setStockBySize((stocks) => ({
-                ...stocks,
-                [size]: stocks[size] || "",
-            }));
-
-            return [...current, size];
-        });
-    }
-
-    function toggleColor(value: string) {
-        setSelectedColors((current) => {
-            if (current.includes(value)) {
-                const updated = current.filter(
-                    (item) => item !== value
-                );
-
                 setStockByVariant((stocks) => {
                     const next = { ...stocks };
 
                     Object.keys(next).forEach((key) => {
-                        if (key.startsWith(`${value}__`)) {
+                        if (key.endsWith(`__${size}`)) {
                             delete next[key];
                         }
                     });
@@ -208,9 +254,29 @@ export default function AddProduct() {
                 return updated;
             }
 
+            return [...current, size];
+        });
+    }
+
+    // ==========================================
+    // CLOTHING COLOR
+    // ==========================================
+
+    function toggleColor(value: string) {
+        setSelectedColors((current) => {
+            if (current.includes(value)) {
+                return current.filter(
+                    (item) => item !== value
+                );
+            }
+
             return [...current, value];
         });
     }
+
+    // ==========================================
+    // VARIANT KEY
+    // ==========================================
 
     function getVariantKey(
         size: string,
@@ -239,7 +305,9 @@ export default function AddProduct() {
 
         if (error) {
             setUploading(false);
+
             alert(error.message);
+
             return "";
         }
 
@@ -258,7 +326,7 @@ export default function AddProduct() {
     // SAVE PRODUCT
     // ==========================================
 
-    const saveProduct = async () => {
+    async function saveProduct() {
         if (
             !title.trim() ||
             !price ||
@@ -267,10 +335,50 @@ export default function AddProduct() {
             alert(
                 "Please fill Product Name, Category and Selling Price."
             );
+
             return;
         }
 
-        // Clothing must have at least one size and color.
+        if (!imageFile && !image) {
+            alert("Please upload a product image.");
+
+            return;
+        }
+
+        // ------------------------------------------
+        // JEWELLERY COLOR
+        // ------------------------------------------
+
+        if (
+            department === "jewellery" &&
+            !color
+        ) {
+            alert(
+                "Please select the product color."
+            );
+
+            return;
+        }
+
+        // ------------------------------------------
+        // CLOTHING COLOR
+        // ------------------------------------------
+
+        if (
+            department === "clothing" &&
+            selectedColors.length === 0
+        ) {
+            alert(
+                "Please select at least one product color."
+            );
+
+            return;
+        }
+
+        // ------------------------------------------
+        // CLOTHING SIZE
+        // ------------------------------------------
+
         if (
             department === "clothing" &&
             selectedSizes.length === 0
@@ -278,27 +386,7 @@ export default function AddProduct() {
             alert(
                 "Please select at least one clothing size."
             );
-            return;
-        }
 
-        if (
-            department === "clothing" &&
-            selectedColors.length === 0
-        ) {
-            alert(
-                "Please select at least one clothing color."
-            );
-            return;
-        }
-
-        // Jewellery must have a color.
-        if (
-            department === "jewellery" &&
-            !color
-        ) {
-            alert(
-                "Please select a jewellery color."
-            );
             return;
         }
 
@@ -315,7 +403,7 @@ export default function AddProduct() {
         setUploading(true);
 
         // ==========================================
-        // CREATE MAIN PRODUCT
+        // TOTAL STOCK
         // ==========================================
 
         const totalVariantStock =
@@ -326,44 +414,62 @@ export default function AddProduct() {
                         selectedSizes.reduce(
                             (sizeTotal, size) =>
                                 sizeTotal +
-                                (Number(
-                                    stockByVariant[
-                                        getVariantKey(
-                                            size,
-                                            variantColor
-                                        )
+                                (
+                                    Number(
+                                        stockByVariant[
+                                            getVariantKey(
+                                                size,
+                                                variantColor
+                                            )
                                         ]
-                                ) || 0),
+                                    ) || 0
+                                ),
                             0
                         ),
                     0
                 )
                 : Number(stock) || 0;
 
-        const { data: product, error } =
-            await supabase
-                .from("products")
-                .insert([
-                    {
-                        title: title.trim(),
-                        category,
-                        price: Number(price),
-                        old_price:
-                            oldPrice
-                                ? Number(oldPrice)
-                                : null,
-                        stock: totalVariantStock,
-                        image: imageUrl,
-                        rating,
-                        reviews,
-                        description,
-                        featured,
-                        bestseller,
-                        trending,
-                    },
-                ])
-                .select("id")
-                .single();
+        // ==========================================
+        // PRODUCT
+        // ==========================================
+
+        const {
+            data: product,
+            error,
+        } = await supabase
+            .from("products")
+            .insert([
+                {
+                    title: title.trim(),
+
+                    category,
+
+                    price: Number(price),
+
+                    old_price: oldPrice
+                        ? Number(oldPrice)
+                        : null,
+
+                    stock: totalVariantStock,
+
+                    image: imageUrl,
+
+                    rating,
+
+                    reviews,
+
+                    description,
+
+                    featured,
+
+                    bestseller,
+
+                    trending,
+                },
+            ])
+            .select("id")
+            .single();
 
         if (error || !product) {
             setUploading(false);
@@ -377,7 +483,7 @@ export default function AddProduct() {
         }
 
         // ==========================================
-        // CREATE VARIANTS
+        // BUILD VARIANTS
         // ==========================================
 
         const variants: Variant[] = [];
@@ -386,30 +492,35 @@ export default function AddProduct() {
             selectedColors.forEach(
                 (variantColor) => {
                     selectedSizes.forEach((size) => {
-                        const key = getVariantKey(
-                            size,
-                            variantColor
-                        );
+                        const key =
+                            getVariantKey(
+                                size,
+                                variantColor
+                            );
 
                         variants.push({
                             size,
+
                             color: variantColor,
+
                             sku: sku
                                 ? `${sku}-${variantColor
                                     .replace(
-                                        /\\s+/g,
+                                        /\s+/g,
                                         "-"
                                     )
                                     .toUpperCase()}-${size}`
                                 : `${category.toUpperCase()}-${Date.now()}-${variantColor
                                     .replace(
-                                        /\\s+/g,
+                                        /\s+/g,
                                         "-"
                                     )
                                     .toUpperCase()}-${size}`,
+
                             stock:
-                                stockByVariant[key] ||
-                                "0",
+                                stockByVariant[
+                                    key
+                                ] || "0",
                         });
                     });
                 }
@@ -417,42 +528,79 @@ export default function AddProduct() {
         } else {
             variants.push({
                 size: "",
+
                 color,
+
                 sku:
                     sku ||
                     `${category.toUpperCase()}-${Date.now()}`,
+
                 stock,
             });
         }
 
+        // ==========================================
+        // ATTRIBUTES
+        // ==========================================
+
         const attributes = {
             department,
+
             material: material.trim(),
+
             plating: plating.trim(),
+
             stone: stone.trim(),
+
             fabric: fabric.trim(),
+
             pattern: pattern.trim(),
+
             occasion: occasion.trim(),
+
+            /*
+             * MANUAL COLOR SYSTEM
+             *
+             * No image detection.
+             */
+            colors:
+                department === "jewellery"
+                    ? [color]
+                    : selectedColors,
+
+            color_source: "manual",
         };
+
+        // ==========================================
+        // SAVE VARIANTS
+        // ==========================================
 
         const variantRows = variants.map(
             (variant) => ({
                 product_id: product.id,
+
                 sku: variant.sku,
+
                 size: variant.size || null,
+
                 color: variant.color || null,
+
                 attributes,
+
                 price: Number(price),
+
                 stock:
                     Number(variant.stock) || 0,
+
                 image: imageUrl || null,
             })
         );
 
-        const { error: variantError } =
-            await supabase
-                .from("product_variants")
-                .insert(variantRows);
+        const {
+            error: variantError,
+        } = await supabase
+            .from("product_variants")
+            .insert(variantRows);
 
         if (variantError) {
             setUploading(false);
@@ -481,7 +629,9 @@ export default function AddProduct() {
         // ==========================================
 
         setTitle("");
+
         setDepartment("jewellery");
+
         setCategory("");
 
         setPrice("");
@@ -502,8 +652,8 @@ export default function AddProduct() {
 
         setColor("");
         setSelectedColors([]);
+
         setSelectedSizes([]);
-        setStockBySize({});
         setStockByVariant({});
 
         setMaterial("");
@@ -514,13 +664,14 @@ export default function AddProduct() {
         setOccasion("");
 
         setSku("");
-    };
+    }
 
     return (
         <>
             <AdminNavbar />
 
             <section className="min-h-screen bg-gradient-to-br from-pink-50 to-white py-16">
+
                 <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl p-6 sm:p-10">
 
                     <h1 className="text-4xl font-bold text-pink-700 mb-10">
@@ -528,24 +679,22 @@ export default function AddProduct() {
                     </h1>
 
                     {/* ==========================================
-                        BASIC PRODUCT INFORMATION
+                        BASIC INFORMATION
                     ========================================== */}
 
                     <div className="grid md:grid-cols-2 gap-6">
-
-                        {/* PRODUCT NAME */}
 
                         <input
                             type="text"
                             placeholder="Product Name *"
                             value={title}
                             onChange={(e) =>
-                                setTitle(e.target.value)
+                                setTitle(
+                                    e.target.value
+                                )
                             }
                             className="border rounded-xl p-4"
                         />
-
-                        {/* DEPARTMENT */}
 
                         <select
                             value={department}
@@ -567,8 +716,6 @@ export default function AddProduct() {
                             </option>
                         </select>
 
-                        {/* CATEGORY */}
-
                         <select
                             value={category}
                             onChange={(e) =>
@@ -582,29 +729,35 @@ export default function AddProduct() {
                                 Select Category *
                             </option>
 
-                            {categories.map((item) => (
-                                <option
-                                    key={item.value}
-                                    value={item.value}
-                                >
-                                    {item.label}
-                                </option>
-                            ))}
+                            {categories.map(
+                                (item) => (
+                                    <option
+                                        key={
+                                            item.value
+                                        }
+                                        value={
+                                            item.value
+                                        }
+                                    >
+                                        {
+                                            item.label
+                                        }
+                                    </option>
+                                )
+                            )}
                         </select>
-
-                        {/* PRICE */}
 
                         <input
                             type="number"
                             placeholder="Selling Price *"
                             value={price}
                             onChange={(e) =>
-                                setPrice(e.target.value)
+                                setPrice(
+                                    e.target.value
+                                )
                             }
                             className="border rounded-xl p-4"
                         />
-
-                        {/* OLD PRICE */}
 
                         <input
                             type="number"
@@ -618,8 +771,6 @@ export default function AddProduct() {
                             className="border rounded-xl p-4"
                         />
 
-                        {/* MAIN STOCK */}
-
                         <input
                             type="number"
                             placeholder="Total Stock"
@@ -632,8 +783,6 @@ export default function AddProduct() {
                             }
                             className="border rounded-xl p-4"
                         />
-
-                        {/* SKU */}
 
                         <input
                             type="text"
@@ -649,30 +798,36 @@ export default function AddProduct() {
 
                         {/* IMAGE */}
 
-                        <div>
+                        <div className="md:col-span-2">
+
+                            <label className="block font-semibold text-gray-800 mb-2">
+                                Product Image *
+                            </label>
+
                             <input
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => {
-                                    if (
-                                        e.target.files?.[0]
-                                    ) {
-                                        setImageFile(
-                                            e.target.files[0]
-                                        );
-                                    }
-                                }}
+                                onChange={
+                                    handleImageChange
+                                }
                                 className="border rounded-xl p-4 w-full"
                             />
 
                             {imageFile && (
-                                <p className="text-green-600 mt-2">
-                                    ✅ {imageFile.name}
-                                </p>
-                            )}
-                        </div>
+                                <div className="mt-4 rounded-2xl overflow-hidden border bg-gray-50">
 
-                        {/* RATING */}
+                                    <img
+                                        src={URL.createObjectURL(
+                                            imageFile
+                                        )}
+                                        alt="Product preview"
+                                        className="w-full max-h-80 object-contain"
+                                    />
+
+                                </div>
+                            )}
+
+                        </div>
 
                         <input
                             type="number"
@@ -691,8 +846,6 @@ export default function AddProduct() {
                             className="border rounded-xl p-4"
                         />
 
-                        {/* REVIEWS */}
-
                         <input
                             type="number"
                             placeholder="Reviews"
@@ -707,10 +860,11 @@ export default function AddProduct() {
                             }
                             className="border rounded-xl p-4"
                         />
+
                     </div>
 
                     {/* ==========================================
-                        VARIANTS
+                        PRODUCT ATTRIBUTES
                     ========================================== */}
 
                     <div className="mt-10 border border-pink-100 rounded-3xl p-6 bg-pink-50">
@@ -720,202 +874,299 @@ export default function AddProduct() {
                         </h2>
 
                         <p className="text-gray-600 mt-2">
-                            Add size, color and product
-                            specifications for inventory.
+                            Choose the product color manually.
+                            APSRAA will never guess your product color from the photograph.
                         </p>
 
                         {/* ==========================================
-                            JEWELLERY
+                            JEWELLERY COLOR
                         ========================================== */}
 
-                        {department ===
-                            "jewellery" && (
-                                <div className="mt-6">
+                        {department === "jewellery" && (
+                            <div className="mt-7">
 
-                                    <label className="block font-semibold text-gray-800 mb-2">
-                                        Jewellery Color *
-                                    </label>
+                                <p className="font-semibold text-gray-800 mb-4">
+                                    Product Color *
+                                </p>
 
-                                    <select
-                                        value={color}
-                                        onChange={(e) =>
-                                            setColor(
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full border rounded-xl p-4 bg-white"
-                                    >
-                                        <option value="">
-                                            Select Color
-                                        </option>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
 
-                                        {JEWELLERY_COLORS.map(
-                                            (item) => (
-                                                <option
+                                    {CORE_COLORS.map(
+                                        (item) => {
+                                            const selected =
+                                                color ===
+                                                item;
+
+                                            return (
+                                                <button
+                                                    type="button"
                                                     key={item}
-                                                    value={item}
+                                                    onClick={() =>
+                                                        setColor(
+                                                            item
+                                                        )
+                                                    }
+                                                    className={`rounded-2xl border-2 p-3 bg-white transition ${
+                                                        selected
+                                                            ? "border-pink-600 shadow-md"
+                                                            : "border-gray-200 hover:border-pink-300"
+                                                    }`}
                                                 >
-                                                    {item}
-                                                </option>
-                                            )
-                                        )}
-                                    </select>
+
+                                                    <span
+                                                        className="mx-auto block w-9 h-9 rounded-full border border-gray-300 shadow-sm"
+                                                        style={{
+                                                            background:
+                                                                COLOR_HEX[
+                                                                    item
+                                                                ],
+                                                        }}
+                                                    />
+
+                                                    <span
+                                                        className={`block mt-2 text-xs font-semibold ${
+                                                            selected
+                                                                ? "text-pink-700"
+                                                                : "text-gray-700"
+                                                        }`}
+                                                    >
+                                                        {
+                                                            item
+                                                        }
+                                                    </span>
+
+                                                </button>
+                                            );
+                                        }
+                                    )}
+
                                 </div>
-                            )}
+
+                                {color && (
+                                    <div className="mt-5 bg-white border rounded-2xl p-4 flex items-center gap-3">
+
+                                        <span
+                                            className="w-8 h-8 rounded-full border"
+                                            style={{
+                                                background:
+                                                    COLOR_HEX[
+                                                        color
+                                                    ],
+                                            }}
+                                        />
+
+                                        <div>
+                                            <p className="text-xs text-gray-500">
+                                                SELECTED COLOR
+                                            </p>
+
+                                            <p className="font-bold">
+                                                {
+                                                    color
+                                                }
+                                            </p>
+                                        </div>
+
+                                    </div>
+                                )}
+
+                            </div>
+                        )}
+
+                        {/* ==========================================
+                            CLOTHING COLORS
+                        ========================================== */}
+
+                        {department === "clothing" && (
+                            <div className="mt-7">
+
+                                <p className="font-semibold text-gray-800 mb-4">
+                                    Product Colors *
+                                </p>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+
+                                    {CORE_COLORS.map(
+                                        (item) => {
+                                            const selected =
+                                                selectedColors.includes(
+                                                    item
+                                                );
+
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={item}
+                                                    onClick={() =>
+                                                        toggleColor(
+                                                            item
+                                                        )
+                                                    }
+                                                    className={`rounded-2xl border-2 p-3 bg-white transition ${
+                                                        selected
+                                                            ? "border-pink-600 shadow-md"
+                                                            : "border-gray-200 hover:border-pink-300"
+                                                    }`}
+                                                >
+
+                                                    <span
+                                                        className="mx-auto block w-9 h-9 rounded-full border border-gray-300 shadow-sm"
+                                                        style={{
+                                                            background:
+                                                                COLOR_HEX[
+                                                                    item
+                                                                ],
+                                                        }}
+                                                    />
+
+                                                    <span
+                                                        className={`block mt-2 text-xs font-semibold ${
+                                                            selected
+                                                                ? "text-pink-700"
+                                                                : "text-gray-700"
+                                                        }`}
+                                                    >
+                                                        {
+                                                            item
+                                                        }
+                                                    </span>
+
+                                                </button>
+                                            );
+                                        }
+                                    )}
+
+                                </div>
+
+                            </div>
+                        )}
 
                         {/* ==========================================
                             CLOTHING SIZES
                         ========================================== */}
 
-                        {department ===
-                            "clothing" && (
-                                <div className="mt-6">
+                        {department === "clothing" && (
+                            <div className="mt-8">
 
-                                    <p className="font-semibold text-gray-800 mb-3">
-                                        Available Colors *
-                                    </p>
+                                <p className="font-semibold text-gray-800 mb-3">
+                                    Available Sizes *
+                                </p>
 
-                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                                        {CLOTHING_COLORS.map(
-                                            (item) => {
-                                                const selected =
-                                                    selectedColors.includes(
-                                                        item
-                                                    );
+                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
 
-                                                return (
-                                                    <button
-                                                        type="button"
-                                                        key={item}
-                                                        onClick={() =>
-                                                            toggleColor(
-                                                                item
-                                                            )
-                                                        }
-                                                        className={`py-3 rounded-xl border font-semibold transition ${
-                                                            selected
-                                                                ? "bg-pink-600 text-white border-pink-600"
-                                                                : "bg-white text-gray-700 border-gray-200 hover:border-pink-400"
-                                                        }`}
-                                                    >
-                                                        {item}
-                                                    </button>
+                                    {CLOTHING_SIZES.map(
+                                        (size) => {
+                                            const selected =
+                                                selectedSizes.includes(
+                                                    size
                                                 );
-                                            }
-                                        )}
-                                    </div>
 
-                                    <p className="font-semibold text-gray-800 mb-3 mt-7">
-                                        Available Sizes *
-                                    </p>
-
-                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                                        {CLOTHING_SIZES.map(
-                                            (size) => {
-                                                const selected =
-                                                    selectedSizes.includes(
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={size}
+                                                    onClick={() =>
+                                                        toggleSize(
+                                                            size
+                                                        )
+                                                    }
+                                                    className={`py-3 rounded-xl border font-semibold transition ${
+                                                        selected
+                                                            ? "bg-pink-600 text-white border-pink-600"
+                                                            : "bg-white text-gray-700 border-gray-200 hover:border-pink-400"
+                                                    }`}
+                                                >
+                                                    {
                                                         size
-                                                    );
+                                                    }
+                                                </button>
+                                            );
+                                        }
+                                    )}
 
-                                                return (
-                                                    <button
-                                                        type="button"
-                                                        key={size}
-                                                        onClick={() =>
-                                                            toggleSize(
-                                                                size
-                                                            )
-                                                        }
-                                                        className={`py-3 rounded-xl border font-semibold transition ${
-                                                            selected
-                                                                ? "bg-pink-600 text-white border-pink-600"
-                                                                : "bg-white text-gray-700 border-gray-200 hover:border-pink-400"
-                                                        }`}
-                                                    >
-                                                        {size}
-                                                    </button>
-                                                );
-                                            }
-                                        )}
-                                    </div>
                                 </div>
-                            )}
+
+                            </div>
+                        )}
 
                         {/* ==========================================
                             OTHER ATTRIBUTES
                         ========================================== */}
 
-                        <div className="mt-7 grid md:grid-cols-2 gap-4">
+                        <div className="mt-8 grid md:grid-cols-2 gap-4">
 
-                            {department ===
-                                "jewellery" && (
-                                    <>
-                                        <input
-                                            type="text"
-                                            placeholder="Material e.g. Stainless Steel"
-                                            value={material}
-                                            onChange={(e) =>
-                                                setMaterial(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded-xl p-4 bg-white"
-                                        />
+                            {department === "jewellery" && (
+                                <>
+                                    <input
+                                        type="text"
+                                        placeholder="Material e.g. Stainless Steel"
+                                        value={material}
+                                        onChange={(e) =>
+                                            setMaterial(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        className="border rounded-xl p-4 bg-white"
+                                    />
 
-                                        <input
-                                            type="text"
-                                            placeholder="Plating e.g. Gold Plated"
-                                            value={plating}
-                                            onChange={(e) =>
-                                                setPlating(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded-xl p-4 bg-white"
-                                        />
+                                    <input
+                                        type="text"
+                                        placeholder="Plating e.g. Gold Plated"
+                                        value={plating}
+                                        onChange={(e) =>
+                                            setPlating(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        className="border rounded-xl p-4 bg-white"
+                                    />
 
-                                        <input
-                                            type="text"
-                                            placeholder="Stone e.g. AD / Pearl / Kundan"
-                                            value={stone}
-                                            onChange={(e) =>
-                                                setStone(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded-xl p-4 bg-white"
-                                        />
-                                    </>
-                                )}
+                                    <input
+                                        type="text"
+                                        placeholder="Stone e.g. AD / Pearl / Kundan"
+                                        value={stone}
+                                        onChange={(e) =>
+                                            setStone(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        className="border rounded-xl p-4 bg-white"
+                                    />
+                                </>
+                            )}
 
-                            {department ===
-                                "clothing" && (
-                                    <>
-                                        <input
-                                            type="text"
-                                            placeholder="Fabric e.g. Cotton"
-                                            value={fabric}
-                                            onChange={(e) =>
-                                                setFabric(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded-xl p-4 bg-white"
-                                        />
+                            {department === "clothing" && (
+                                <>
+                                    <input
+                                        type="text"
+                                        placeholder="Fabric e.g. Cotton"
+                                        value={fabric}
+                                        onChange={(e) =>
+                                            setFabric(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        className="border rounded-xl p-4 bg-white"
+                                    />
 
-                                        <input
-                                            type="text"
-                                            placeholder="Pattern e.g. Printed"
-                                            value={pattern}
-                                            onChange={(e) =>
-                                                setPattern(
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="border rounded-xl p-4 bg-white"
-                                        />
-                                    </>
-                                )}
+                                    <input
+                                        type="text"
+                                        placeholder="Pattern e.g. Printed"
+                                        value={pattern}
+                                        onChange={(e) =>
+                                            setPattern(
+                                                e.target
+                                                    .value
+                                            )
+                                        }
+                                        className="border rounded-xl p-4 bg-white"
+                                    />
+                                </>
+                            )}
 
                             <input
                                 type="text"
@@ -928,13 +1179,14 @@ export default function AddProduct() {
                                 }
                                 className="border rounded-xl p-4 bg-white"
                             />
+
                         </div>
 
                         {/* ==========================================
                             VARIANT PREVIEW
                         ========================================== */}
 
-                        <div className="mt-7">
+                        <div className="mt-8">
 
                             <p className="font-semibold text-gray-800 mb-3">
                                 Inventory Variants
@@ -943,7 +1195,7 @@ export default function AddProduct() {
                             <div className="bg-white rounded-2xl border overflow-hidden">
 
                                 {department ===
-                                "clothing" &&
+                                    "clothing" &&
                                 selectedSizes.length > 0 &&
                                 selectedColors.length > 0 ? (
                                     <div className="divide-y">
@@ -960,19 +1212,38 @@ export default function AddProduct() {
 
                                                         return (
                                                             <div
-                                                                key={key}
+                                                                key={
+                                                                    key
+                                                                }
                                                                 className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 items-center"
                                                             >
-                                                                <div>
+
+                                                                <div className="flex items-center gap-2">
+
+                                                                    <span
+                                                                        className="w-6 h-6 rounded-full border"
+                                                                        style={{
+                                                                            background:
+                                                                                COLOR_HEX[
+                                                                                    variantColor
+                                                                                ],
+                                                                        }}
+                                                                    />
+
                                                                     <span className="font-semibold">
-                                                                        {variantColor}
+                                                                        {
+                                                                            variantColor
+                                                                        }
                                                                     </span>
+
                                                                 </div>
 
                                                                 <div>
                                                                     <span className="font-semibold">
                                                                         Size{" "}
-                                                                        {size}
+                                                                        {
+                                                                            size
+                                                                        }
                                                                     </span>
                                                                 </div>
 
@@ -995,7 +1266,7 @@ export default function AddProduct() {
                                                                     value={
                                                                         stockByVariant[
                                                                             key
-                                                                            ] ||
+                                                                        ] ||
                                                                         ""
                                                                     }
                                                                     onChange={(
@@ -1007,14 +1278,15 @@ export default function AddProduct() {
                                                                             ) => ({
                                                                                 ...current,
                                                                                 [key]:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
                                                                             })
                                                                         )
                                                                     }
                                                                     className="border rounded-xl p-3"
                                                                 />
+
                                                             </div>
                                                         );
                                                     }
@@ -1023,11 +1295,25 @@ export default function AddProduct() {
 
                                     </div>
                                 ) : department ===
-                                "jewellery" &&
-                                color ? (
+                                    "jewellery" &&
+                                  color ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 items-center">
-                                        <div className="font-semibold">
-                                            Color: {color}
+
+                                        <div className="flex items-center gap-2 font-semibold">
+
+                                            <span
+                                                className="w-7 h-7 rounded-full border"
+                                                style={{
+                                                    background:
+                                                        COLOR_HEX[
+                                                            color
+                                                        ],
+                                                }}
+                                            />
+
+                                            Color:{" "}
+                                            {color}
+
                                         </div>
 
                                         <div className="text-sm text-gray-500">
@@ -1038,18 +1324,21 @@ export default function AddProduct() {
 
                                         <div className="text-sm font-semibold text-pink-600">
                                             Stock:{" "}
-                                            {stock || 0}
+                                            {stock ||
+                                                0}
                                         </div>
+
                                     </div>
                                 ) : (
                                     <div className="p-5 text-gray-500">
-                                        Select the required
-                                        size/color to create
-                                        a variant.
+                                        Select a product color to create the variant.
                                     </div>
                                 )}
+
                             </div>
+
                         </div>
+
                     </div>
 
                     {/* ==========================================
@@ -1068,7 +1357,7 @@ export default function AddProduct() {
                     />
 
                     {/* ==========================================
-                        PRODUCT COLLECTIONS
+                        COLLECTIONS
                     ========================================== */}
 
                     <div className="mt-8">
@@ -1079,9 +1368,7 @@ export default function AddProduct() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-                            {/* FEATURED */}
-
-                            <label className="flex items-center gap-3 border rounded-xl p-4 cursor-pointer hover:bg-pink-50 transition">
+                            <label className="flex items-center gap-3 border rounded-xl p-4 cursor-pointer hover:bg-pink-50">
 
                                 <input
                                     type="checkbox"
@@ -1097,11 +1384,10 @@ export default function AddProduct() {
                                 <span className="font-medium">
                                     ⭐ Featured
                                 </span>
+
                             </label>
 
-                            {/* BESTSELLER */}
-
-                            <label className="flex items-center gap-3 border rounded-xl p-4 cursor-pointer hover:bg-pink-50 transition">
+                            <label className="flex items-center gap-3 border rounded-xl p-4 cursor-pointer hover:bg-pink-50">
 
                                 <input
                                     type="checkbox"
@@ -1117,11 +1403,10 @@ export default function AddProduct() {
                                 <span className="font-medium">
                                     🔥 Bestseller
                                 </span>
+
                             </label>
 
-                            {/* TRENDING */}
-
-                            <label className="flex items-center gap-3 border rounded-xl p-4 cursor-pointer hover:bg-pink-50 transition">
+                            <label className="flex items-center gap-3 border rounded-xl p-4 cursor-pointer hover:bg-pink-50">
 
                                 <input
                                     type="checkbox"
@@ -1137,12 +1422,15 @@ export default function AddProduct() {
                                 <span className="font-medium">
                                     💕 Trending
                                 </span>
+
                             </label>
+
                         </div>
+
                     </div>
 
                     {/* ==========================================
-                        SELECTED CATEGORY
+                        CATEGORY
                     ========================================== */}
 
                     {category && (
@@ -1161,6 +1449,7 @@ export default function AddProduct() {
                                     )?.label
                                 }
                             </p>
+
                         </div>
                     )}
 
@@ -1178,7 +1467,9 @@ export default function AddProduct() {
                             ? "Saving Product..."
                             : "Save Product"}
                     </button>
+
                 </div>
+
             </section>
 
             <Footer />

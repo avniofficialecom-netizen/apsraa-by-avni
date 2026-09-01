@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     let response = NextResponse.next({
         request,
     });
@@ -19,7 +19,10 @@ export async function middleware(request: NextRequest) {
                 setAll(cookiesToSet) {
                     cookiesToSet.forEach(
                         ({ name, value, options }) => {
-                            request.cookies.set(name, value);
+                            request.cookies.set(
+                                name,
+                                value
+                            );
 
                             response.cookies.set(
                                 name,
@@ -42,7 +45,8 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    const pathname = request.nextUrl.pathname;
+    const pathname =
+        request.nextUrl.pathname;
 
     const adminEmail =
         process.env.NEXT_PUBLIC_ADMIN_EMAIL
@@ -56,7 +60,7 @@ export async function middleware(request: NextRequest) {
         pathname === "/admin/login";
 
     console.log(
-        "MIDDLEWARE:",
+        "PROXY:",
         pathname,
         "USER:",
         user?.email || "none",
@@ -78,14 +82,16 @@ export async function middleware(request: NextRequest) {
         if (
             adminEmail &&
             user.email?.trim().toLowerCase() ===
-            adminEmail
+                adminEmail
         ) {
             const url =
                 request.nextUrl.clone();
 
             url.pathname = "/admin";
 
-            return NextResponse.redirect(url);
+            return NextResponse.redirect(
+                url
+            );
         }
 
         // Logged-in non-admin
@@ -106,7 +112,9 @@ export async function middleware(request: NextRequest) {
 
             url.pathname = "/admin/login";
 
-            return NextResponse.redirect(url);
+            return NextResponse.redirect(
+                url
+            );
         }
 
         // Admin email missing
@@ -135,7 +143,9 @@ export async function middleware(request: NextRequest) {
 
             url.pathname = "/admin/login";
 
-            return NextResponse.redirect(url);
+            return NextResponse.redirect(
+                url
+            );
         }
 
         // Correct admin

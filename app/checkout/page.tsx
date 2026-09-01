@@ -31,34 +31,21 @@ export default function Checkout() {
 
     const [pincodeVerified, setPincodeVerified] =
         useState(false);
-
     const [pincodeLoading, setPincodeLoading] =
         useState(false);
-
     const [pincodeError, setPincodeError] =
         useState("");
-
     const [processing, setProcessing] =
         useState(false);
-
-    // ==========================================
-    // REMEMBER CUSTOMER NAME & EMAIL
-    // ==========================================
 
     useEffect(() => {
         const savedName =
             localStorage.getItem("apsraa_checkout_name");
-
         const savedEmail =
             localStorage.getItem("apsraa_checkout_email");
 
-        if (savedName) {
-            setName(savedName);
-        }
-
-        if (savedEmail) {
-            setEmail(savedEmail);
-        }
+        if (savedName) setName(savedName);
+        if (savedEmail) setEmail(savedEmail);
     }, []);
 
     useEffect(() => {
@@ -79,29 +66,33 @@ export default function Checkout() {
         }
     }, [email]);
 
-    // ==========================================
-    // CART TOTAL
-    // ==========================================
+    const money = (value: number) =>
+        `₹${value.toLocaleString("en-IN", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        })}`;
+
+    const getPrice = (price: string | number) => {
+        const value = Number(
+            String(price).replace(/[₹,\s]/g, "")
+        );
+        return Number.isFinite(value) ? value : 0;
+    };
 
     const total = cart.reduce(
-        (sum, item) => {
-            const price = Number(
-                String(item.price)
-                    .replace("₹", "")
-                    .replace(/,/g, "")
-            );
-
-            return sum + price * item.quantity;
-        },
+        (sum, item) =>
+            sum +
+            getPrice(item.price) * item.quantity,
         0
     );
 
-    // ==========================================
-    // LOAD RAZORPAY
-    // ==========================================
+    const itemCount = cart.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+    );
 
-    const loadRazorpay = () => {
-        return new Promise<boolean>((resolve) => {
+    const loadRazorpay = () =>
+        new Promise<boolean>((resolve) => {
             if (window.Razorpay) {
                 resolve(true);
                 return;
@@ -118,34 +109,17 @@ export default function Checkout() {
 
             document.body.appendChild(script);
         });
+
+    const handlePhoneChange = (value: string) => {
+        setPhone(
+            value.replace(/\D/g, "").slice(0, 10)
+        );
     };
 
-    // ==========================================
-    // PHONE NUMBER
-    // ==========================================
-
-    const handlePhoneChange = (
-        value: string
-    ) => {
-        const cleanValue =
-            value
-                .replace(/\D/g, "")
-                .slice(0, 10);
-
-        setPhone(cleanValue);
-    };
-
-    // ==========================================
-    // PIN CODE VERIFICATION
-    // ==========================================
-
-    const verifyPincode = async (
-        value: string
-    ) => {
-        const cleanPincode =
-            value
-                .replace(/\D/g, "")
-                .slice(0, 6);
+    const verifyPincode = async (value: string) => {
+        const cleanPincode = value
+            .replace(/\D/g, "")
+            .slice(0, 6);
 
         setPincode(cleanPincode);
         setPincodeVerified(false);
@@ -168,85 +142,48 @@ export default function Checkout() {
                 }
             );
 
-            const data =
-                await response.json();
+            const data = await response.json();
 
-            if (
-                !response.ok ||
-                !data?.success
-            ) {
-                setPincodeVerified(false);
-
+            if (!response.ok || !data?.success) {
                 setPincodeError(
                     data?.message ||
-                    "Unable to verify PIN code."
+                    "We couldn't verify that PIN code."
                 );
-
                 return;
             }
 
             setCity(data.city || "");
             setState(data.state || "");
             setPincodeVerified(true);
-            setPincodeError("");
-
         } catch (error) {
             console.error(
                 "PIN CODE VERIFICATION ERROR:",
                 error
             );
 
-            setPincodeVerified(false);
-
             setPincodeError(
-                "Unable to verify PIN code right now. Please try again."
+                "We couldn't verify the PIN right now. Please try again."
             );
-
-            setCity("");
-            setState("");
         } finally {
             setPincodeLoading(false);
         }
     };
 
-    // ==========================================
-    // VALIDATE CUSTOMER DETAILS
-    // ==========================================
-
     const validateCustomerDetails = () => {
-        const cleanName =
-            name.trim();
-
-        const cleanPhone =
-            phone.replace(/\D/g, "");
-
-        const cleanEmail =
-            email.trim();
-
-        const cleanAddress =
-            address.trim();
-
-        const cleanCity =
-            city.trim();
-
-        const cleanState =
-            state.trim();
-
-        const cleanPincode =
-            pincode.replace(/\D/g, "");
+        const cleanName = name.trim();
+        const cleanPhone = phone.replace(/\D/g, "");
+        const cleanEmail = email.trim();
+        const cleanAddress = address.trim();
+        const cleanCity = city.trim();
+        const cleanState = state.trim();
+        const cleanPincode = pincode.replace(/\D/g, "");
 
         if (cleanName.length < 2) {
-            alert(
-                "Please enter your full name."
-            );
+            alert("Please enter your full name.");
             return null;
         }
 
-        if (
-            !/^[6-9]\d{9}$/.test(
-                cleanPhone
-            )
-        ) {
+        if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
             alert(
                 "Please enter a valid 10-digit Indian mobile number."
             );
@@ -258,15 +195,11 @@ export default function Checkout() {
                 cleanEmail
             )
         ) {
-            alert(
-                "Please enter a valid email address."
-            );
+            alert("Please enter a valid email address.");
             return null;
         }
 
-        if (
-            cleanAddress.length < 10
-        ) {
+        if (cleanAddress.length < 10) {
             alert(
                 "Please enter your complete delivery address."
             );
@@ -275,40 +208,28 @@ export default function Checkout() {
 
         if (!pincodeVerified) {
             alert(
-                "Please enter and verify a valid PIN code before proceeding."
+                "Please enter and verify your 6-digit PIN code."
             );
             return null;
         }
 
         if (cleanCity.length < 2) {
-            alert(
-                "Please enter your city."
-            );
+            alert("Please verify your city.");
             return null;
         }
 
         if (cleanState.length < 2) {
-            alert(
-                "Please enter your state."
-            );
+            alert("Please verify your state.");
             return null;
         }
 
-        if (
-            !/^\d{6}$/.test(
-                cleanPincode
-            )
-        ) {
-            alert(
-                "Please enter a valid 6-digit PIN code."
-            );
+        if (!/^\d{6}$/.test(cleanPincode)) {
+            alert("Please enter a valid 6-digit PIN code.");
             return null;
         }
 
         if (cart.length === 0) {
-            alert(
-                "Your cart is empty."
-            );
+            alert("Your bag is empty.");
             return null;
         }
 
@@ -323,43 +244,31 @@ export default function Checkout() {
         };
     };
 
-    // ==========================================
-    // SEND ORDER EMAIL
-    // ==========================================
-
     const sendOrderEmail = async (
         orderId: number,
         cleanEmail: string,
         cleanPhone: string
     ) => {
         try {
-            const response =
-                await fetch(
-                    "/api/send-order-email",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
-                        body:
-                            JSON.stringify({
-                                orderId,
-                                email:
-                                cleanEmail,
-                                phone:
-                                cleanPhone,
-                            }),
-                    }
-                );
+            const response = await fetch(
+                "/api/send-order-email",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                    },
+                    body: JSON.stringify({
+                        orderId,
+                        email: cleanEmail,
+                        phone: cleanPhone,
+                    }),
+                }
+            );
 
-            const result =
-                await response.json();
+            const result = await response.json();
 
-            if (
-                !response.ok ||
-                !result?.success
-            ) {
+            if (!response.ok || !result?.success) {
                 console.error(
                     "ORDER EMAIL FAILED:",
                     result
@@ -373,15 +282,9 @@ export default function Checkout() {
         }
     };
 
-    // ==========================================
-    // COD ORDER
-    // ==========================================
-
     const placeCODOrder = async (
         customerData: NonNullable<
-            ReturnType<
-                typeof validateCustomerDetails
-            >
+            ReturnType<typeof validateCustomerDetails>
         >
     ) => {
         const {
@@ -394,50 +297,36 @@ export default function Checkout() {
             cleanPincode,
         } = customerData;
 
-        const orderItems =
-            cart.map((item) => ({
-                id: item.id,
-                quantity: item.quantity,
-                variantId:
-                    item.variantId ??
-                    undefined,
-            }));
-
-        const response =
-            await fetch(
-                "/api/create-cod-order",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
+        const response = await fetch(
+            "/api/create-cod-order",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/json",
+                },
+                body: JSON.stringify({
+                    customer: {
+                        name: cleanName,
+                        phone: cleanPhone,
+                        email: cleanEmail,
+                        address: cleanAddress,
+                        city: cleanCity,
+                        state: cleanState,
+                        pincode: cleanPincode,
                     },
-                    body:
-                        JSON.stringify({
-                            customer: {
-                                name:
-                                cleanName,
-                                phone:
-                                cleanPhone,
-                                email:
-                                cleanEmail,
-                                address:
-                                cleanAddress,
-                                city:
-                                cleanCity,
-                                state:
-                                cleanState,
-                                pincode:
-                                cleanPincode,
-                            },
-                            items:
-                            orderItems,
-                        }),
-                }
-            );
+                    items: cart.map((item) => ({
+                        id: item.id,
+                        quantity: item.quantity,
+                        variantId:
+                            item.variantId ??
+                            undefined,
+                    })),
+                }),
+            }
+        );
 
-        const result =
-            await response.json();
+        const result = await response.json();
 
         if (
             !response.ok ||
@@ -450,31 +339,16 @@ export default function Checkout() {
             );
         }
 
-        console.log(
-            "✅ COD ORDER CREATED:",
-            result.order.id
-        );
-
         clearCart();
 
-        // IMPORTANT:
-        // Tell success page this is COD.
         router.push(
-            "/success?orderId=" +
-            result.order.id +
-            "&paymentMethod=cod"
+            `/success?orderId=${result.order.id}&paymentMethod=cod`
         );
     };
 
-    // ==========================================
-    // ONLINE ORDER
-    // ==========================================
-
     const placeOnlineOrder = async (
         customerData: NonNullable<
-            ReturnType<
-                typeof validateCustomerDetails
-            >
+            ReturnType<typeof validateCustomerDetails>
         >
     ) => {
         const {
@@ -487,40 +361,31 @@ export default function Checkout() {
             cleanPincode,
         } = customerData;
 
-        const loaded =
-            await loadRazorpay();
+        const loaded = await loadRazorpay();
 
         if (!loaded) {
             throw new Error(
-                "Failed to load Razorpay."
+                "Secure payment could not be loaded. Please try again."
             );
         }
 
-        const orderItems =
-            cart.map((item) => ({
-                id: item.id,
-                quantity: item.quantity,
-                variantId:
-                    item.variantId ??
-                    undefined,
-            }));
-
         const createOrderResponse =
-            await fetch(
-                "/api/create-order",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
-                    body:
-                        JSON.stringify({
-                            items:
-                            orderItems,
-                        }),
-                }
-            );
+            await fetch("/api/create-order", {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/json",
+                },
+                body: JSON.stringify({
+                    items: cart.map((item) => ({
+                        id: item.id,
+                        quantity: item.quantity,
+                        variantId:
+                            item.variantId ??
+                            undefined,
+                    })),
+                }),
+            });
 
         const razorpayOrder =
             await createOrderResponse.json();
@@ -531,255 +396,178 @@ export default function Checkout() {
         ) {
             throw new Error(
                 razorpayOrder.message ||
-                "Unable to create Razorpay order."
+                "Unable to create the payment order."
             );
         }
 
         const options = {
             key:
-            process.env
-                .NEXT_PUBLIC_RAZORPAY_KEY_ID,
-
-            amount:
-            razorpayOrder.amount,
-
-            currency:
-            razorpayOrder.currency,
-
-            name:
-                "APSRAA BY AVNI",
-
-            description:
-                "Jewellery Purchase",
-
-            image:
-                "/logo.png",
-
-            order_id:
-            razorpayOrder.id,
+                process.env
+                    .NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            name: "APSRAA BY AVNI",
+            description: "Jewellery Purchase",
+            image: "/logo.png",
+            order_id: razorpayOrder.id,
 
             prefill: {
-                name:
-                cleanName,
-                email:
-                cleanEmail,
-                contact:
-                cleanPhone,
+                name: cleanName,
+                email: cleanEmail,
+                contact: cleanPhone,
             },
 
             theme: {
-                color:
-                    "#db2777",
+                color: "#b80062",
             },
 
-            handler:
-                async (
-                    response: any
-                ) => {
-                    try {
-                        const verifyResponse =
-                            await fetch(
-                                "/api/verify-payment",
-                                {
-                                    method:
-                                        "POST",
+            handler: async (response: any) => {
+                try {
+                    const verifyResponse =
+                        await fetch(
+                            "/api/verify-payment",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+                                },
+                                body: JSON.stringify({
+                                    razorpay_order_id:
+                                        response.razorpay_order_id,
+                                    razorpay_payment_id:
+                                        response.razorpay_payment_id,
+                                    razorpay_signature:
+                                        response.razorpay_signature,
 
-                                    headers: {
-                                        "Content-Type":
-                                            "application/json",
+                                    customer: {
+                                        name: cleanName,
+                                        phone: cleanPhone,
+                                        email: cleanEmail,
+                                        address: cleanAddress,
+                                        city: cleanCity,
+                                        state: cleanState,
+                                        pincode: cleanPincode,
                                     },
 
-                                    body:
-                                        JSON.stringify({
-                                            razorpay_order_id:
-                                            response.razorpay_order_id,
-
-                                            razorpay_payment_id:
-                                            response.razorpay_payment_id,
-
-                                            razorpay_signature:
-                                            response.razorpay_signature,
-
-                                            customer:
-                                                {
-                                                    name:
-                                                    cleanName,
-                                                    phone:
-                                                    cleanPhone,
-                                                    email:
-                                                    cleanEmail,
-                                                    address:
-                                                    cleanAddress,
-                                                    city:
-                                                    cleanCity,
-                                                    state:
-                                                    cleanState,
-                                                    pincode:
-                                                    cleanPincode,
-                                                },
-
-                                            items:
-                                                cart.map(
-                                                    (item) => ({
-                                                        id:
-                                                        item.id,
-                                                        quantity:
-                                                        item.quantity,
-                                                        variantId:
-                                                            item.variantId ??
-                                                            undefined,
-                                                    })
-                                                ),
-                                        }),
-                                }
-                            );
-
-                        const verify =
-                            await verifyResponse.json();
-
-                        if (
-                            !verifyResponse.ok ||
-                            !verify.success ||
-                            !verify.order
-                        ) {
-                            alert(
-                                verify.message ||
-                                "Payment verification failed."
-                            );
-
-                            setProcessing(false);
-                            return;
-                        }
-
-                        const order =
-                            verify.order;
-
-                        const stockResponse =
-                            await fetch(
-                                "/api/reduce-stock",
-                                {
-                                    method:
-                                        "POST",
-
-                                    headers: {
-                                        "Content-Type":
-                                            "application/json",
-                                    },
-
-                                    body:
-                                        JSON.stringify({
-                                            orderId:
-                                            order.id,
-
-                                            razorpay_payment_id:
-                                            response.razorpay_payment_id,
-
-                                            razorpay_signature:
-                                            response.razorpay_signature,
-                                        }),
-                                }
-                            );
-
-                        const stockResult =
-                            await stockResponse.json();
-
-                        if (
-                            !stockResponse.ok ||
-                            !stockResult.success
-                        ) {
-                            alert(
-                                stockResult.message ||
-                                "Payment succeeded, but stock could not be updated."
-                            );
-
-                            setProcessing(false);
-                            return;
-                        }
-
-                        await sendOrderEmail(
-                            order.id,
-                            cleanEmail,
-                            cleanPhone
+                                    items: cart.map(
+                                        (item) => ({
+                                            id: item.id,
+                                            quantity:
+                                                item.quantity,
+                                            variantId:
+                                                item.variantId ??
+                                                undefined,
+                                        })
+                                    ),
+                                }),
+                            }
                         );
 
-                        clearCart();
+                    const verify =
+                        await verifyResponse.json();
 
-                        // IMPORTANT:
-                        // Tell success page this is Razorpay.
-                        router.push(
-                            "/success?orderId=" +
-                            order.id +
-                            "&paymentMethod=razorpay"
+                    if (
+                        !verifyResponse.ok ||
+                        !verify.success ||
+                        !verify.order
+                    ) {
+                        throw new Error(
+                            verify.message ||
+                            "Payment verification failed."
                         );
-
-                    } catch (error) {
-                        console.error(
-                            "PAYMENT HANDLER ERROR:",
-                            error
-                        );
-
-                        alert(
-                            error instanceof Error
-                                ? error.message
-                                : "Something went wrong after payment."
-                        );
-
-                        setProcessing(false);
                     }
-                },
+
+                    const order = verify.order;
+
+                    const stockResponse =
+                        await fetch(
+                            "/api/reduce-stock",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+                                },
+                                body: JSON.stringify({
+                                    orderId: order.id,
+                                    razorpay_payment_id:
+                                        response.razorpay_payment_id,
+                                    razorpay_signature:
+                                        response.razorpay_signature,
+                                }),
+                            }
+                        );
+
+                    const stockResult =
+                        await stockResponse.json();
+
+                    if (
+                        !stockResponse.ok ||
+                        !stockResult.success
+                    ) {
+                        throw new Error(
+                            stockResult.message ||
+                            "Payment succeeded, but stock could not be updated."
+                        );
+                    }
+
+                    await sendOrderEmail(
+                        order.id,
+                        cleanEmail,
+                        cleanPhone
+                    );
+
+                    clearCart();
+
+                    router.push(
+                        `/success?orderId=${order.id}&paymentMethod=razorpay`
+                    );
+                } catch (error) {
+                    console.error(
+                        "PAYMENT HANDLER ERROR:",
+                        error
+                    );
+
+                    alert(
+                        error instanceof Error
+                            ? error.message
+                            : "Something went wrong after payment."
+                    );
+
+                    setProcessing(false);
+                }
+            },
 
             modal: {
-                ondismiss:
-                    () => {
-                        setProcessing(
-                            false
-                        );
-                    },
+                ondismiss: () => {
+                    setProcessing(false);
+                },
             },
         };
 
         const paymentObject =
-            new window.Razorpay(
-                options
-            );
+            new window.Razorpay(options);
 
         paymentObject.open();
     };
 
-    // ==========================================
-    // PLACE ORDER
-    // ==========================================
-
     const placeOrder = async () => {
-        if (processing) {
-            return;
-        }
+        if (processing) return;
 
         const customerData =
             validateCustomerDetails();
 
-        if (!customerData) {
-            return;
-        }
+        if (!customerData) return;
 
         setProcessing(true);
 
         try {
-            if (
-                paymentMethod ===
-                "cod"
-            ) {
-                await placeCODOrder(
-                    customerData
-                );
-
-                return;
+            if (paymentMethod === "cod") {
+                await placeCODOrder(customerData);
+            } else {
+                await placeOnlineOrder(customerData);
             }
-
-            await placeOnlineOrder(
-                customerData
-            );
-
         } catch (error) {
             console.error(
                 "CHECKOUT ERROR:",
@@ -796,488 +584,622 @@ export default function Checkout() {
         }
     };
 
-    // ==========================================
-    // UI
-    // ==========================================
+    if (cart.length === 0) {
+        return (
+            <>
+                <Navbar />
+
+                <main className="min-h-[70vh] bg-[#fffafc] px-5 py-20">
+                    <div className="mx-auto max-w-2xl border border-[#eadfe5] bg-white px-6 py-16 text-center shadow-[0_20px_70px_rgba(30,20,30,0.06)]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[#b80062]">
+                            APSRAA BY AVNI
+                        </p>
+
+                        <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-[#182033]">
+                            Your bag is empty
+                        </h1>
+
+                        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#77716d]">
+                            Discover something beautiful and
+                            come back here when you're ready
+                            to make it yours.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                router.push("/shop")
+                            }
+                            className="mt-8 bg-[#b80062] px-8 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#182033]"
+                        >
+                            Discover the collection
+                        </button>
+                    </div>
+                </main>
+
+                <Footer />
+            </>
+        );
+    }
 
     return (
         <>
             <Navbar />
 
-            <section className="min-h-screen bg-pink-50 py-12 md:py-20">
+            <main className="min-h-screen bg-[#fffafc]">
 
-                <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 md:gap-10 px-4 md:px-8">
+                {/* ==========================================
+                    CHECKOUT INTRO
+                ========================================== */}
 
-                    {/* CUSTOMER DETAILS */}
+                <section className="border-b border-[#eee4e9] bg-[#fff7fa]">
+                    <div className="mx-auto max-w-[1320px] px-5 py-9 sm:px-8 lg:px-12 lg:py-12">
 
-                    <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
 
-                        <h2 className="text-3xl font-bold text-pink-700 mb-2">
-                            Checkout
-                        </h2>
-
-                        <p className="text-gray-500 mb-7">
-                            Enter your delivery details
-                        </p>
-
-                        {/* NAME */}
-
-                        <div className="mb-5">
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                Full Name
-                                <span className="text-pink-600">
-                                    {" "}*
-                                </span>
-                            </label>
-
-                            <input
-                                type="text"
-                                placeholder="Enter your full name"
-                                value={name}
-                                onChange={(e) =>
-                                    setName(
-                                        e.target.value
-                                    )
-                                }
-                                autoComplete="name"
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 focus:border-pink-500 focus:outline-none transition"
-                            />
-
-                        </div>
-
-                        {/* PHONE */}
-
-                        <div className="mb-5">
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                Mobile Number
-                                <span className="text-pink-600">
-                                    {" "}*
-                                </span>
-                            </label>
-
-                            <input
-                                type="tel"
-                                inputMode="numeric"
-                                maxLength={10}
-                                placeholder="10-digit mobile number"
-                                value={phone}
-                                onChange={(e) =>
-                                    handlePhoneChange(
-                                        e.target.value
-                                    )
-                                }
-                                autoComplete="tel"
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 focus:border-pink-500 focus:outline-none transition"
-                            />
-
-                        </div>
-
-                        {/* EMAIL */}
-
-                        <div className="mb-5">
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                Email Address
-                                <span className="text-pink-600">
-                                    {" "}*
-                                </span>
-                            </label>
-
-                            <input
-                                type="email"
-                                placeholder="Enter your email address"
-                                value={email}
-                                onChange={(e) =>
-                                    setEmail(
-                                        e.target.value
-                                    )
-                                }
-                                autoComplete="email"
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 focus:border-pink-500 focus:outline-none transition"
-                            />
-
-                        </div>
-
-                        {/* ADDRESS */}
-
-                        <div className="mb-5">
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                Full Delivery Address
-                                <span className="text-pink-600">
-                                    {" "}*
-                                </span>
-                            </label>
-
-                            <textarea
-                                placeholder="House/Flat No., Street, Area/Locality"
-                                value={address}
-                                onChange={(e) =>
-                                    setAddress(
-                                        e.target.value
-                                    )
-                                }
-                                autoComplete="street-address"
-                                rows={4}
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 focus:border-pink-500 focus:outline-none transition resize-none"
-                            />
-
-                        </div>
-
-                        {/* CITY */}
-
-                        <div className="mb-5">
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                City
-                            </label>
-
-                            <input
-                                type="text"
-                                value={city}
-                                readOnly
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gray-50 text-gray-700 focus:outline-none"
-                            />
-
-                        </div>
-
-                        {/* STATE */}
-
-                        <div className="mb-5">
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                State
-                            </label>
-
-                            <input
-                                type="text"
-                                value={state}
-                                readOnly
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 bg-gray-50 text-gray-700 focus:outline-none"
-                            />
-
-                        </div>
-
-                        {/* PIN */}
-
-                        <div>
-
-                            <label className="block text-gray-700 font-semibold mb-2">
-                                PIN Code
-                                <span className="text-pink-600">
-                                    {" "}*
-                                </span>
-                            </label>
-
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={6}
-                                placeholder="Enter 6-digit PIN code"
-                                value={pincode}
-                                onChange={(e) =>
-                                    verifyPincode(
-                                        e.target.value
-                                    )
-                                }
-                                autoComplete="postal-code"
-                                className="w-full border-2 border-gray-200 rounded-xl p-4 focus:border-pink-500 focus:outline-none transition"
-                            />
-
-                            {pincodeLoading && (
-                                <p className="text-sm text-gray-500 mt-2">
-                                    🔄 Verifying PIN code...
+                            <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[#b80062]">
+                                    APSRAA BY AVNI
                                 </p>
-                            )}
 
-                            {pincodeVerified &&
-                                !pincodeLoading && (
-                                    <div className="mt-3 bg-green-50 border border-green-200 rounded-xl p-3">
-                                        <p className="text-green-700 font-semibold text-sm">
-                                            ✓ PIN Code Verified
-                                        </p>
+                                <h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] text-[#182033] sm:text-5xl">
+                                    Complete your order
+                                </h1>
 
-                                        <p className="text-green-600 text-sm mt-1">
-                                            {city},{" "}
-                                            {state}
-                                        </p>
-                                    </div>
-                                )}
+                                <p className="mt-2 text-sm text-[#77716d]">
+                                    Almost yours. Add your delivery
+                                    details and choose how you'd like
+                                    to pay.
+                                </p>
+                            </div>
 
-                            {pincodeError && (
-                                <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3">
-                                    <p className="text-red-600 text-sm">
-                                        {pincodeError}
-                                    </p>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#77716d]">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#b80062] text-white">
+                                    1
+                                </span>
+                                Details
+                                <span className="mx-1 h-px w-8 bg-[#d9cbd2]" />
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#d9cbd2] bg-white text-[#77716d]">
+                                    2
+                                </span>
+                                Payment
+                            </div>
 
                         </div>
 
                     </div>
+                </section>
 
-                    {/* ORDER SUMMARY */}
+                <section className="px-5 py-8 sm:px-8 sm:py-12 lg:px-12 lg:py-14">
 
-                    <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 h-fit">
+                    <div className="mx-auto grid max-w-[1320px] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_410px]">
 
-                        <h2 className="text-3xl font-bold text-pink-700 mb-6">
-                            Order Summary
-                        </h2>
+                        {/* ======================================
+                            CUSTOMER DETAILS
+                        ====================================== */}
 
-                        {cart.length === 0 ? (
-                            <p className="text-gray-500">
-                                Your cart is empty.
-                            </p>
-                        ) : (
-                            <div className="space-y-4">
+                        <div className="border border-[#eadfe5] bg-white p-6 shadow-[0_20px_70px_rgba(30,20,30,0.05)] sm:p-8 lg:p-9">
 
-                                {cart.map(
-                                    (item) => (
+                            <div className="flex items-start justify-between gap-5 border-b border-[#eee4e9] pb-6">
+
+                                <div>
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#b80062]">
+                                        Step 1
+                                    </p>
+
+                                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#182033]">
+                                        Delivery details
+                                    </h2>
+
+                                    <p className="mt-1 text-sm text-[#77716d]">
+                                        Where should we send your
+                                        APSRAA pieces?
+                                    </p>
+                                </div>
+
+                                <span className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9a9390] sm:block">
+                                    * Required
+                                </span>
+
+                            </div>
+
+                            <div className="mt-7 space-y-6">
+
+                                {/* NAME + PHONE */}
+
+                                <div className="grid gap-5 sm:grid-cols-2">
+
+                                    <label className="block">
+                                        <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                            Full name
+                                            <em className="ml-1 not-italic text-[#b80062]">*</em>
+                                        </span>
+
+                                        <input
+                                            type="text"
+                                            placeholder="Your full name"
+                                            value={name}
+                                            onChange={(e) =>
+                                                setName(e.target.value)
+                                            }
+                                            autoComplete="name"
+                                            className="w-full border border-[#dcd3d7] bg-white px-4 py-3.5 text-sm text-[#292624] outline-none transition placeholder:text-[#aaa3a0] focus:border-[#b80062] focus:ring-1 focus:ring-[#b80062]"
+                                        />
+                                    </label>
+
+                                    <label className="block">
+                                        <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                            Mobile number
+                                            <em className="ml-1 not-italic text-[#b80062]">*</em>
+                                        </span>
+
+                                        <input
+                                            type="tel"
+                                            inputMode="numeric"
+                                            maxLength={10}
+                                            placeholder="10-digit mobile number"
+                                            value={phone}
+                                            onChange={(e) =>
+                                                handlePhoneChange(
+                                                    e.target.value
+                                                )
+                                            }
+                                            autoComplete="tel"
+                                            className="w-full border border-[#dcd3d7] bg-white px-4 py-3.5 text-sm text-[#292624] outline-none transition placeholder:text-[#aaa3a0] focus:border-[#b80062] focus:ring-1 focus:ring-[#b80062]"
+                                        />
+                                    </label>
+
+                                </div>
+
+                                {/* EMAIL */}
+
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                        Email address
+                                        <em className="ml-1 not-italic text-[#b80062]">*</em>
+                                    </span>
+
+                                    <input
+                                        type="email"
+                                        placeholder="you@example.com"
+                                        value={email}
+                                        onChange={(e) =>
+                                            setEmail(e.target.value)
+                                        }
+                                        autoComplete="email"
+                                        className="w-full border border-[#dcd3d7] bg-white px-4 py-3.5 text-sm text-[#292624] outline-none transition placeholder:text-[#aaa3a0] focus:border-[#b80062] focus:ring-1 focus:ring-[#b80062]"
+                                    />
+
+                                    <p className="mt-2 text-[11px] text-[#9a9390]">
+                                        We'll use this for your order
+                                        confirmation.
+                                    </p>
+                                </label>
+
+                                {/* ADDRESS */}
+
+                                <label className="block">
+                                    <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                        Delivery address
+                                        <em className="ml-1 not-italic text-[#b80062]">*</em>
+                                    </span>
+
+                                    <textarea
+                                        placeholder="House / Flat No., Street, Area / Locality"
+                                        value={address}
+                                        onChange={(e) =>
+                                            setAddress(e.target.value)
+                                        }
+                                        autoComplete="street-address"
+                                        rows={4}
+                                        className="w-full resize-none border border-[#dcd3d7] bg-white px-4 py-3.5 text-sm text-[#292624] outline-none transition placeholder:text-[#aaa3a0] focus:border-[#b80062] focus:ring-1 focus:ring-[#b80062]"
+                                    />
+                                </label>
+
+                                {/* PIN + CITY */}
+
+                                <div className="grid gap-5 sm:grid-cols-[0.8fr_1.2fr]">
+
+                                    <label className="block">
+                                        <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                            PIN code
+                                            <em className="ml-1 not-italic text-[#b80062]">*</em>
+                                        </span>
+
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                maxLength={6}
+                                                placeholder="6-digit PIN"
+                                                value={pincode}
+                                                onChange={(e) =>
+                                                    verifyPincode(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                autoComplete="postal-code"
+                                                className={`w-full border bg-white px-4 py-3.5 pr-10 text-sm text-[#292624] outline-none transition placeholder:text-[#aaa3a0] focus:ring-1 ${
+                                                    pincodeVerified
+                                                        ? "border-[#16834a] focus:border-[#16834a] focus:ring-[#16834a]"
+                                                        : "border-[#dcd3d7] focus:border-[#b80062] focus:ring-[#b80062]"
+                                                }`}
+                                            />
+
+                                            {pincodeVerified && (
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-[#16834a]">
+                                                    ✓
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {pincodeLoading && (
+                                            <p className="mt-2 text-[11px] text-[#77716d]">
+                                                Verifying your PIN…
+                                            </p>
+                                        )}
+
+                                        {pincodeError && (
+                                            <p className="mt-2 text-[11px] text-[#b42318]">
+                                                {pincodeError}
+                                            </p>
+                                        )}
+
+                                        {pincodeVerified && (
+                                            <p className="mt-2 text-[11px] font-medium text-[#16834a]">
+                                                PIN verified successfully.
+                                            </p>
+                                        )}
+                                    </label>
+
+                                    <div className="grid gap-5 sm:grid-cols-2">
+
+                                        <label className="block">
+                                            <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                                City
+                                            </span>
+
+                                            <input
+                                                type="text"
+                                                value={city}
+                                                readOnly
+                                                placeholder="Verified from PIN"
+                                                className="w-full border border-[#dcd3d7] bg-[#faf8f8] px-4 py-3.5 text-sm text-[#292624] outline-none placeholder:text-[#aaa3a0]"
+                                            />
+                                        </label>
+
+                                        <label className="block">
+                                            <span className="mb-2 block text-xs font-semibold text-[#292624]">
+                                                State
+                                            </span>
+
+                                            <input
+                                                type="text"
+                                                value={state}
+                                                readOnly
+                                                placeholder="Verified from PIN"
+                                                className="w-full border border-[#dcd3d7] bg-[#faf8f8] px-4 py-3.5 text-sm text-[#292624] outline-none placeholder:text-[#aaa3a0]"
+                                            />
+                                        </label>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                            {/* DELIVERY NOTE */}
+
+                            <div className="mt-7 flex gap-3 border border-[#eee4e9] bg-[#fffafc] p-4">
+                                <span className="mt-0.5 text-[#b80062]">
+                                    ♡
+                                </span>
+
+                                <p className="text-xs leading-5 text-[#77716d]">
+                                    Your delivery details are used only
+                                    to process and deliver this order.
+                                </p>
+                            </div>
+
+                        </div>
+
+                        {/* ======================================
+                            ORDER + PAYMENT
+                        ====================================== */}
+
+                        <aside className="lg:sticky lg:top-24">
+
+                            <div className="border border-[#eadfe5] bg-white p-6 shadow-[0_20px_70px_rgba(30,20,30,0.06)] sm:p-7">
+
+                                <div className="border-b border-[#eee4e9] pb-5">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#b80062]">
+                                        Your selection
+                                    </p>
+
+                                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#182033]">
+                                        Order summary
+                                    </h2>
+                                </div>
+
+                                {/* PRODUCTS */}
+
+                                <div className="mt-5 max-h-[300px] space-y-4 overflow-auto pr-1">
+
+                                    {cart.map((item) => (
                                         <div
                                             key={`${item.id}-${item.variantId ?? "product"}`}
-                                            className="flex justify-between gap-4 border-b border-gray-100 pb-4"
+                                            className="flex gap-3"
                                         >
+                                            <div className="h-20 w-16 shrink-0 overflow-hidden bg-[#f4efec]">
+                                                <img
+                                                    src={item.image}
+                                                    alt={item.title}
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            </div>
 
-                                            <div className="flex-1">
-
-                                                <p className="font-medium text-gray-800">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="line-clamp-2 text-sm font-medium leading-5 text-[#292624]">
                                                     {item.title}
                                                 </p>
 
-                                                {(item.size ||
-                                                    item.color ||
-                                                    item.sku) && (
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        {item.size
-                                                            ? `Size: ${item.size}`
-                                                            : ""}
-                                                        {item.size &&
-                                                        item.color
-                                                            ? " • "
-                                                            : ""}
-                                                        {item.color
-                                                            ? `Color: ${item.color}`
-                                                            : ""}
-                                                        {item.sku
-                                                            ? ` • SKU: ${item.sku}`
-                                                            : ""}
-                                                    </p>
-                                                )}
-
-                                                <p className="text-sm text-gray-500 mt-1">
-                                                    Qty:{" "}
-                                                    {item.quantity}
+                                                <p className="mt-1 text-[11px] text-[#9a9390]">
+                                                    Qty {item.quantity}
+                                                    {item.color
+                                                        ? ` · ${item.color}`
+                                                        : ""}
                                                 </p>
-
                                             </div>
 
-                                            <span className="font-semibold text-gray-800 whitespace-nowrap">
-                                                ₹
-                                                {Number(
-                                                        String(
-                                                            item.price
-                                                        )
-                                                            .replace(
-                                                                "₹",
-                                                                ""
-                                                            )
-                                                            .replace(
-                                                                /,/g,
-                                                                ""
-                                                            )
+                                            <p className="shrink-0 text-sm font-semibold text-[#292624]">
+                                                {money(
+                                                    getPrice(
+                                                        item.price
                                                     ) *
-                                                    item.quantity}
-                                            </span>
-
+                                                        item.quantity
+                                                )}
+                                            </p>
                                         </div>
-                                    )
-                                )}
+                                    ))}
 
-                            </div>
-                        )}
+                                </div>
 
-                        <hr className="my-6" />
+                                {/* TOTALS */}
 
-                        <div className="flex justify-between text-2xl font-bold">
+                                <div className="mt-5 space-y-3 border-t border-[#eee4e9] pt-5 text-sm">
 
-                            <span>
-                                Total
-                            </span>
+                                    <div className="flex justify-between">
+                                        <span className="text-[#77716d]">
+                                            {itemCount}{" "}
+                                            {itemCount === 1
+                                                ? "item"
+                                                : "items"}
+                                        </span>
 
-                            <span className="text-pink-700">
-                                ₹
-                                {total.toFixed(2)}
-                            </span>
+                                        <span className="font-medium text-[#292624]">
+                                            {money(total)}
+                                        </span>
+                                    </div>
 
-                        </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-[#77716d]">
+                                            Shipping
+                                        </span>
 
-                        {/* PAYMENT METHOD */}
+                                        <span className="font-semibold text-[#16834a]">
+                                            FREE
+                                        </span>
+                                    </div>
 
-                        <div className="mt-7">
+                                </div>
 
-                            <h3 className="text-lg font-bold text-gray-800 mb-4">
-                                Payment Method
-                            </h3>
+                                <div className="mt-5 flex items-end justify-between border-t border-[#eee4e9] pt-5">
+                                    <div>
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#77716d]">
+                                            Total
+                                        </p>
 
-                            <div className="space-y-3">
+                                        <p className="mt-1 text-[11px] text-[#9a9390]">
+                                            Inclusive of applicable taxes
+                                        </p>
+                                    </div>
 
-                                {/* ONLINE */}
+                                    <p className="text-3xl font-semibold tracking-[-0.04em] text-[#b80062]">
+                                        {money(total)}
+                                    </p>
+                                </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setPaymentMethod(
-                                            "online"
-                                        )
-                                    }
-                                    className={`w-full text-left border-2 rounded-xl p-4 transition ${
-                                        paymentMethod ===
-                                        "online"
-                                            ? "border-pink-600 bg-pink-50"
-                                            : "border-gray-200 bg-white hover:border-pink-300"
-                                    }`}
-                                >
+                                {/* PAYMENT */}
 
-                                    <div className="flex items-start gap-3">
+                                <div className="mt-7">
 
-                                        <span
-                                            className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    <div className="flex items-end justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#b80062]">
+                                                Step 2
+                                            </p>
+
+                                            <h3 className="mt-2 text-xl font-semibold tracking-[-0.025em] text-[#182033]">
+                                                Payment
+                                            </h3>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 space-y-3">
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setPaymentMethod(
+                                                    "online"
+                                                )
+                                            }
+                                            className={`w-full border p-4 text-left transition ${
                                                 paymentMethod ===
                                                 "online"
-                                                    ? "border-pink-600"
-                                                    : "border-gray-300"
+                                                    ? "border-[#b80062] bg-[#fff5fa]"
+                                                    : "border-[#dcd3d7] bg-white hover:border-[#c7aeb9]"
                                             }`}
                                         >
-                                            {paymentMethod ===
-                                                "online" && (
-                                                    <span className="w-2.5 h-2.5 rounded-full bg-pink-600" />
-                                                )}
-                                        </span>
+                                            <div className="flex gap-3">
 
-                                        <div>
+                                                <span
+                                                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                                        paymentMethod ===
+                                                        "online"
+                                                            ? "border-[#b80062]"
+                                                            : "border-[#c9c1bf]"
+                                                    }`}
+                                                >
+                                                    {paymentMethod ===
+                                                        "online" && (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-[#b80062]" />
+                                                    )}
+                                                </span>
 
-                                            <p className="font-semibold text-gray-800">
-                                                Pay Online
-                                            </p>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-[#292624]">
+                                                        Pay online
+                                                    </p>
 
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                UPI, Card, Net Banking & other Razorpay methods
-                                            </p>
+                                                    <p className="mt-1 text-xs leading-5 text-[#77716d]">
+                                                        UPI, cards, net banking
+                                                        and more through Razorpay.
+                                                    </p>
+                                                </div>
 
-                                        </div>
+                                            </div>
+                                        </button>
 
-                                    </div>
-
-                                </button>
-
-                                {/* COD */}
-
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setPaymentMethod(
-                                            "cod"
-                                        )
-                                    }
-                                    className={`w-full text-left border-2 rounded-xl p-4 transition ${
-                                        paymentMethod ===
-                                        "cod"
-                                            ? "border-green-600 bg-green-50"
-                                            : "border-gray-200 bg-white hover:border-green-300"
-                                    }`}
-                                >
-
-                                    <div className="flex items-start gap-3">
-
-                                        <span
-                                            className={`mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setPaymentMethod(
+                                                    "cod"
+                                                )
+                                            }
+                                            className={`w-full border p-4 text-left transition ${
                                                 paymentMethod ===
                                                 "cod"
-                                                    ? "border-green-600"
-                                                    : "border-gray-300"
+                                                    ? "border-[#16834a] bg-[#f5fbf7]"
+                                                    : "border-[#dcd3d7] bg-white hover:border-[#a9cdb8]"
                                             }`}
                                         >
-                                            {paymentMethod ===
-                                                "cod" && (
-                                                    <span className="w-2.5 h-2.5 rounded-full bg-green-600" />
-                                                )}
-                                        </span>
+                                            <div className="flex gap-3">
 
-                                        <div>
+                                                <span
+                                                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                                        paymentMethod ===
+                                                        "cod"
+                                                            ? "border-[#16834a]"
+                                                            : "border-[#c9c1bf]"
+                                                    }`}
+                                                >
+                                                    {paymentMethod ===
+                                                        "cod" && (
+                                                        <span className="h-2.5 w-2.5 rounded-full bg-[#16834a]" />
+                                                    )}
+                                                </span>
 
-                                            <p className="font-semibold text-gray-800">
-                                                Cash on Delivery
-                                            </p>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-[#292624]">
+                                                        Cash on delivery
+                                                    </p>
 
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Pay when your order is delivered
-                                            </p>
+                                                    <p className="mt-1 text-xs leading-5 text-[#77716d]">
+                                                        Pay when your order arrives.
+                                                    </p>
+                                                </div>
 
-                                        </div>
+                                            </div>
+                                        </button>
 
                                     </div>
 
-                                </button>
+                                    <div
+                                        className={`mt-4 border p-3.5 ${
+                                            paymentMethod === "cod"
+                                                ? "border-[#d7eadf] bg-[#f5fbf7]"
+                                                : "border-[#ead7e1] bg-[#fff7fb]"
+                                        }`}
+                                    >
+                                        <p className="text-[11px] leading-5 text-[#77716d]">
+                                            {paymentMethod === "cod"
+                                                ? "Cash on delivery is selected. You'll pay when your APSRAA order arrives."
+                                                : "You'll be taken to Razorpay's secure checkout to complete your payment."}
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={placeOrder}
+                                        disabled={
+                                            processing ||
+                                            cart.length === 0
+                                        }
+                                        className={`mt-5 flex w-full items-center justify-center px-6 py-4 text-xs font-semibold uppercase tracking-[0.16em] text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                                            paymentMethod === "cod"
+                                                ? "bg-[#16834a] hover:bg-[#126b3c]"
+                                                : "bg-[#b80062] hover:bg-[#182033]"
+                                        }`}
+                                    >
+                                        {processing
+                                            ? "Processing your order…"
+                                            : paymentMethod === "cod"
+                                                ? "Place COD order →"
+                                                : "Continue to secure payment →"}
+                                    </button>
+
+                                    <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-[#9a9390]">
+                                        <span>Secure checkout</span>
+                                        <span>·</span>
+                                        <span>Protected payment</span>
+                                    </div>
+
+                                </div>
 
                             </div>
 
-                        </div>
+                            {/* REASSURANCE */}
 
-                        {/* PAYMENT INFO */}
+                            <div className="mt-4 grid grid-cols-3 border border-[#eadfe5] bg-white">
 
-                        <div
-                            className={`mt-5 rounded-xl p-4 ${
-                                paymentMethod ===
-                                "cod"
-                                    ? "bg-green-50"
-                                    : "bg-pink-50"
-                            }`}
-                        >
+                                <div className="border-r border-[#eadfe5] px-2 py-3 text-center">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#292624]">
+                                        Secure
+                                    </p>
+                                    <p className="mt-1 text-[9px] text-[#9a9390]">
+                                        Payment
+                                    </p>
+                                </div>
 
-                            {paymentMethod ===
-                            "cod" ? (
-                                <p className="text-sm text-gray-600">
-                                    💵 Cash on Delivery selected. You will pay when your order arrives.
-                                </p>
-                            ) : (
-                                <p className="text-sm text-gray-600">
-                                    🔒 Secure online payment powered by Razorpay.
-                                </p>
-                            )}
+                                <div className="border-r border-[#eadfe5] px-2 py-3 text-center">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#292624]">
+                                        Free
+                                    </p>
+                                    <p className="mt-1 text-[9px] text-[#9a9390]">
+                                        Shipping
+                                    </p>
+                                </div>
 
-                        </div>
+                                <div className="px-2 py-3 text-center">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-[#292624]">
+                                        Easy
+                                    </p>
+                                    <p className="mt-1 text-[9px] text-[#9a9390]">
+                                        Tracking
+                                    </p>
+                                </div>
 
-                        {/* PLACE ORDER */}
+                            </div>
 
-                        <button
-                            type="button"
-                            onClick={placeOrder}
-                            disabled={
-                                processing ||
-                                cart.length === 0
-                            }
-                            className={`w-full mt-6 text-white py-4 rounded-full font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                                paymentMethod ===
-                                "cod"
-                                    ? "bg-green-600 hover:bg-green-700"
-                                    : "bg-pink-600 hover:bg-pink-700"
-                            }`}
-                        >
-                            {processing
-                                ? "Processing..."
-                                : paymentMethod ===
-                                "cod"
-                                    ? "Place COD Order"
-                                    : "Proceed to Payment"}
-                        </button>
+                        </aside>
 
                     </div>
 
-                </div>
+                </section>
 
-            </section>
+            </main>
 
             <Footer />
         </>

@@ -119,6 +119,15 @@ export default function ProductsPage() {
                                     🗂️ Categories
                                 </Link>
 
+                                {/* FEATURED PRODUCTS */}
+
+                                <Link
+                                    href="/admin/products/featured"
+                                    className="w-full sm:w-auto text-center bg-white text-pink-700 border-2 border-pink-200 px-6 py-3.5 rounded-xl font-semibold hover:bg-pink-50 hover:border-pink-300 transition shadow-sm"
+                                >
+                                    ⭐ Featured Products
+                                </Link>
+
                                 {/* ADD PRODUCT */}
 
                                 <Link

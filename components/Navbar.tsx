@@ -6,6 +6,75 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useCart } from "./context/CartContext";
 
+function SearchIcon() {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="w-5 h-5"
+        >
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 4 4" />
+        </svg>
+    );
+}
+
+function UserIcon() {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="w-5 h-5"
+        >
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M5 20c.8-3.5 3.2-5.5 7-5.5s6.2 2 7 5.5" />
+        </svg>
+    );
+}
+
+function BagIcon() {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="w-5 h-5"
+        >
+            <path d="M5 8h14l-1 12H6L5 8Z" />
+            <path d="M9 9V6a3 3 0 0 1 6 0v3" />
+        </svg>
+    );
+}
+
+function MenuIcon({ open }: { open: boolean }) {
+    return open ? (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="w-6 h-6"
+        >
+            <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+    ) : (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            className="w-6 h-6"
+        >
+            <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+    );
+}
+
 export default function Navbar() {
     const router = useRouter();
     const { cart } = useCart();
@@ -19,10 +88,6 @@ export default function Navbar() {
         (sum, item) => sum + item.quantity,
         0
     );
-
-    // ==========================================
-    // CHECK CUSTOMER / ADMIN SESSION
-    // ==========================================
 
     useEffect(() => {
         let mounted = true;
@@ -40,12 +105,12 @@ export default function Navbar() {
                         ?.trim()
                         .toLowerCase() || null;
 
-                setUserEmail(email);
-
                 const adminEmail =
                     process.env.NEXT_PUBLIC_ADMIN_EMAIL
                         ?.trim()
                         .toLowerCase();
+
+                setUserEmail(email);
 
                 setIsAdmin(
                     Boolean(
@@ -55,10 +120,7 @@ export default function Navbar() {
                     )
                 );
             } catch (error) {
-                console.error(
-                    "Navbar auth error:",
-                    error
-                );
+                console.error("Navbar auth error:", error);
             } finally {
                 if (mounted) {
                     setCheckingAuth(false);
@@ -67,10 +129,6 @@ export default function Navbar() {
         }
 
         loadSession();
-
-        // ==========================================
-        // WATCH AUTH CHANGES
-        // ==========================================
 
         const {
             data: { subscription },
@@ -83,12 +141,12 @@ export default function Navbar() {
                         ?.trim()
                         .toLowerCase() || null;
 
-                setUserEmail(email);
-
                 const adminEmail =
                     process.env.NEXT_PUBLIC_ADMIN_EMAIL
                         ?.trim()
                         .toLowerCase();
+
+                setUserEmail(email);
 
                 setIsAdmin(
                     Boolean(
@@ -106,26 +164,15 @@ export default function Navbar() {
         };
     }, []);
 
-    // ==========================================
-    // CLOSE MOBILE MENU
-    // ==========================================
-
     function closeMenu() {
         setMenuOpen(false);
     }
-
-    // ==========================================
-    // LOGOUT
-    // ==========================================
 
     async function logout() {
         try {
             await supabase.auth.signOut();
         } catch (error) {
-            console.error(
-                "Logout error:",
-                error
-            );
+            console.error("Logout error:", error);
         }
 
         setUserEmail(null);
@@ -136,274 +183,261 @@ export default function Navbar() {
     }
 
     return (
-        <nav className="sticky top-0 z-50 bg-white shadow-md">
+        <header className="sticky top-0 z-50 bg-[#fffdfb]/95 backdrop-blur-md border-b border-[#eee8e4]">
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Desktop / Mobile header */}
 
-                {/* ==========================================
-                    HEADER
-                ========================================== */}
+            <div className="mx-auto max-w-[1400px] px-5 sm:px-8 lg:px-10">
 
-                <div className="flex items-center justify-between py-4 md:py-5">
+                <div className="flex h-[76px] items-center justify-between">
 
                     {/* LOGO */}
 
                     <Link
                         href="/"
                         onClick={closeMenu}
-                        className="text-2xl md:text-3xl font-bold text-pink-700 tracking-wide leading-tight"
+                        className="group shrink-0"
                     >
-                        <span className="md:hidden">
-                            APSRAA
-                            <br />
-                            BY AVNI
-                        </span>
+                        <div className="leading-none">
+                            <div className="text-[23px] tracking-[0.28em] font-semibold text-[#222]">
+                                APSRAA
+                            </div>
 
-                        <span className="hidden md:inline">
-                            APSRAA BY AVNI
-                        </span>
+                            <div className="mt-1 text-[9px] tracking-[0.42em] text-[#b50063] font-medium">
+                                BY AVNI
+                            </div>
+                        </div>
                     </Link>
 
-                    {/* ==========================================
-                        DESKTOP NAVIGATION
-                    ========================================== */}
+                    {/* DESKTOP NAV */}
 
-                    <div className="hidden md:flex items-center gap-6 lg:gap-8 text-gray-700 font-medium">
+                    <nav className="hidden lg:flex items-center gap-9 ml-10">
 
                         <Link
                             href="/"
-                            className="hover:text-pink-700 transition"
+                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
                         >
                             Home
                         </Link>
 
                         <Link
                             href="/shop"
-                            className="hover:text-pink-700 transition"
+                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
                         >
                             Shop
                         </Link>
 
                         <Link
                             href="/track-order"
-                            className="hover:text-pink-700 transition"
+                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
                         >
-                            📦 Track Order
+                            Track Order
                         </Link>
-
-                        <Link
-                            href="/cart"
-                            className="relative hover:text-pink-700 transition"
-                        >
-                            🛒 Cart
-
-                            {totalItems > 0 && (
-                                <span className="absolute -top-3 -right-5 bg-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                                    {totalItems}
-                                </span>
-                            )}
-                        </Link>
-
-                        {/* ADMIN */}
 
                         {isAdmin && (
                             <Link
                                 href="/admin"
-                                className="hover:text-pink-700 transition"
+                                className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
                             >
                                 Admin
                             </Link>
                         )}
 
-                        {/* CUSTOMER ACCOUNT */}
+                    </nav>
 
-                        {!checkingAuth &&
-                            userEmail &&
-                            !isAdmin && (
-                                <Link
-                                    href="/account"
-                                    className="hover:text-pink-700 transition"
-                                >
-                                    👤 My Account
-                                </Link>
-                            )}
+                    {/* RIGHT SIDE */}
 
-                        {/* CUSTOMER LOGIN */}
+                    <div className="hidden lg:flex items-center gap-2">
 
-                        {!checkingAuth &&
-                            !userEmail && (
-                                <Link
-                                    href="/login"
-                                    className="hover:text-pink-700 transition"
-                                >
-                                    👤 Login
-                                </Link>
-                            )}
-
-                    </div>
-
-                    {/* ==========================================
-                        RIGHT SIDE
-                    ========================================== */}
-
-                    <div className="hidden md:flex items-center gap-4">
+                        {/* SEARCH */}
 
                         <Link
                             href="/shop"
-                            className="bg-pink-600 text-white px-6 py-2 rounded-full hover:bg-pink-700 transition"
+                            aria-label="Search products"
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
                         >
-                            Shop Now
+                            <SearchIcon />
                         </Link>
 
-                        {!checkingAuth &&
-                            userEmail && (
-                                <button
-                                    type="button"
-                                    onClick={logout}
-                                    className="bg-gray-900 text-white px-5 py-2 rounded-full hover:bg-black transition"
-                                >
-                                    Logout
-                                </button>
+                        {/* ACCOUNT */}
+
+                        {!checkingAuth && (
+                            <>
+                                {userEmail ? (
+                                    <Link
+                                        href={
+                                            isAdmin
+                                                ? "/admin"
+                                                : "/account"
+                                        }
+                                        aria-label="My account"
+                                        className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                                    >
+                                        <UserIcon />
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/login"
+                                        aria-label="Login"
+                                        className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                                    >
+                                        <UserIcon />
+                                    </Link>
+                                )}
+                            </>
+                        )}
+
+                        {/* CART */}
+
+                        <Link
+                            href="/cart"
+                            aria-label={`Shopping bag, ${totalItems} items`}
+                            className="relative ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                        >
+                            <BagIcon />
+
+                            {totalItems > 0 && (
+                                <span className="absolute right-0.5 top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#b50063] px-1 text-[9px] font-semibold text-white">
+                                    {totalItems}
+                                </span>
                             )}
+                        </Link>
+
+                        {/* SHOP CTA */}
+
+                        <Link
+                            href="/shop"
+                            className="ml-4 rounded-full bg-[#b50063] px-6 py-2.5 text-[13px] font-medium tracking-wide text-white transition-all hover:bg-[#920052] hover:shadow-md"
+                        >
+                            Shop Collection
+                        </Link>
 
                     </div>
 
-                    {/* ==========================================
-                        MOBILE MENU BUTTON
-                    ========================================== */}
+                    {/* MOBILE ACTIONS */}
 
-                    <button
-                        type="button"
-                        onClick={() =>
-                            setMenuOpen(
-                                !menuOpen
-                            )
-                        }
-                        className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl bg-pink-50 text-pink-700 text-2xl"
-                        aria-label="Open navigation menu"
-                        aria-expanded={menuOpen}
-                    >
-                        {menuOpen
-                            ? "✕"
-                            : "☰"}
-                    </button>
+                    <div className="flex items-center gap-1 lg:hidden">
+
+                        <Link
+                            href="/cart"
+                            aria-label="Shopping bag"
+                            className="relative flex h-10 w-10 items-center justify-center rounded-full text-[#333]"
+                        >
+                            <BagIcon />
+
+                            {totalItems > 0 && (
+                                <span className="absolute right-0.5 top-0.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#b50063] px-1 text-[9px] font-semibold text-white">
+                                    {totalItems}
+                                </span>
+                            )}
+                        </Link>
+
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setMenuOpen((open) => !open)
+                            }
+                            aria-label={
+                                menuOpen
+                                    ? "Close navigation menu"
+                                    : "Open navigation menu"
+                            }
+                            aria-expanded={menuOpen}
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#333]"
+                        >
+                            <MenuIcon open={menuOpen} />
+                        </button>
+
+                    </div>
 
                 </div>
 
-                {/* ==========================================
-                    MOBILE MENU
-                ========================================== */}
+                {/* MOBILE MENU */}
 
                 {menuOpen && (
-                    <div className="md:hidden border-t border-gray-100 pb-5">
+                    <div className="lg:hidden border-t border-[#eee8e4] py-5">
 
-                        <div className="flex flex-col gap-2 pt-4">
+                        <nav className="flex flex-col">
 
                             <Link
                                 href="/"
                                 onClick={closeMenu}
-                                className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
+                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
                             >
-                                🏠 Home
+                                Home
                             </Link>
 
                             <Link
                                 href="/shop"
                                 onClick={closeMenu}
-                                className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
+                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
                             >
-                                🛍️ Shop
+                                Shop
                             </Link>
 
                             <Link
                                 href="/track-order"
                                 onClick={closeMenu}
-                                className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
+                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
                             >
-                                📦 Track Order
+                                Track Order
                             </Link>
 
-                            <Link
-                                href="/cart"
-                                onClick={closeMenu}
-                                className="relative px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
-                            >
-                                🛒 Cart
+                            {!checkingAuth && userEmail && !isAdmin && (
+                                <Link
+                                    href="/account"
+                                    onClick={closeMenu}
+                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                >
+                                    My Account
+                                </Link>
+                            )}
 
-                                {totalItems > 0 && (
-                                    <span className="ml-2 inline-flex bg-red-600 text-white text-xs w-5 h-5 rounded-full items-center justify-center">
-                                        {totalItems}
-                                    </span>
-                                )}
-                            </Link>
-
-                            {/* ADMIN */}
+                            {!checkingAuth && !userEmail && (
+                                <Link
+                                    href="/login"
+                                    onClick={closeMenu}
+                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                >
+                                    Login
+                                </Link>
+                            )}
 
                             {isAdmin && (
                                 <Link
                                     href="/admin"
                                     onClick={closeMenu}
-                                    className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
+                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
                                 >
-                                    🔐 Admin
+                                    Admin Dashboard
                                 </Link>
                             )}
-
-                            {/* CUSTOMER ACCOUNT */}
-
-                            {!checkingAuth &&
-                                userEmail &&
-                                !isAdmin && (
-                                    <Link
-                                        href="/account"
-                                        onClick={closeMenu}
-                                        className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
-                                    >
-                                        👤 My Account
-                                    </Link>
-                                )}
-
-                            {/* CUSTOMER LOGIN */}
-
-                            {!checkingAuth &&
-                                !userEmail && (
-                                    <Link
-                                        href="/login"
-                                        onClick={closeMenu}
-                                        className="px-4 py-3 rounded-xl text-gray-700 font-medium hover:bg-pink-50 hover:text-pink-700 transition"
-                                    >
-                                        👤 Login
-                                    </Link>
-                                )}
 
                             <Link
                                 href="/shop"
                                 onClick={closeMenu}
-                                className="mt-2 text-center bg-pink-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-pink-700 transition"
+                                className="mt-5 rounded-full bg-[#b50063] py-3.5 text-center text-[14px] font-medium tracking-wide text-white"
                             >
-                                Shop Now
+                                Shop Collection
                             </Link>
 
-                            {/* LOGOUT */}
+                            {userEmail && (
+                                <button
+                                    type="button"
+                                    onClick={logout}
+                                    className="mt-3 py-3 text-center text-[13px] text-[#777]"
+                                >
+                                    Sign out
+                                </button>
+                            )}
 
-                            {!checkingAuth &&
-                                userEmail && (
-                                    <button
-                                        type="button"
-                                        onClick={
-                                            logout
-                                        }
-                                        className="text-center bg-gray-900 text-white px-6 py-3 rounded-full font-semibold hover:bg-black transition"
-                                    >
-                                        Logout
-                                    </button>
-                                )}
+                        </nav>
 
-                        </div>
                     </div>
                 )}
 
             </div>
-        </nav>
+
+        </header>
     );
 }

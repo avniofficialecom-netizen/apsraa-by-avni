@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import AdminNavbar from "../../../../components/AdminNavbar";
 import Footer from "../../../../components/Footer";
@@ -24,9 +24,17 @@ type OrderItem = {
     id: number;
     order_id: number;
     product_id?: number;
+    variant_id?: number | null;
     title: string;
     quantity: number;
     price: string;
+
+    // Variant information
+    sku?: string | null;
+    size?: string | null;
+    color?: string | null;
+    variant_stock?: number | null;
+    variant_price?: number | null;
 };
 
 type StatusHistory = {
@@ -114,7 +122,6 @@ function getStatusIcon(status: string) {
 
 export default function AdminOrderDetails() {
     const params = useParams();
-    const router = useRouter();
 
     const id = Array.isArray(params?.id)
         ? params.id[0]
@@ -185,7 +192,10 @@ export default function AdminOrderDetails() {
 
             setOrder(result.order);
             setItems(result.items || []);
-            setStatus(result.order.status || "Pending");
+            setStatus(
+                result.order.status ||
+                "Pending"
+            );
         } catch (error) {
             console.error(
                 "Admin Order Load Error:",
@@ -235,7 +245,7 @@ export default function AdminOrderDetails() {
             }
 
             // API returns oldest first.
-            // We display newest first.
+            // Display newest first.
             const newestFirst = [
                 ...(result.history || []),
             ].reverse();
@@ -322,8 +332,6 @@ export default function AdminOrderDetails() {
             setOrder(result.order);
             setStatus(result.order.status);
 
-            // Reload history so the new status
-            // immediately appears.
             await loadHistory();
         } catch (error) {
             console.error(
@@ -523,6 +531,7 @@ export default function AdminOrderDetails() {
                     <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
 
                         <div className="bg-pink-600 text-white p-6 md:p-8">
+
                             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
 
                                 <div>
@@ -549,18 +558,18 @@ export default function AdminOrderDetails() {
                                 >
                                     {getStatusIcon(
                                         order.status
-                                    )}{" "}
+                                    )}
+
                                     <span className="ml-2">
                                         {order.status}
                                     </span>
                                 </span>
 
                             </div>
+
                         </div>
 
-                        {/* ==========================================
-                            QUICK ACTIONS
-                        ========================================== */}
+                        {/* QUICK ACTIONS */}
 
                         <div className="p-6 flex flex-col md:flex-row gap-4">
 
@@ -600,6 +609,7 @@ export default function AdminOrderDetails() {
                             </button>
 
                         </div>
+
                     </div>
 
                     {/* ==========================================
@@ -611,6 +621,7 @@ export default function AdminOrderDetails() {
                         {/* CUSTOMER */}
 
                         <div className="bg-white rounded-3xl shadow-lg p-6">
+
                             <h2 className="text-2xl font-bold text-pink-700 mb-6">
                                 👤 Customer Details
                             </h2>
@@ -659,11 +670,13 @@ export default function AdminOrderDetails() {
                                 </div>
 
                             </div>
+
                         </div>
 
                         {/* PAYMENT */}
 
                         <div className="bg-white rounded-3xl shadow-lg p-6">
+
                             <h2 className="text-2xl font-bold text-green-700 mb-6">
                                 💳 Payment Details
                             </h2>
@@ -725,6 +738,7 @@ export default function AdminOrderDetails() {
                                 </div>
 
                             </div>
+
                         </div>
 
                     </div>
@@ -836,6 +850,7 @@ export default function AdminOrderDetails() {
                                                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
 
                                                         <div>
+
                                                             <span
                                                                 className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${getStatusStyle(
                                                                     entry.status
@@ -852,6 +867,7 @@ export default function AdminOrderDetails() {
                                                                     CURRENT
                                                                 </span>
                                                                 )}
+
                                                         </div>
 
                                                         <p className="text-sm text-gray-500">
@@ -876,7 +892,7 @@ export default function AdminOrderDetails() {
                     </div>
 
                     {/* ==========================================
-                        PRODUCTS
+                        PRODUCTS ORDERED
                     ========================================== */}
 
                     <div className="bg-white rounded-3xl shadow-lg p-6 mb-8">
@@ -898,32 +914,113 @@ export default function AdminOrderDetails() {
                                             key={
                                                 item.id
                                             }
-                                            className="border rounded-2xl p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                                            className="border rounded-2xl p-5"
                                         >
 
-                                            <div>
-                                                <h3 className="text-xl font-bold text-gray-900">
-                                                    {
-                                                        item.title
-                                                    }
-                                                </h3>
+                                            {/* PRODUCT TOP */}
 
-                                                <p className="text-gray-500 mt-2">
-                                                    Quantity:{" "}
-                                                    {
-                                                        item.quantity
-                                                    }
-                                                </p>
+                                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+                                                <div className="flex-1">
+
+                                                    <h3 className="text-xl font-bold text-gray-900">
+                                                        {
+                                                            item.title
+                                                        }
+                                                    </h3>
+
+                                                    <p className="text-gray-500 mt-2">
+                                                        Quantity:{" "}
+                                                        <strong className="text-gray-900">
+                                                            {
+                                                                item.quantity
+                                                            }
+                                                        </strong>
+                                                    </p>
+
+                                                </div>
+
+                                                <div className="text-right">
+
+                                                    <p className="text-2xl font-bold text-pink-700">
+                                                        ₹
+                                                        {
+                                                            item.price
+                                                        }
+                                                    </p>
+
+                                                </div>
+
                                             </div>
 
-                                            <div className="text-right">
-                                                <p className="text-2xl font-bold text-pink-700">
-                                                    ₹
-                                                    {
-                                                        item.price
-                                                    }
-                                                </p>
-                                            </div>
+                                            {/* ==========================================
+                                                VARIANT DETAILS
+                                            ========================================== */}
+
+                                            {(item.variant_id !==
+                                                null &&
+                                                item.variant_id !==
+                                                undefined) ||
+                                            item.size ||
+                                            item.color ||
+                                            item.sku ? (
+                                                <div className="mt-5 pt-5 border-t">
+
+                                                    <p className="text-sm font-bold text-gray-700 mb-3">
+                                                        Selected Options
+                                                    </p>
+
+                                                    <div className="flex flex-wrap gap-3">
+
+                                                        {item.size && (
+                                                            <span className="inline-flex items-center rounded-full bg-pink-100 px-4 py-2 text-sm font-semibold text-pink-700">
+                                                                📏 Size:{" "}
+                                                                {
+                                                                    item.size
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {item.color && (
+                                                            <span className="inline-flex items-center rounded-full bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-700">
+                                                                🎨 Color:{" "}
+                                                                {
+                                                                    item.color
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {item.sku && (
+                                                            <span className="inline-flex items-center rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+                                                                🏷️ SKU:{" "}
+                                                                {
+                                                                    item.sku
+                                                                }
+                                                            </span>
+                                                        )}
+
+                                                        {item.variant_id !==
+                                                            null &&
+                                                            item.variant_id !==
+                                                            undefined && (
+                                                                <span className="inline-flex items-center rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-700">
+                                                                    Variant ID:{" "}
+                                                                    {
+                                                                        item.variant_id
+                                                                    }
+                                                                </span>
+                                                            )}
+
+                                                    </div>
+
+                                                </div>
+                                            ) : (
+                                                <div className="mt-5 pt-5 border-t">
+                                                    <p className="text-sm text-gray-400">
+                                                        No variant options recorded for this item.
+                                                    </p>
+                                                </div>
+                                            )}
 
                                         </div>
                                     )
@@ -931,6 +1028,8 @@ export default function AdminOrderDetails() {
 
                             </div>
                         )}
+
+                        {/* TOTAL */}
 
                         <div className="border-t mt-6 pt-6 flex justify-between items-center">
 

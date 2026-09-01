@@ -6,6 +6,18 @@ import Link from "next/link";
 import Navbar from "../../../components/Navbar";
 import Footer from "../../../components/Footer";
 
+type TrackingEvent = {
+    id: number;
+    awb_number: string | null;
+    courier_name: string | null;
+    current_status: string | null;
+    shipment_status: string | null;
+    activity: string | null;
+    location: string | null;
+    event_timestamp: string | null;
+    etd: string | null;
+};
+
 type Order = {
     id: number;
     customer_name: string;
@@ -15,6 +27,13 @@ type Order = {
     total: string;
     status: string;
     payment_status: string;
+    payment_method: string | null;
+    shipping_status: string | null;
+    shipment_id: number | null;
+    awb_number: string | null;
+    courier_name: string | null;
+    tracking_url: string | null;
+    delivered_at: string | null;
     created_at: string;
 };
 
@@ -24,6 +43,134 @@ type OrderItem = {
     price: string;
     quantity: number;
 };
+
+const trackingSteps = [
+    {
+        key: "confirmed",
+        label: "Order Confirmed",
+    },
+    {
+        key: "awb_assigned",
+        label: "AWB Assigned",
+    },
+    {
+        key: "picked_up",
+        label: "Picked Up",
+    },
+    {
+        key: "in_transit",
+        label: "In Transit",
+    },
+    {
+        key: "out_for_delivery",
+        label: "Out for Delivery",
+    },
+    {
+        key: "delivered",
+        label: "Delivered",
+    },
+];
+
+function normalizeStatus(
+    status: string | null | undefined
+) {
+    return String(status || "")
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_")
+        .trim();
+}
+
+function getTrackingStep(
+    status: string | null | undefined
+) {
+    const value =
+        normalizeStatus(status);
+
+    if (
+        value === "delivered" ||
+        value === "delivery_completed"
+    ) {
+        return 5;
+    }
+
+    if (
+        value === "out_for_delivery" ||
+        value === "outfordelivery"
+    ) {
+        return 4;
+    }
+
+    if (
+        value === "in_transit" ||
+        value === "intransit"
+    ) {
+        return 3;
+    }
+
+    if (
+        value === "picked_up" ||
+        value === "pickedup" ||
+        value === "pickup"
+    ) {
+        return 2;
+    }
+
+    if (
+        value === "awb_assigned" ||
+        value === "awb_generated" ||
+        value === "shipped"
+    ) {
+        return 1;
+    }
+
+    return 0;
+}
+
+function formatStatus(
+    status: string | null | undefined
+) {
+    if (!status) {
+        return "Order Confirmed";
+    }
+
+    return String(status)
+        .replace(/_/g, " ")
+        .replace(
+            /\b\w/g,
+            (letter) =>
+                letter.toUpperCase()
+        );
+}
+
+function formatDate(
+    value: string | null | undefined
+) {
+    if (!value) {
+        return "-";
+    }
+
+    const date =
+        new Date(value);
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+        return value;
+    }
+
+    return date.toLocaleString(
+        "en-IN",
+        {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        }
+    );
+}
 
 export default function CustomerOrderPage() {
     const { id } = useParams();
@@ -36,6 +183,9 @@ export default function CustomerOrderPage() {
 
     const [items, setItems] =
         useState<OrderItem[]>([]);
+
+    const [trackingEvents, setTrackingEvents] =
+        useState<TrackingEvent[]>([]);
 
     const [loading, setLoading] =
         useState(false);
@@ -74,7 +224,8 @@ export default function CustomerOrderPage() {
     ) {
         if (!id) return;
 
-        const orderId = Number(id);
+        const orderId =
+            Number(id);
 
         if (
             !orderId ||
@@ -129,6 +280,7 @@ export default function CustomerOrderPage() {
             ) {
                 setOrder(null);
                 setItems([]);
+                setTrackingEvents([]);
 
                 setError(
                     result.message ||
@@ -139,11 +291,15 @@ export default function CustomerOrderPage() {
             }
 
             setOrder(result.order);
+
             setItems(
                 result.items || []
             );
 
-            // Save only for this browser session
+            setTrackingEvents(
+                result.events || []
+            );
+
             sessionStorage.setItem(
                 `order-contact-${orderId}`,
                 contactValue.trim()
@@ -156,6 +312,7 @@ export default function CustomerOrderPage() {
 
             setOrder(null);
             setItems([]);
+            setTrackingEvents([]);
 
             setError(
                 "Unable to load your order. Please try again."
@@ -299,6 +456,25 @@ export default function CustomerOrderPage() {
     }
 
     // ==========================================
+    // TRACKING STATUS
+    // ==========================================
+
+    const latestEvent =
+        trackingEvents.length > 0
+            ? trackingEvents[0]
+            : null;
+
+    const currentShippingStatus =
+        order.shipping_status ||
+        latestEvent?.current_status ||
+        "NEW";
+
+    const trackingStep =
+        getTrackingStep(
+            currentShippingStatus
+        );
+
+    // ==========================================
     // VERIFIED ORDER
     // ==========================================
 
@@ -374,6 +550,298 @@ export default function CustomerOrderPage() {
                                 {order.payment_status ||
                                     "Paid"}
                             </p>
+
+                        </div>
+
+                        {/* ==========================================
+                            SHIPROCKET TRACKING
+                        ========================================== */}
+
+                        <div className="bg-white border border-pink-100 rounded-3xl p-6 md:p-8 mb-8 shadow-sm">
+
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+                                <div>
+
+                                    <p className="text-sm text-gray-500 uppercase tracking-wide">
+                                        Shipment Tracking
+                                    </p>
+
+                                    <h2 className="text-2xl font-bold text-pink-700 mt-1">
+                                        {formatStatus(
+                                            currentShippingStatus
+                                        )}
+                                    </h2>
+
+                                    {latestEvent?.location && (
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Latest location:{" "}
+                                            {
+                                                latestEvent.location
+                                            }
+                                        </p>
+                                    )}
+
+                                </div>
+
+                                {order.tracking_url && (
+                                    <a
+                                        href={
+                                            order.tracking_url
+                                        }
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center justify-center bg-pink-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-pink-700 transition"
+                                    >
+                                        Track Shipment
+                                    </a>
+                                )}
+
+                            </div>
+
+                            {/* Progress */}
+
+                            <div className="mt-8 hidden md:flex items-start">
+
+                                {trackingSteps.map(
+                                    (
+                                        step,
+                                        index
+                                    ) => {
+
+                                        const completed =
+                                            trackingStep >=
+                                            index;
+
+                                        const active =
+                                            trackingStep ===
+                                            index;
+
+                                        return (
+                                            <div
+                                                key={
+                                                    step.key
+                                                }
+                                                className="flex flex-1 items-start"
+                                            >
+
+                                                <div className="flex flex-col items-center min-w-0">
+
+                                                    <div
+                                                        className={`h-10 w-10 rounded-full flex items-center justify-center border-2 font-bold ${
+                                                            completed
+                                                                ? "bg-pink-600 border-pink-600 text-white"
+                                                                : "bg-white border-gray-300 text-gray-400"
+                                                        }`}
+                                                    >
+                                                        {completed
+                                                            ? "✓"
+                                                            : index +
+                                                            1}
+                                                    </div>
+
+                                                    <p
+                                                        className={`mt-2 text-xs text-center ${
+                                                            active
+                                                                ? "font-bold text-pink-700"
+                                                                : completed
+                                                                    ? "font-semibold text-gray-700"
+                                                                    : "text-gray-400"
+                                                        }`}
+                                                    >
+                                                        {
+                                                            step.label
+                                                        }
+                                                    </p>
+
+                                                </div>
+
+                                                {index <
+                                                    trackingSteps.length -
+                                                    1 && (
+                                                        <div
+                                                            className={`h-1 flex-1 mt-5 mx-2 rounded ${
+                                                                trackingStep >
+                                                                index
+                                                                    ? "bg-pink-600"
+                                                                    : "bg-gray-200"
+                                                            }`}
+                                                        />
+                                                    )}
+
+                                            </div>
+                                        );
+                                    }
+                                )}
+
+                            </div>
+
+                            {/* Mobile progress */}
+
+                            <div className="mt-8 md:hidden space-y-3">
+
+                                {trackingSteps.map(
+                                    (
+                                        step,
+                                        index
+                                    ) => {
+
+                                        const completed =
+                                            trackingStep >=
+                                            index;
+
+                                        return (
+                                            <div
+                                                key={
+                                                    step.key
+                                                }
+                                                className="flex items-center gap-3"
+                                            >
+
+                                                <div
+                                                    className={`h-8 w-8 rounded-full flex items-center justify-center border-2 text-xs font-bold ${
+                                                        completed
+                                                            ? "bg-pink-600 border-pink-600 text-white"
+                                                            : "bg-white border-gray-300 text-gray-400"
+                                                    }`}
+                                                >
+                                                    {completed
+                                                        ? "✓"
+                                                        : index +
+                                                        1}
+                                                </div>
+
+                                                <span
+                                                    className={
+                                                        completed
+                                                            ? "font-semibold text-gray-700"
+                                                            : "text-gray-400"
+                                                    }
+                                                >
+                                                    {
+                                                        step.label
+                                                    }
+                                                </span>
+
+                                            </div>
+                                        );
+                                    }
+                                )}
+
+                            </div>
+
+                            {/* Shipment details */}
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+
+                                <div className="bg-pink-50 rounded-2xl p-4">
+
+                                    <p className="text-xs text-gray-500">
+                                        Courier
+                                    </p>
+
+                                    <p className="font-semibold mt-1">
+                                        {order.courier_name ||
+                                            "Not assigned yet"}
+                                    </p>
+
+                                </div>
+
+                                <div className="bg-pink-50 rounded-2xl p-4">
+
+                                    <p className="text-xs text-gray-500">
+                                        AWB Number
+                                    </p>
+
+                                    <p className="font-semibold mt-1 break-all">
+                                        {order.awb_number ||
+                                            "Not assigned yet"}
+                                    </p>
+
+                                </div>
+
+                                <div className="bg-pink-50 rounded-2xl p-4">
+
+                                    <p className="text-xs text-gray-500">
+                                        Shipment ID
+                                    </p>
+
+                                    <p className="font-semibold mt-1">
+                                        {order.shipment_id ||
+                                            "Not available"}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                            {/* Tracking history */}
+
+                            <div className="mt-8">
+
+                                <h3 className="text-xl font-bold text-pink-700 mb-4">
+                                    Tracking History
+                                </h3>
+
+                                {trackingEvents.length ===
+                                0 ? (
+                                    <div className="bg-gray-50 rounded-2xl p-5 text-sm text-gray-500">
+                                        Tracking updates will
+                                        appear here once your
+                                        shipment starts moving.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+
+                                        {trackingEvents.map(
+                                            (
+                                                event
+                                            ) => (
+                                                <div
+                                                    key={
+                                                        event.id
+                                                    }
+                                                    className="border border-gray-100 rounded-2xl p-4"
+                                                >
+
+                                                    <div className="flex flex-col md:flex-row md:justify-between gap-2">
+
+                                                        <div>
+
+                                                            <p className="font-bold text-gray-800">
+                                                                {event.activity ||
+                                                                    event.current_status ||
+                                                                    event.shipment_status ||
+                                                                    "Shipment Update"}
+                                                            </p>
+
+                                                            {event.location && (
+                                                                <p className="text-sm text-gray-500 mt-1">
+                                                                    📍{" "}
+                                                                    {
+                                                                        event.location
+                                                                    }
+                                                                </p>
+                                                            )}
+
+                                                        </div>
+
+                                                        <p className="text-xs text-gray-400">
+                                                            {formatDate(
+                                                                event.event_timestamp
+                                                            )}
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+                                            )
+                                        )}
+
+                                    </div>
+                                )}
+
+                            </div>
 
                         </div>
 

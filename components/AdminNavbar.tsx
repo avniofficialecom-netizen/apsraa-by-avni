@@ -24,6 +24,11 @@ export default function AdminNavbar() {
             icon: "💎",
         },
         {
+            name: "Homepage",
+            href: "/admin/homepage",
+            icon: "🏠",
+        },
+        {
             name: "Inventory",
             href: "/admin/inventory",
             icon: "📋",
@@ -37,6 +42,11 @@ export default function AdminNavbar() {
             name: "Customers",
             href: "/admin/customers",
             icon: "👥",
+        },
+        {
+            name: "Store Settings",
+            href: "/admin/settings",
+            icon: "⚙️",
         },
     ];
 
@@ -69,6 +79,7 @@ export default function AdminNavbar() {
     return (
         <nav className="sticky top-0 z-[9999] w-full bg-slate-900 text-white shadow-[0_4px_18px_rgba(0,0,0,0.16)]">
             <div className="mx-auto flex min-h-[76px] w-full max-w-[1400px] items-center px-7 max-[1120px]:px-[18px] max-md:min-h-16 max-md:px-3">
+
                 {/* Logo */}
                 <Link
                     href="/admin"
@@ -96,6 +107,7 @@ export default function AdminNavbar() {
                             <span className="text-base leading-none max-[1120px]:text-sm">
                                 {item.icon}
                             </span>
+
                             <span>{item.name}</span>
                         </Link>
                     ))}
@@ -132,6 +144,7 @@ export default function AdminNavbar() {
             {/* Mobile Navigation */}
             {menuOpen && (
                 <div className="grid w-full grid-cols-2 gap-2 border-t border-slate-700 bg-slate-900 p-2 md:hidden">
+
                     {navItems.map((item) => (
                         <Link
                             key={item.href}
@@ -148,6 +161,7 @@ export default function AdminNavbar() {
                             <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-[17px]">
                                 {item.icon}
                             </span>
+
                             <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                 {item.name}
                             </span>
@@ -170,6 +184,7 @@ export default function AdminNavbar() {
                                 : "Logout"}
                         </span>
                     </button>
+
                 </div>
             )}
         </nav>

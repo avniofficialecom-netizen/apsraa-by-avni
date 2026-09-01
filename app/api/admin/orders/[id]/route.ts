@@ -60,9 +60,7 @@ export async function GET(
                     message:
                         "Unauthorized. Admin login required.",
                 },
-                {
-                    status: 401,
-                }
+                { status: 401 }
             );
         }
 
@@ -85,9 +83,7 @@ export async function GET(
                     message:
                         "Admin configuration is missing.",
                 },
-                {
-                    status: 500,
-                }
+                { status: 500 }
             );
         }
 
@@ -107,9 +103,7 @@ export async function GET(
                     message:
                         "Forbidden. Admin access required.",
                 },
-                {
-                    status: 403,
-                }
+                { status: 403 }
             );
         }
 
@@ -130,9 +124,7 @@ export async function GET(
                     success: false,
                     message: "Invalid Order ID.",
                 },
-                {
-                    status: 400,
-                }
+                { status: 400 }
             );
         }
 
@@ -160,9 +152,7 @@ export async function GET(
                     success: false,
                     message: "Order not found.",
                 },
-                {
-                    status: 404,
-                }
+                { status: 404 }
             );
         }
 
@@ -171,19 +161,149 @@ export async function GET(
         // ==========================================
 
         const {
-            data: items,
+            data: rawItems,
             error: itemsError,
         } = await supabaseAdmin
             .from("order_items")
-            .select("*")
-            .eq("order_id", orderId);
+            .select(
+                "id, order_id, product_id, variant_id, title, quantity, price"
+            )
+            .eq("order_id", orderId)
+            .order("id", {
+                ascending: true,
+            });
 
         if (itemsError) {
             console.error(
                 "Admin Order Items Fetch Error:",
                 itemsError
             );
+
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Unable to load order items.",
+                },
+                { status: 500 }
+            );
         }
+
+        const items = rawItems || [];
+
+        // ==========================================
+        // GET VARIANTS
+        // ==========================================
+
+        const variantIds = [
+            ...new Set(
+                items
+                    .map(
+                        (item) =>
+                            item.variant_id
+                    )
+                    .filter(
+                        (
+                            id
+                        ): id is number =>
+                            Number.isInteger(
+                                Number(id)
+                            )
+                    )
+                    .map(Number)
+            ),
+        ];
+
+        let variants: {
+            id: number;
+            product_id: number;
+            sku: string | null;
+            size: string | null;
+            color: string | null;
+            stock: number;
+            price: number | null;
+        }[] = [];
+
+        if (variantIds.length > 0) {
+            const {
+                data: variantData,
+                error: variantError,
+            } = await supabaseAdmin
+                .from("product_variants")
+                .select(
+                    "id, product_id, sku, size, color, stock, price"
+                )
+                .in("id", variantIds);
+
+            if (variantError) {
+                console.error(
+                    "Admin Variant Fetch Error:",
+                    variantError
+                );
+            } else {
+                variants =
+                    variantData || [];
+            }
+        }
+
+        // ==========================================
+        // MAP VARIANTS TO ORDER ITEMS
+        // ==========================================
+
+        const variantMap = new Map(
+            variants.map((variant) => [
+                Number(variant.id),
+                variant,
+            ])
+        );
+
+        const enrichedItems = items.map(
+            (item) => {
+                const variantId =
+                    item.variant_id !==
+                    null &&
+                    item.variant_id !==
+                    undefined
+                        ? Number(
+                            item.variant_id
+                        )
+                        : null;
+
+                const variant =
+                    variantId !== null
+                        ? variantMap.get(
+                            variantId
+                        )
+                        : null;
+
+                return {
+                    ...item,
+
+                    variant_id:
+                    variantId,
+
+                    sku:
+                        variant?.sku ??
+                        null,
+
+                    size:
+                        variant?.size ??
+                        null,
+
+                    color:
+                        variant?.color ??
+                        null,
+
+                    variant_stock:
+                        variant?.stock ??
+                        null,
+
+                    variant_price:
+                        variant?.price ??
+                        null,
+                };
+            }
+        );
 
         // ==========================================
         // SUCCESS
@@ -192,7 +312,7 @@ export async function GET(
         return NextResponse.json({
             success: true,
             order,
-            items: items || [],
+            items: enrichedItems,
         });
     } catch (error) {
         console.error(
@@ -206,9 +326,7 @@ export async function GET(
                 message:
                     "Internal server error.",
             },
-            {
-                status: 500,
-            }
+            { status: 500 }
         );
     }
 }

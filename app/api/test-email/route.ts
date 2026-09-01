@@ -36,7 +36,7 @@ export async function GET() {
                                 }
                             );
                         } catch {
-                            // Middleware handles cookie updates.
+                            // Middleware may handle cookie updates.
                         }
                     },
                 },
@@ -46,8 +46,7 @@ export async function GET() {
         const {
             data: { user },
             error: userError,
-        } =
-            await supabase.auth.getUser();
+        } = await supabase.auth.getUser();
 
         // ==========================================
         // REQUIRE LOGIN
@@ -67,22 +66,36 @@ export async function GET() {
         }
 
         // ==========================================
-        // REQUIRE ADMIN ACCOUNT
+        // REQUIRE ADMIN
         // ==========================================
 
         const adminEmail =
-            process.env.ADMIN_EMAIL;
+            process.env.ADMIN_EMAIL ||
+            process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+        if (!adminEmail) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message:
+                        "Admin configuration is missing.",
+                },
+                {
+                    status: 500,
+                }
+            );
+        }
+
+        const loggedInEmail =
+            user.email?.trim().toLowerCase();
+
+        const configuredAdminEmail =
+            adminEmail.trim().toLowerCase();
 
         if (
-            !adminEmail ||
-            user.email?.toLowerCase() !==
-            adminEmail.toLowerCase()
+            !loggedInEmail ||
+            loggedInEmail !== configuredAdminEmail
         ) {
-            console.warn(
-                "Unauthorized test-email attempt:",
-                user.email
-            );
-
             return NextResponse.json(
                 {
                     success: false,
@@ -99,46 +112,35 @@ export async function GET() {
         // TEST ORDER
         // ==========================================
 
-        const orderId = 47;
-
-        console.log(
-            "========== TEST REAL ORDER EMAIL =========="
-        );
-
-        console.log(
-            "ADMIN:",
-            user.email
-        );
-
-        console.log(
-            "TEST ORDER:",
-            orderId
-        );
+        // Current verified test order.
+        const orderId = 80;
 
         // ==========================================
-        // GET EXISTING ORDER
+        // GET ORDER
         // ==========================================
 
         const {
             data: order,
             error: orderError,
-        } =
-            await supabaseAdmin
-                .from("orders")
-                .select(`
-                    id,
-                    customer_name,
-                    email,
-                    total,
-                    status,
-                    payment_status
-                `)
-                .eq("id", orderId)
-                .single();
+        } = await supabaseAdmin
+            .from("orders")
+            .select(
+                `
+                id,
+                customer_name,
+                email,
+                phone,
+                total,
+                status,
+                payment_status
+                `
+            )
+            .eq("id", orderId)
+            .single();
 
         if (orderError || !order) {
             console.error(
-                "ORDER FETCH ERROR:",
+                "TEST EMAIL ORDER FETCH ERROR:",
                 orderError
             );
 
@@ -155,15 +157,26 @@ export async function GET() {
         }
 
         // ==========================================
-        // CUSTOMER EMAIL
+        // CUSTOMER CONTACT VALIDATION
         // ==========================================
 
-        if (!order.email) {
+        const customerEmail =
+            order.email?.trim();
+
+        const customerPhone =
+            order.phone
+                ?.replace(/\D/g, "")
+                .trim();
+
+        if (
+            !customerEmail &&
+            !customerPhone
+        ) {
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        `Order #${orderId} does not have a customer email.`,
+                        `Order #${orderId} has no customer email or phone.`,
                 },
                 {
                     status: 400,
@@ -172,12 +185,48 @@ export async function GET() {
         }
 
         // ==========================================
-        // SEND TEST EMAIL
+        // PRODUCTION SITE URL
         // ==========================================
 
         const siteUrl =
             process.env.NEXT_PUBLIC_SITE_URL ||
-            "http://localhost:3000";
+            "https://www.apsraa.shop";
+
+        // ==========================================
+        // SEND EMAIL
+        // ==========================================
+
+        console.log(
+            "=========================================="
+        );
+
+        console.log(
+            "TEST ORDER EMAIL"
+        );
+
+        console.log(
+            "ADMIN:",
+            user.email
+        );
+
+        console.log(
+            "ORDER:",
+            order.id
+        );
+
+        console.log(
+            "CUSTOMER EMAIL:",
+            customerEmail
+        );
+
+        console.log(
+            "CUSTOMER PHONE:",
+            customerPhone
+        );
+
+        console.log(
+            "=========================================="
+        );
 
         const emailResponse =
             await fetch(
@@ -193,15 +242,36 @@ export async function GET() {
                     body: JSON.stringify({
                         orderId:
                         order.id,
+
+                        email:
+                            customerEmail ||
+                            "",
+
+                        phone:
+                            customerPhone ||
+                            "",
                     }),
+
+                    cache: "no-store",
                 }
             );
 
-        const emailResult =
-            await emailResponse.json();
+        const emailText =
+            await emailResponse.text();
+
+        let emailResult: unknown;
+
+        try {
+            emailResult =
+                JSON.parse(emailText);
+        } catch {
+            emailResult = {
+                raw: emailText,
+            };
+        }
 
         console.log(
-            "EMAIL STATUS:",
+            "EMAIL HTTP STATUS:",
             emailResponse.status
         );
 
@@ -211,23 +281,37 @@ export async function GET() {
         );
 
         // ==========================================
-        // RETURN RESULT
+        // SUCCESS
         // ==========================================
+
+        const emailSucceeded =
+            emailResponse.ok &&
+            typeof emailResult === "object" &&
+            emailResult !== null &&
+            "success" in emailResult &&
+            Boolean(
+                (
+                    emailResult as {
+                        success?: unknown;
+                    }
+                ).success
+            );
 
         return NextResponse.json({
             success:
-                emailResponse.ok &&
-                emailResult.success,
+            emailSucceeded,
 
             orderId:
             order.id,
 
-            email:
-            order.email,
+            customerEmail:
+                customerEmail || null,
+
+            customerPhone:
+                customerPhone || null,
 
             emailResult,
         });
-
     } catch (error) {
         console.error(
             "TEST EMAIL ERROR:",

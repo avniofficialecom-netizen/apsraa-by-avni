@@ -12,54 +12,36 @@ type ProductCardProps = {
     stock: number;
     hasVariants?: boolean;
     bestseller?: boolean;
+    trending?: boolean;
+    featured?: boolean;
 };
 
 export default function ProductCard({
-                                        id,
-                                        image,
-                                        title,
-                                        subtitle,
-                                        stock,
-                                        hasVariants = false,
-                                        bestseller = false,
-                                    }: ProductCardProps) {
+    id,
+    image,
+    title,
+    subtitle,
+    stock,
+    hasVariants = false,
+    bestseller = false,
+    trending = false,
+    featured = false,
+}: ProductCardProps) {
     const router = useRouter();
     const { addToCart } = useCart();
+    const [showAddedMessage, setShowAddedMessage] = useState(false);
 
-    const [showAddedMessage, setShowAddedMessage] =
-        useState(false);
+    const isOutOfStock = stock <= 0;
+    const isLowStock = stock > 0 && stock <= 5;
 
-    // ==========================================
-    // GO TO PRODUCT / VARIANT SELECTION
-    // ==========================================
-
-    const goToProduct = () => {
-        router.push(`/product/${id}`);
-    };
-
-    // ==========================================
-    // ADD TO CART
-    // ==========================================
+    const goToProduct = () => router.push(`/product/${id}`);
 
     const handleAddToCart = async () => {
-        if (stock <= 0) {
-            return;
-        }
-
-        // --------------------------------------
-        // PRODUCTS WITH VARIANTS
-        // Customer must select variant first.
-        // --------------------------------------
-
+        if (isOutOfStock) return;
         if (hasVariants) {
             router.push(`/product/${id}`);
             return;
         }
-
-        // --------------------------------------
-        // NORMAL PRODUCT
-        // Add directly.
-        // --------------------------------------
 
         const success = await addToCart({
             id,
@@ -68,40 +50,18 @@ export default function ProductCard({
             image,
         });
 
-        if (success === false) {
-            return;
-        }
+        if (success === false) return;
 
         setShowAddedMessage(true);
-
-        setTimeout(() => {
-            setShowAddedMessage(false);
-        }, 3000);
+        window.setTimeout(() => setShowAddedMessage(false), 3500);
     };
 
-    // ==========================================
-    // BUY NOW
-    // ==========================================
-
     const handleBuyNow = async () => {
-        if (stock <= 0) {
-            return;
-        }
-
-        // --------------------------------------
-        // PRODUCTS WITH VARIANTS
-        // Customer must select variant first.
-        // --------------------------------------
-
+        if (isOutOfStock) return;
         if (hasVariants) {
             router.push(`/product/${id}`);
             return;
         }
-
-        // --------------------------------------
-        // NORMAL PRODUCT
-        // Add and go directly to checkout.
-        // --------------------------------------
 
         const success = await addToCart({
             id,
@@ -110,228 +70,204 @@ export default function ProductCard({
             image,
         });
 
-        if (success === false) {
-            return;
-        }
-
+        if (success === false) return;
         router.push("/checkout");
     };
 
+    const badge = isOutOfStock
+        ? "Sold Out"
+        : bestseller
+        ? "Bestseller"
+        : trending
+        ? "Trending"
+        : featured
+        ? "Featured"
+        : null;
+
     return (
-        <div className="relative">
+        <article className="group relative">
 
-            {/* ==========================================
-                PRODUCT CARD
-            ========================================== */}
+            {/* IMAGE */}
 
-            <div className="group bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+            <div
+                className="relative cursor-pointer overflow-hidden bg-[#f4efec]"
+                onClick={goToProduct}
+            >
+                <div className="aspect-[4/5] w-full overflow-hidden">
+                    <img
+                        src={image}
+                        alt={title}
+                        loading="lazy"
+                        className={`
+                            h-full w-full object-cover
+                            transition-transform duration-700 ease-out
+                            group-hover:scale-[1.035]
+                            ${isOutOfStock ? "opacity-65" : ""}
+                        `}
+                    />
+                </div>
 
-                {/* ==========================================
-                    PRODUCT IMAGE
-                ========================================== */}
+                {badge && (
+                    <div className="absolute left-3 top-3">
+                        <span className="inline-flex bg-white/95 px-3 py-1.5 text-[9px] font-medium uppercase tracking-[0.18em] text-[#292624] shadow-sm backdrop-blur-sm">
+                            {badge}
+                        </span>
+                    </div>
+                )}
 
                 <button
                     type="button"
-                    onClick={goToProduct}
-                    className="block w-full text-left"
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={`Add ${title} to wishlist`}
+                    className="
+                        absolute right-3 top-3 flex h-10 w-10
+                        items-center justify-center rounded-full
+                        bg-white/95 text-lg text-[#6f6864] shadow-sm
+                        backdrop-blur-sm transition-all duration-300
+                        hover:bg-[#a9005d] hover:text-white
+                    "
                 >
-                    <div className="relative overflow-hidden">
-
-                        <img
-                            src={image}
-                            alt={title}
-                            className="w-full h-80 object-cover group-hover:scale-110 transition duration-500"
-                        />
-
-                        {/* BADGE */}
-
-                        {stock > 0 ? (
-                            bestseller ? (
-                                <span className="absolute top-4 left-4 bg-pink-600 text-white text-xs font-semibold px-4 py-2 rounded-full">
-                                    Bestseller
-                                </span>
-                            ) : (
-                                <span className="absolute top-4 left-4 bg-green-600 text-white text-xs font-semibold px-4 py-2 rounded-full">
-                                    In Stock
-                                </span>
-                            )
-                        ) : (
-                            <span className="absolute top-4 left-4 bg-red-600 text-white text-xs font-semibold px-4 py-2 rounded-full">
-                                Out of Stock
-                            </span>
-                        )}
-
-                        {/* WISHLIST */}
-
-                        <span
-                            className="absolute top-4 right-4 bg-white w-10 h-10 rounded-full shadow flex items-center justify-center"
-                            aria-hidden="true"
-                        >
-                            🤍
-                        </span>
-
-                    </div>
+                    ♡
                 </button>
 
-                {/* ==========================================
-                    PRODUCT DETAILS
-                ========================================== */}
+                <button
+                    type="button"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        goToProduct();
+                    }}
+                    aria-label={`View ${title}`}
+                    className="
+                        absolute bottom-3 right-3 flex h-10 w-10
+                        items-center justify-center rounded-full
+                        bg-white text-[#292624] shadow-sm
+                        transition-all duration-300 hover:bg-[#a9005d]
+                        hover:text-white sm:translate-y-2 sm:opacity-0
+                        sm:group-hover:translate-y-0 sm:group-hover:opacity-100
+                    "
+                >
+                    →
+                </button>
+            </div>
 
-                <div className="p-6">
+            {/* INFO */}
 
-                    {/* TITLE */}
+            <div className="pt-4">
 
+                <div className="flex items-start justify-between gap-3">
                     <button
                         type="button"
                         onClick={goToProduct}
-                        className="text-left"
+                        className="min-w-0 text-left"
                     >
-                        <h3 className="text-xl font-bold text-gray-800 hover:text-pink-700 transition">
+                        <h3 className="
+                            line-clamp-2 text-[13px] font-medium leading-[1.4]
+                            text-[#292624] transition-colors hover:text-[#a9005d]
+                            sm:text-[15px]
+                        ">
                             {title}
                         </h3>
                     </button>
 
-                    {/* PRICE */}
+                    <span className="shrink-0 text-[13px] font-semibold text-[#292624] sm:text-sm">
+                        {subtitle}
+                    </span>
+                </div>
 
-                    <div className="mt-4">
+                {hasVariants && !isOutOfStock && (
+                    <button
+                        type="button"
+                        onClick={goToProduct}
+                        className="mt-1.5 text-left text-[10px] tracking-wide text-[#8a8380] transition-colors hover:text-[#a9005d] sm:text-[11px]"
+                    >
+                        Choose your options →
+                    </button>
+                )}
 
-                        <span className="text-2xl font-bold text-pink-700">
-                            {subtitle}
-                        </span>
-
-                    </div>
-
-                    {/* VARIANT HINT */}
-
-                    {hasVariants && (
-                        <p className="mt-3 text-sm text-gray-500">
-                            Select size & color on product page
-                        </p>
-                    )}
-
-                    {/* STOCK */}
-
-                    <p className="mt-3 text-sm">
-
-                        Stock:
-
-                        <span
-                            className={`ml-2 font-bold ${
-                                stock > 0
-                                    ? "text-green-600"
-                                    : "text-red-600"
-                            }`}
-                        >
-                            {stock}
-                        </span>
-
+                {isLowStock && (
+                    <p className="mt-1.5 text-[9px] font-medium uppercase tracking-[0.12em] text-[#a9005d] sm:text-[10px]">
+                        Only {stock} left
                     </p>
+                )}
 
-                    {/* ==========================================
-                        ACTION BUTTONS
-                    ========================================== */}
+                {isOutOfStock && (
+                    <p className="mt-1.5 text-[9px] uppercase tracking-[0.12em] text-[#9a9390]">
+                        Currently unavailable
+                    </p>
+                )}
 
-                    {stock > 0 ? (
-
-                        <div className="mt-6 flex gap-3">
-
-                            {/* ADD TO CART */}
-
-                            <button
-                                type="button"
-                                onClick={handleAddToCart}
-                                className="flex-1 bg-white border-2 border-pink-600 text-pink-600 py-3 rounded-full font-semibold hover:bg-pink-600 hover:text-white active:scale-[0.98] transition"
-                            >
-                                🛒 Add to Cart
-                            </button>
-
-                            {/* BUY NOW */}
-
-                            <button
-                                type="button"
-                                onClick={handleBuyNow}
-                                className="flex-1 bg-pink-600 text-white py-3 rounded-full font-semibold hover:bg-pink-700 active:scale-[0.98] transition"
-                            >
-                                ⚡ Buy Now
-                            </button>
-
-                        </div>
-
-                    ) : (
+                {!isOutOfStock && (
+                    <div className="mt-4 flex gap-2">
+                        <button
+                            type="button"
+                            onClick={handleAddToCart}
+                            className="
+                                flex-1 border border-[#d8d0cc] bg-white
+                                px-3 py-2.5 text-[10px] font-medium uppercase
+                                tracking-[0.12em] text-[#292624] transition-all
+                                hover:border-[#a9005d] hover:bg-[#a9005d]
+                                hover:text-white
+                            "
+                        >
+                            {hasVariants ? "Choose options" : "Add to cart"}
+                        </button>
 
                         <button
                             type="button"
-                            disabled
-                            className="mt-6 w-full bg-gray-400 text-white py-3 rounded-full font-semibold cursor-not-allowed"
+                            onClick={handleBuyNow}
+                            aria-label={`Buy ${title} now`}
+                            className="
+                                flex h-10 w-10 shrink-0 items-center
+                                justify-center bg-[#292624] text-sm text-white
+                                transition hover:bg-[#a9005d]
+                            "
                         >
-                            ❌ Out of Stock
+                            →
                         </button>
-
-                    )}
-
-                </div>
-
+                    </div>
+                )}
             </div>
 
-            {/* ==========================================
-                ADDED TO CART MESSAGE
-            ========================================== */}
+            {/* ADDED TO CART */}
 
             {showAddedMessage && (
-
-                <div className="fixed bottom-5 right-5 z-[9999] w-[calc(100vw-32px)] max-w-sm">
-
-                    <div className="bg-white border border-pink-100 rounded-2xl shadow-2xl p-4">
-
-                        <div className="flex items-center gap-3">
-
-                            <div className="w-11 h-11 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-xl">
+                <div className="fixed bottom-5 left-4 right-4 z-[9999] sm:left-auto sm:right-5 sm:w-[360px]">
+                    <div className="border border-[#e7dfdb] bg-white p-4 shadow-[0_20px_60px_rgba(0,0,0,0.14)]">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center bg-[#f7e5ef] text-sm text-[#a9005d]">
                                 ✓
                             </div>
 
-                            <div className="flex-1">
-
-                                <p className="font-bold text-gray-800">
-                                    Added to Cart!
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-[#292624]">
+                                    Added to your bag
                                 </p>
 
-                                <p className="text-gray-500 text-sm mt-1 truncate">
+                                <p className="mt-1 truncate text-xs text-[#8a8380]">
                                     {title}
                                 </p>
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        router.push(
-                                            "/cart"
-                                        )
-                                    }
-                                    className="text-pink-600 text-sm font-semibold mt-1"
+                                    onClick={() => router.push("/cart")}
+                                    className="mt-2 text-xs font-medium text-[#a9005d] hover:underline"
                                 >
-                                    View Cart →
+                                    View bag →
                                 </button>
-
                             </div>
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    setShowAddedMessage(false)
-                                }
-                                className="text-gray-400 text-xl"
+                                onClick={() => setShowAddedMessage(false)}
                                 aria-label="Close"
+                                className="text-lg leading-none text-[#aaa3a0] hover:text-[#292624]"
                             >
                                 ×
                             </button>
-
                         </div>
-
                     </div>
-
                 </div>
-
             )}
-
-        </div>
+        </article>
     );
 }

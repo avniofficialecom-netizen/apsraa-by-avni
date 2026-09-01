@@ -1,0 +1,88 @@
+
+> apsraa-by-avni@0.1.0 build
+> next build
+
+▲ Next.js 16.2.12 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 7.4s
+  Running TypeScript ...
+  Finished TypeScript in 6.7s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/48) ...
+  Generating static pages using 7 workers (12/48) 
+  Generating static pages using 7 workers (24/48) 
+  Generating static pages using 7 workers (36/48) 
+✓ Generating static pages using 7 workers (48/48) in 918ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /about
+├ ○ /account
+├ ○ /admin
+├ ○ /admin/add-product
+├ ○ /admin/customers
+├ ƒ /admin/edit-product/[id]
+├ ○ /admin/inventory
+├ ○ /admin/login
+├ ○ /admin/orders
+├ ƒ /admin/orders/[id]
+├ ƒ /admin/orders/[id]/invoice
+├ ƒ /admin/orders/[id]/label
+├ ○ /admin/orders/archived
+├ ○ /admin/products
+├ ○ /admin/products/categories
+├ ○ /admin/settings
+├ ƒ /api/admin/dashboard
+├ ƒ /api/admin/orders
+├ ƒ /api/admin/orders/[id]
+├ ƒ /api/admin/orders/[id]/history
+├ ƒ /api/admin/orders/archive
+├ ƒ /api/admin/settings
+├ ƒ /api/create-cod-order
+├ ƒ /api/create-order
+├ ƒ /api/cron/archive-delivered
+├ ƒ /api/delete-product
+├ ƒ /api/invoice
+├ ƒ /api/pincode/[pincode]
+├ ƒ /api/reduce-stock
+├ ƒ /api/send-order-email
+├ ƒ /api/shipping/assign-awb
+├ ƒ /api/shipping/check-couriers
+├ ƒ /api/shipping/create-shipment
+├ ƒ /api/shipping/test
+├ ƒ /api/test-email
+├ ƒ /api/track-order
+├ ƒ /api/update-order-status
+├ ƒ /api/verify-payment
+├ ƒ /api/webhooks/shiprocket
+├ ○ /cart
+├ ○ /checkout
+├ ○ /contact
+├ ○ /login
+├ ƒ /order/[id]
+├ ○ /privacy-policy
+├ ○ /product
+├ ƒ /product/[id]
+├ ƒ /product/categories
+├ ƒ /products/categories
+├ ○ /refund-policy
+├ ○ /shipping-policy
+├ ƒ /shop
+├ ○ /sitemap.xml
+├ ○ /success
+├ ○ /terms
+├ ○ /terms-and-conditions
+├ ○ /track-order
+└ ○ /wishlist
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

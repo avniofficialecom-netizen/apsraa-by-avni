@@ -26,6 +26,28 @@ type Variant = {
     price: number | string | null;
 };
 
+// ==========================================
+// PRICE PARSER
+// ==========================================
+
+function parsePrice(
+    value: number | string | null | undefined
+): number {
+    if (
+        value === null ||
+        value === undefined
+    ) {
+        return NaN;
+    }
+
+    const cleaned = String(value)
+        .replace(/₹/g, "")
+        .replace(/,/g, "")
+        .trim();
+
+    return Number(cleaned);
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -552,6 +574,22 @@ export async function POST(req: Request) {
         // ==========================================
         // 8. SERVER-SIDE PRICE + STOCK
         // ==========================================
+        //
+        // IMPORTANT:
+        // Product price is the MASTER SELLING PRICE.
+        //
+        // Variant price is intentionally NOT used.
+        //
+        // Variant controls:
+        // - SKU
+        // - Size
+        // - Color
+        // - Stock
+        //
+        // Product controls:
+        // - Selling price
+        //
+        // ==========================================
 
         let total = 0;
 
@@ -577,6 +615,31 @@ export async function POST(req: Request) {
                         success: false,
                         message:
                             "Product not found.",
+                    },
+                    { status: 400 }
+                );
+            }
+
+            // ==========================================
+            // MASTER PRODUCT PRICE
+            // ==========================================
+
+            const productPrice =
+                parsePrice(
+                    product.price
+                );
+
+            if (
+                !Number.isFinite(
+                    productPrice
+                ) ||
+                productPrice < 0
+            ) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            `Invalid price for ${product.title}.`,
                     },
                     { status: 400 }
                 );
@@ -622,6 +685,10 @@ export async function POST(req: Request) {
                     );
                 }
 
+                // ==========================================
+                // VARIANT STOCK
+                // ==========================================
+
                 const variantStock =
                     Number(
                         variant.stock
@@ -644,79 +711,49 @@ export async function POST(req: Request) {
                     );
                 }
 
-                const variantPrice =
-                    variant.price !==
-                    null &&
-                    variant.price !==
-                    undefined &&
-                    String(
-                        variant.price
-                    ).trim() !== ""
-                        ? Number(
-                            String(
-                                variant.price
-                            )
-                                .replace(
-                                    /₹/g,
-                                    ""
-                                )
-                                .replace(
-                                    /,/g,
-                                    ""
-                                )
-                                .trim()
-                        )
-                        : Number(
-                            String(
-                                product.price
-                            )
-                                .replace(
-                                    /₹/g,
-                                    ""
-                                )
-                                .replace(
-                                    /,/g,
-                                    ""
-                                )
-                                .trim()
-                        );
-
-                if (
-                    !Number.isFinite(
-                        variantPrice
-                    ) ||
-                    variantPrice < 0
-                ) {
-                    return NextResponse.json(
-                        {
-                            success: false,
-                            message:
-                                `Invalid price for ${product.title}.`,
-                        },
-                        { status: 400 }
-                    );
-                }
+                // ==========================================
+                // USE PRODUCT PRICE
+                // ==========================================
 
                 total +=
-                    variantPrice *
+                    productPrice *
                     item.quantity;
 
                 orderItems.push({
                     product_id:
-                    product.id,
+                        product.id,
 
                     variant_id:
-                    variant.id,
+                        variant.id,
 
                     title:
-                    product.title,
+                        product.title,
 
                     price:
-                        variantPrice.toString(),
+                        productPrice.toString(),
 
                     quantity:
-                    item.quantity,
+                        item.quantity,
                 });
+
+                console.log(
+                    "VARIANT ORDER ITEM:",
+                    {
+                        productId:
+                            product.id,
+
+                        variantId:
+                            variant.id,
+
+                        productPrice,
+
+                        variantPriceIgnored:
+                            variant.price,
+
+                        quantity:
+                            item.quantity,
+                    }
+                );
 
                 continue;
             }
@@ -747,57 +784,25 @@ export async function POST(req: Request) {
                 );
             }
 
-            const price =
-                Number(
-                    String(
-                        product.price
-                    )
-                        .replace(
-                            /₹/g,
-                            ""
-                        )
-                        .replace(
-                            /,/g,
-                            ""
-                        )
-                        .trim()
-                );
-
-            if (
-                !Number.isFinite(
-                    price
-                ) ||
-                price < 0
-            ) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            `Invalid price for ${product.title}.`,
-                    },
-                    { status: 400 }
-                );
-            }
-
             total +=
-                price *
+                productPrice *
                 item.quantity;
 
             orderItems.push({
                 product_id:
-                product.id,
+                    product.id,
 
                 variant_id:
                     null,
 
                 title:
-                product.title,
+                    product.title,
 
                 price:
-                    price.toString(),
+                    productPrice.toString(),
 
                 quantity:
-                item.quantity,
+                    item.quantity,
             });
         }
 
@@ -824,6 +829,11 @@ export async function POST(req: Request) {
                 {
                     paidAmount,
                     expectedAmount,
+                    total,
+                    razorpayOrderId:
+                        razorpay_order_id,
+                    razorpayPaymentId:
+                        razorpay_payment_id,
                 }
             );
 
@@ -857,6 +867,12 @@ export async function POST(req: Request) {
             total
         );
 
+        console.log(
+            "✅ RAZORPAY PAID AMOUNT:",
+            paidAmount,
+            "paise"
+        );
+
         // ==========================================
         // 10. CREATE ORDER
         // ==========================================
@@ -880,16 +896,16 @@ export async function POST(req: Request) {
             .from("orders")
             .insert({
                 customer_name:
-                customerName,
+                    customerName,
 
                 email:
-                customerEmail,
+                    customerEmail,
 
                 phone:
-                customerPhone,
+                    customerPhone,
 
                 address:
-                fullAddress,
+                    fullAddress,
 
                 total:
                     total.toString(),
@@ -898,18 +914,13 @@ export async function POST(req: Request) {
                     "Pending",
 
                 razorpay_order_id:
-                razorpay_order_id,
+                    razorpay_order_id,
 
                 razorpay_payment_id:
-                razorpay_payment_id,
+                    razorpay_payment_id,
 
                 payment_status:
                     "Paid",
-
-                // ==================================
-                // IMPORTANT:
-                // ONLINE RAZORPAY PAYMENT
-                // ==================================
 
                 payment_method:
                     "online",
@@ -959,22 +970,22 @@ export async function POST(req: Request) {
             orderItems.map(
                 (item) => ({
                     order_id:
-                    order.id,
+                        order.id,
 
                     product_id:
-                    item.product_id,
+                        item.product_id,
 
                     variant_id:
-                    item.variant_id,
+                        item.variant_id,
 
                     title:
-                    item.title,
+                        item.title,
 
                     price:
-                    item.price,
+                        item.price,
 
                     quantity:
-                    item.quantity,
+                        item.quantity,
                 })
             );
 
@@ -1001,7 +1012,10 @@ export async function POST(req: Request) {
                 itemsError
             );
 
-            // Roll back the order
+            // ==========================================
+            // ROLLBACK ORDER
+            // ==========================================
+
             await supabaseAdmin
                 .from("orders")
                 .delete()

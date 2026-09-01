@@ -26,36 +26,52 @@ export default function Footer() {
 
                     <ul className="space-y-3 text-gray-400">
 
+                        {/* Necklace Sets */}
                         <li>
                             <Link
-                                href="/shop"
+                                href={{
+                                    pathname: "/shop",
+                                    query: { category: "jewellery-sets" },
+                                }}
                                 className="hover:text-pink-500 transition"
                             >
                                 Necklace Sets
                             </Link>
                         </li>
 
+                        {/* Earrings */}
                         <li>
                             <Link
-                                href="/shop"
+                                href={{
+                                    pathname: "/shop",
+                                    query: { category: "earrings" },
+                                }}
                                 className="hover:text-pink-500 transition"
                             >
                                 Earrings
                             </Link>
                         </li>
 
+                        {/* Bridal Collection */}
                         <li>
                             <Link
-                                href="/shop"
+                                href={{
+                                    pathname: "/shop",
+                                    query: { collection: "best-sellers" },
+                                }}
                                 className="hover:text-pink-500 transition"
                             >
                                 Bridal Collection
                             </Link>
                         </li>
 
+                        {/* Chokers */}
                         <li>
                             <Link
-                                href="/shop"
+                                href={{
+                                    pathname: "/shop",
+                                    query: { category: "chokers" },
+                                }}
                                 className="hover:text-pink-500 transition"
                             >
                                 Chokers
