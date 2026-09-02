@@ -400,7 +400,7 @@ export default async function Home() {
                         id={product.id}
                         image={product.image}
                         title={product.title}
-                        subtitle={`â‚¹${product.price}`}
+                        subtitle={`₹${product.price}`}
                         stock={product.stock}
                         hasVariants={variantProductIds.has(
                             product.id
@@ -460,7 +460,7 @@ export default async function Home() {
                                             "Shop Collection"}
 
                                         <span className="transition-transform duration-300 group-hover:translate-x-1">
-                                            â†’
+                                            →
                                         </span>
                                     </Link>
 
@@ -475,7 +475,7 @@ export default async function Home() {
                                             "Explore Categories"}
 
                                         <span className="transition-transform duration-300 group-hover:translate-x-1">
-                                            â†’
+                                            →
                                         </span>
                                     </Link>
 
@@ -513,7 +513,7 @@ export default async function Home() {
                                             }
                                             alt={
                                                 homeHeroProduct?.title
-                                                    ? `${homeHeroProduct.title} â€” APSRAA BY AVNI`
+                                                    ? `${homeHeroProduct.title} — APSRAA BY AVNI`
                                                     : "APSRAA BY AVNI jewellery collection"
                                             }
                                             className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
@@ -586,7 +586,7 @@ export default async function Home() {
                                 </h3>
 
                                 <span className="mt-4 inline-flex translate-y-1 text-xs font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                                    Discover â†’
+                                    Discover →
                                 </span>
                             </div>
                         </Link>
@@ -612,7 +612,7 @@ export default async function Home() {
                                 </h3>
 
                                 <span className="mt-4 inline-flex translate-y-1 text-xs font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                                    Discover â†’
+                                    Discover →
                                 </span>
                             </div>
                         </Link>
@@ -638,7 +638,7 @@ export default async function Home() {
                                 </h3>
 
                                 <span className="mt-4 inline-flex translate-y-1 text-xs font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                                    Discover â†’
+                                    Discover →
                                 </span>
                             </div>
                         </Link>
@@ -663,7 +663,7 @@ export default async function Home() {
                                 </p>
 
                                 <span className="mt-5 inline-flex translate-y-1 text-xs font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                                    Explore collection â†’
+                                    Explore collection →
                                 </span>
                             </div>
                         </Link>
@@ -748,7 +748,7 @@ export default async function Home() {
                         >
                             View all
                             <span className="transition-transform group-hover:translate-x-1">
-                                â†’
+                                →
                             </span>
                         </Link>
 
@@ -790,7 +790,7 @@ export default async function Home() {
                             >
                                 Explore the collection
                                 <span className="transition-transform group-hover:translate-x-1">
-                                    â†’
+                                    →
                                 </span>
                             </Link>
 
@@ -875,7 +875,7 @@ export default async function Home() {
                         >
                             View all
                             <span className="transition-transform group-hover:translate-x-1">
-                                â†’
+                                →
                             </span>
                         </Link>
 
@@ -913,14 +913,14 @@ export default async function Home() {
                             href="/shop?collection=under-299"
                             className="border border-[#d8d0cc] bg-white px-7 py-3 text-sm font-medium text-[#302d2b] transition hover:border-[#a9005d] hover:text-[#a9005d]"
                         >
-                            Under â‚¹299
+                            Under ₹299
                         </Link>
 
                         <Link
                             href="/shop?collection=under-499"
                             className="border border-[#d8d0cc] bg-white px-7 py-3 text-sm font-medium text-[#302d2b] transition hover:border-[#a9005d] hover:text-[#a9005d]"
                         >
-                            Under â‚¹499
+                            Under ₹499
                         </Link>
 
                         <Link
@@ -963,7 +963,7 @@ export default async function Home() {
                             >
                                 Explore trending
                                 <span className="transition-transform group-hover:translate-x-1">
-                                    â†’
+                                    →
                                 </span>
                             </Link>
 
@@ -1002,7 +1002,7 @@ export default async function Home() {
                     >
                         Discover our story
                         <span className="transition-transform group-hover:translate-x-1">
-                            â†’
+                            →
                         </span>
                     </Link>
 
@@ -1011,7 +1011,7 @@ export default async function Home() {
             </section>
 
             {/* ==========================================
-                SHOP BY PRICE â€” PRODUCT SUPPORT
+                SHOP BY PRICE — PRODUCT SUPPORT
             ========================================== */}
 
             {(under299Products.length > 0 ||
@@ -1028,7 +1028,7 @@ export default async function Home() {
                                 </p>
 
                                 <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#222] sm:text-4xl">
-                                    Favourites under â‚¹499
+                                    Favourites under ₹499
                                 </h2>
                             </div>
 
@@ -1036,7 +1036,7 @@ export default async function Home() {
                                 href="/shop?collection=under-499"
                                 className="hidden text-sm font-medium text-[#302d2b] hover:text-[#a9005d] sm:inline"
                             >
-                                Shop all â†’
+                                Shop all →
                             </Link>
 
                         </div>
