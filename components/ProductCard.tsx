@@ -38,7 +38,7 @@ export default function ProductCard({
      * Always normalize the price before displaying it.
      *
      * This protects the storefront from corrupted currency text such as:
-     * â‚¹149
+     * ₹149
      * a,1 149
      * ₹149
      *

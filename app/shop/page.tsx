@@ -439,7 +439,7 @@ export default async function Shop({
                                     <div className="flex items-center gap-4 mb-6">
                                         <span className="h-px w-16 bg-[#d7aa58]" />
                                         <span className="text-[#d7aa58] text-xl">
-                                            âœ¦
+                                            ✦
                                         </span>
                                         <span className="h-px w-16 bg-[#d7aa58]" />
                                     </div>
@@ -461,7 +461,7 @@ export default async function Shop({
                                     <div className="flex items-center gap-4 my-7">
                                         <span className="h-px w-20 bg-[#d7aa58]" />
                                         <span className="text-[#d7aa58] text-2xl">
-                                            âœ¦
+                                            ✦
                                         </span>
                                         <span className="h-px w-20 bg-[#d7aa58]" />
                                     </div>
@@ -618,7 +618,7 @@ export default async function Shop({
                                     </h2>
 
                                     <span className="text-lg text-gray-500">
-                                        â˜·
+                                        ☆
                                     </span>
 
                                 </div>
@@ -634,7 +634,7 @@ export default async function Shop({
                                         </h3>
 
                                         <span className="text-gray-500">
-                                            âŒƒ
+                                            ⌃
                                         </span>
 
                                     </div>
@@ -709,7 +709,7 @@ export default async function Shop({
                                         </h3>
 
                                         <span className="text-gray-500">
-                                            âŒ„
+                                            ⌄
                                         </span>
 
                                     </div>
@@ -749,7 +749,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            ₹300 â€“ ₹499
+                                            ₹300 ✦ ₹499
                                         </Link>
 
                                         <Link
@@ -788,21 +788,21 @@ export default async function Shop({
                                             href="/shop?collection=new-arrivals"
                                             className="block text-sm text-gray-600 hover:text-pink-600"
                                         >
-                                            âœ¨ New Arrivals
+                                            ✨ New Arrivals
                                         </Link>
 
                                         <Link
                                             href="/shop?collection=best-sellers"
                                             className="block text-sm text-gray-600 hover:text-pink-600"
                                         >
-                                            ðŸ”¥ Best Sellers
+                                            🔥 Best Sellers
                                         </Link>
 
                                         <Link
                                             href="/shop?collection=trending"
                                             className="block text-sm text-gray-600 hover:text-pink-600"
                                         >
-                                            â™¡ Trending
+                                            ♡ Trending
                                         </Link>
 
                                     </div>
@@ -864,7 +864,7 @@ export default async function Shop({
                                         </option>
 
                                         <option value="300-499">
-                                            ₹300 â€“ ₹499
+                                            ₹300 ✦ ₹499
                                         </option>
 
                                         <option value="500-plus">
@@ -932,7 +932,7 @@ export default async function Shop({
                                         </option>
 
                                         <option value="name">
-                                            Name: Aâ€“Z
+                                            Name: A✦Z
                                         </option>
                                     </select>
 
@@ -1074,7 +1074,7 @@ export default async function Shop({
                                                 </option>
 
                                                 <option value="name">
-                                                    Name: Aâ€“Z
+                                                    Name: A✦Z
                                                 </option>
 
                                             </select>
@@ -1114,7 +1114,7 @@ export default async function Shop({
                                                 ? "Under ₹299"
                                                 : price ===
                                                   "300-499"
-                                                ? "₹300 â€“ ₹499"
+                                                ? "₹300 ✦ ₹499"
                                                 : "₹500+"}
                                         </span>
                                     )}
@@ -1140,7 +1140,7 @@ export default async function Shop({
                                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
 
                                     <div className="text-4xl">
-                                        ðŸ”
+                                        🔍
                                     </div>
 
                                     <h2 className="text-xl font-bold text-gray-900 mt-4">
