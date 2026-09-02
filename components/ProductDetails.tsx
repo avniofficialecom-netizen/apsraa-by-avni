@@ -361,15 +361,7 @@ export default function ProductDetails({
     // PRICE
     // ==========================================
 
-    const effectivePrice =
-        selectedVariant?.price !==
-            null &&
-        selectedVariant?.price !==
-            undefined
-            ? Number(
-                  selectedVariant.price
-              )
-            : Number(product.price);
+    const effectivePrice = Number(product.price);
 
     const oldPrice = Number(
         product.old_price

@@ -406,26 +406,17 @@ export async function POST(req: Request) {
                     );
                 }
 
-                const variantPrice =
-                    variant.price !== null &&
-                    variant.price !== undefined &&
-                    String(variant.price).trim() !== ""
-                        ? Number(
-                            String(variant.price)
-                                .replace(/₹/g, "")
-                                .replace(/,/g, "")
-                                .trim()
-                        )
-                        : Number(
-                            String(product.price)
-                                .replace(/₹/g, "")
-                                .replace(/,/g, "")
-                                .trim()
-                        );
+                const productPrice =
+                    Number(
+                        String(product.price)
+                            .replace(/₹/g, "")
+                            .replace(/,/g, "")
+                            .trim()
+                    );
 
                 if (
-                    !Number.isFinite(variantPrice) ||
-                    variantPrice <= 0
+                    !Number.isFinite(productPrice) ||
+                    productPrice <= 0
                 ) {
                     return NextResponse.json(
                         {
@@ -438,7 +429,7 @@ export async function POST(req: Request) {
                 }
 
                 total +=
-                    variantPrice *
+                    productPrice *
                     item.quantity;
 
                 orderItems.push({
@@ -452,7 +443,7 @@ export async function POST(req: Request) {
                     product.title,
 
                     price:
-                        variantPrice.toString(),
+                        productPrice.toString(),
 
                     quantity:
                     item.quantity,

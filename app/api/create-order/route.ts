@@ -406,44 +406,23 @@ export async function POST(req: Request) {
                     );
                 }
 
-                // ------------------------------------------
-                // VARIANT PRICE
-                // ------------------------------------------
-
-                const variantPrice =
-                    variant.price !==
-                    null &&
-                    variant.price !==
-                    undefined &&
-                    String(
-                        variant.price
-                    ).trim() !== ""
-                        ? Number(
-                            String(
-                                variant.price
-                            )
-                                .replace(
-                                    /[₹,]/g,
-                                    ""
-                                )
-                                .trim()
+                const productPrice =
+                    Number(
+                        String(
+                            product.price
                         )
-                        : Number(
-                            String(
-                                product.price
+                            .replace(
+                                /[₹,]/g,
+                                ""
                             )
-                                .replace(
-                                    /[₹,]/g,
-                                    ""
-                                )
-                                .trim()
-                        );
+                            .trim()
+                    );
 
                 if (
                     !Number.isFinite(
-                        variantPrice
+                    productPrice
                     ) ||
-                    variantPrice <= 0
+                    productPrice <= 0
                 ) {
                     return NextResponse.json(
                         {
@@ -456,7 +435,7 @@ export async function POST(req: Request) {
                 }
 
                 total +=
-                    variantPrice *
+                    productPrice *
                     item.quantity;
 
                 continue;
