@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -196,14 +195,14 @@ export default function Navbar() {
                     <Link
                         href="/"
                         onClick={closeMenu}
-                        className="group shrink-0"
+                        className="group shrink-0 cursor-pointer transition-transform duration-150 active:scale-[0.96]"
                     >
                         <div className="leading-none">
-                            <div className="text-[23px] tracking-[0.28em] font-semibold text-[#222]">
+                            <div className="text-[23px] tracking-[0.28em] font-semibold text-[#222] transition-all duration-200 group-hover:tracking-[0.30em] group-active:opacity-70">
                                 APSRAA
                             </div>
 
-                            <div className="mt-1 text-[9px] tracking-[0.42em] text-[#b50063] font-medium">
+                            <div className="mt-1 text-[9px] tracking-[0.42em] text-[#b50063] font-medium transition-opacity duration-200 group-hover:opacity-80 group-active:opacity-60">
                                 BY AVNI
                             </div>
                         </div>
@@ -215,21 +214,21 @@ export default function Navbar() {
 
                         <Link
                             href="/"
-                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
+                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063] active:opacity-60"
                         >
                             Home
                         </Link>
 
                         <Link
                             href="/shop"
-                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
+                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063] active:opacity-60"
                         >
                             Shop
                         </Link>
 
                         <Link
                             href="/track-order"
-                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
+                            className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063] active:opacity-60"
                         >
                             Track Order
                         </Link>
@@ -237,7 +236,7 @@ export default function Navbar() {
                         {isAdmin && (
                             <Link
                                 href="/admin"
-                                className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063]"
+                                className="relative py-7 text-[14px] tracking-wide text-[#333] transition-colors hover:text-[#b50063] active:opacity-60"
                             >
                                 Admin
                             </Link>
@@ -254,7 +253,7 @@ export default function Navbar() {
                         <Link
                             href="/shop"
                             aria-label="Search products"
-                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition-all duration-150 hover:bg-[#f7f1f4] hover:text-[#b50063] active:scale-[0.92] active:opacity-70"
                         >
                             <SearchIcon />
                         </Link>
@@ -271,7 +270,7 @@ export default function Navbar() {
                                                 : "/account"
                                         }
                                         aria-label="My account"
-                                        className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                                        className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition-all duration-150 hover:bg-[#f7f1f4] hover:text-[#b50063] active:scale-[0.92] active:opacity-70"
                                     >
                                         <UserIcon />
                                     </Link>
@@ -279,7 +278,7 @@ export default function Navbar() {
                                     <Link
                                         href="/login"
                                         aria-label="Login"
-                                        className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                                        className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition-all duration-150 hover:bg-[#f7f1f4] hover:text-[#b50063] active:scale-[0.92] active:opacity-70"
                                     >
                                         <UserIcon />
                                     </Link>
@@ -292,7 +291,7 @@ export default function Navbar() {
                         <Link
                             href="/cart"
                             aria-label={`Shopping bag, ${totalItems} items`}
-                            className="relative ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition hover:bg-[#f7f1f4] hover:text-[#b50063]"
+                            className="relative ml-1 flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition-all duration-150 hover:bg-[#f7f1f4] hover:text-[#b50063] active:scale-[0.92] active:opacity-70"
                         >
                             <BagIcon />
 
@@ -307,7 +306,7 @@ export default function Navbar() {
 
                         <Link
                             href="/shop"
-                            className="ml-4 rounded-full bg-[#b50063] px-6 py-2.5 text-[13px] font-medium tracking-wide text-white transition-all hover:bg-[#920052] hover:shadow-md"
+                            className="ml-4 rounded-full bg-[#b50063] px-6 py-2.5 text-[13px] font-medium tracking-wide text-white transition-all duration-150 hover:bg-[#920052] hover:shadow-md active:scale-[0.97] active:opacity-90"
                         >
                             Shop Collection
                         </Link>
@@ -321,7 +320,7 @@ export default function Navbar() {
                         <Link
                             href="/cart"
                             aria-label="Shopping bag"
-                            className="relative flex h-10 w-10 items-center justify-center rounded-full text-[#333]"
+                            className="relative flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition-transform duration-150 active:scale-[0.92] active:opacity-70"
                         >
                             <BagIcon />
 
@@ -343,7 +342,7 @@ export default function Navbar() {
                                     : "Open navigation menu"
                             }
                             aria-expanded={menuOpen}
-                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#333]"
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-[#333] transition-transform duration-150 active:scale-[0.92] active:opacity-70"
                         >
                             <MenuIcon open={menuOpen} />
                         </button>
@@ -362,7 +361,7 @@ export default function Navbar() {
                             <Link
                                 href="/"
                                 onClick={closeMenu}
-                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333] transition-all duration-150 active:pl-1 active:opacity-60"
                             >
                                 Home
                             </Link>
@@ -370,7 +369,7 @@ export default function Navbar() {
                             <Link
                                 href="/shop"
                                 onClick={closeMenu}
-                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333] transition-all duration-150 active:pl-1 active:opacity-60"
                             >
                                 Shop
                             </Link>
@@ -378,7 +377,7 @@ export default function Navbar() {
                             <Link
                                 href="/track-order"
                                 onClick={closeMenu}
-                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333] transition-all duration-150 active:pl-1 active:opacity-60"
                             >
                                 Track Order
                             </Link>
@@ -387,7 +386,7 @@ export default function Navbar() {
                                 <Link
                                     href="/account"
                                     onClick={closeMenu}
-                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333] transition-all duration-150 active:pl-1 active:opacity-60"
                                 >
                                     My Account
                                 </Link>
@@ -397,7 +396,7 @@ export default function Navbar() {
                                 <Link
                                     href="/login"
                                     onClick={closeMenu}
-                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333] transition-all duration-150 active:pl-1 active:opacity-60"
                                 >
                                     Login
                                 </Link>
@@ -407,7 +406,7 @@ export default function Navbar() {
                                 <Link
                                     href="/admin"
                                     onClick={closeMenu}
-                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333]"
+                                    className="border-b border-[#f0ebe8] py-4 text-[15px] text-[#333] transition-all duration-150 active:pl-1 active:opacity-60"
                                 >
                                     Admin Dashboard
                                 </Link>
@@ -416,7 +415,7 @@ export default function Navbar() {
                             <Link
                                 href="/shop"
                                 onClick={closeMenu}
-                                className="mt-5 rounded-full bg-[#b50063] py-3.5 text-center text-[14px] font-medium tracking-wide text-white"
+                                className="mt-5 rounded-full bg-[#b50063] py-3.5 text-center text-[14px] font-medium tracking-wide text-white transition-all duration-150 active:scale-[0.97] active:opacity-90"
                             >
                                 Shop Collection
                             </Link>
@@ -425,7 +424,7 @@ export default function Navbar() {
                                 <button
                                     type="button"
                                     onClick={logout}
-                                    className="mt-3 py-3 text-center text-[13px] text-[#777]"
+                                    className="mt-3 py-3 text-center text-[13px] text-[#777] transition-opacity duration-150 active:opacity-50"
                                 >
                                     Sign out
                                 </button>
