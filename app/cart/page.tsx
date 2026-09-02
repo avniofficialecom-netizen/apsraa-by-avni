@@ -40,7 +40,7 @@ export default function Cart() {
 
             <main className="min-h-screen bg-[#fffafc]">
                 <section className="border-b border-[#eee4e9] bg-[#fff7fa]">
-                    <div className="mx-auto max-w-[1400px] px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
+                    <div className="mx-auto max-w-[1400px] px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-[#a9005d]">
                             APSRAA BY AVNI
                         </p>

@@ -4,6 +4,7 @@ import Navbar from "../../../components/Navbar";
 import Footer from "../../../components/Footer";
 import ProductDetails from "../../../components/ProductDetails";
 import ProductGallery from "../../../components/ProductGallery";
+import ProductReviews from "../../../components/ProductReviews";
 import { supabase } from "../../../lib/supabase";
 
 const SITE_URL = "https://apsraa.shop";
@@ -461,11 +462,11 @@ export default async function ProductPage({
                                 <div>
 
                                     <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-pink-600">
-                                        The APSRAA story
+                                        The APSRAA promise
                                     </p>
 
                                     <h2 className="mt-3 font-serif text-3xl leading-tight tracking-[-0.025em] text-[#182033] sm:text-4xl">
-                                        Designed to be noticed.
+                                        Made to feel special.
                                     </h2>
 
                                 </div>
@@ -473,7 +474,7 @@ export default async function ProductPage({
                                 <div className="max-w-3xl">
 
                                     <p className="text-sm leading-7 text-gray-600 sm:text-base">
-                                        {productDescription}
+                                        Every APSRAA piece is selected to bring an easy touch of elegance to everyday moments and special occasions alike.
                                     </p>
 
                                     <Link
@@ -499,6 +500,8 @@ export default async function ProductPage({
                             </div>
 
                         </div>
+
+                        <ProductReviews productId={productId} />
 
                     </div>
 

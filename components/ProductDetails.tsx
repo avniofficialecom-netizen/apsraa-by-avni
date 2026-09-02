@@ -829,20 +829,6 @@ export default function ProductDetails({
                     {product.title}
                 </h1>
 
-                <div className="mt-5 flex flex-wrap items-center gap-3 text-sm">
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-amber-500">★</span>
-                        <span className="font-semibold text-gray-900">
-                            {product.rating}
-                        </span>
-                    </div>
-
-                    <span className="text-gray-300">|</span>
-
-                    <span className="text-gray-500">
-                        {product.reviews} reviews
-                    </span>
-                </div>
             </div>
 
             {/* ==========================================
