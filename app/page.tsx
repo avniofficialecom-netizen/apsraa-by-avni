@@ -507,8 +507,8 @@ export default async function Home() {
 
                                         <img
                                             src={
-                                                homeHeroProduct?.image ||
                                                 hero.hero_image_url ||
+                                                homeHeroProduct?.image ||
                                                 "/images/product1.jpg"
                                             }
                                             alt={
@@ -1130,3 +1130,6 @@ export default async function Home() {
         </>
     );
 }
+
+
+
