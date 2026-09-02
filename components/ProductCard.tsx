@@ -34,10 +34,28 @@ export default function ProductCard({
     const isOutOfStock = stock <= 0;
     const isLowStock = stock > 0 && stock <= 5;
 
+    /*
+     * Always normalize the price before displaying it.
+     *
+     * This protects the storefront from corrupted currency text such as:
+     * â‚¹149
+     * a,1 149
+     * ₹149
+     *
+     * The actual numeric price is preserved and a real ₹ symbol is
+     * always added by this component.
+     */
+    const numericPrice = String(subtitle ?? "")
+        .replace(/,/g, "")
+        .match(/-?\d+(?:\.\d+)?/)?.[0] ?? "0";
+
+    const cleanPrice = `₹${numericPrice}`;
+
     const goToProduct = () => router.push(`/product/${id}`);
 
     const handleAddToCart = async () => {
         if (isOutOfStock) return;
+
         if (hasVariants) {
             router.push(`/product/${id}`);
             return;
@@ -46,18 +64,22 @@ export default function ProductCard({
         const success = await addToCart({
             id,
             title,
-            price: subtitle,
+            price: cleanPrice,
             image,
         });
 
         if (success === false) return;
 
         setShowAddedMessage(true);
-        window.setTimeout(() => setShowAddedMessage(false), 3500);
+
+        window.setTimeout(() => {
+            setShowAddedMessage(false);
+        }, 3500);
     };
 
     const handleBuyNow = async () => {
         if (isOutOfStock) return;
+
         if (hasVariants) {
             router.push(`/product/${id}`);
             return;
@@ -66,11 +88,12 @@ export default function ProductCard({
         const success = await addToCart({
             id,
             title,
-            price: subtitle,
+            price: cleanPrice,
             image,
         });
 
         if (success === false) return;
+
         router.push("/checkout");
     };
 
@@ -86,7 +109,6 @@ export default function ProductCard({
 
     return (
         <article className="group relative">
-
             {/* IMAGE */}
 
             <div
@@ -153,24 +175,25 @@ export default function ProductCard({
             {/* INFO */}
 
             <div className="pt-4">
-
                 <div className="flex items-start justify-between gap-3">
                     <button
                         type="button"
                         onClick={goToProduct}
                         className="min-w-0 text-left"
                     >
-                        <h3 className="
-                            line-clamp-2 text-[13px] font-medium leading-[1.4]
-                            text-[#292624] transition-colors hover:text-[#a9005d]
-                            sm:text-[15px]
-                        ">
+                        <h3
+                            className="
+                                line-clamp-2 text-[13px] font-medium leading-[1.4]
+                                text-[#292624] transition-colors hover:text-[#a9005d]
+                                sm:text-[15px]
+                            "
+                        >
                             {title}
                         </h3>
                     </button>
 
                     <span className="shrink-0 text-[13px] font-semibold text-[#292624] sm:text-sm">
-                        {subtitle}
+                        {cleanPrice}
                     </span>
                 </div>
 
