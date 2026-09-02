@@ -731,7 +731,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            Under â‚¹299
+                                            Under ₹299
                                         </Link>
 
                                         <Link
@@ -749,7 +749,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            â‚¹300 â€“ â‚¹499
+                                            ₹300 â€“ ₹499
                                         </Link>
 
                                         <Link
@@ -767,7 +767,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            â‚¹500+
+                                            ₹500+
                                         </Link>
 
                                     </div>
@@ -860,15 +860,15 @@ export default async function Shop({
                                         </option>
 
                                         <option value="under-299">
-                                            Under â‚¹299
+                                            Under ₹299
                                         </option>
 
                                         <option value="300-499">
-                                            â‚¹300 â€“ â‚¹499
+                                            ₹300 â€“ ₹499
                                         </option>
 
                                         <option value="500-plus">
-                                            â‚¹500+
+                                            ₹500+
                                         </option>
                                     </select>
 
@@ -1111,11 +1111,11 @@ export default async function Shop({
                                         <span className="px-3 py-1.5 bg-pink-50 text-pink-700 rounded-full text-xs font-semibold">
                                             {price ===
                                             "under-299"
-                                                ? "Under â‚¹299"
+                                                ? "Under ₹299"
                                                 : price ===
                                                   "300-499"
-                                                ? "â‚¹300 â€“ â‚¹499"
-                                                : "â‚¹500+"}
+                                                ? "₹300 â€“ ₹499"
+                                                : "₹500+"}
                                         </span>
                                     )}
 
@@ -1194,7 +1194,7 @@ export default async function Shop({
                                                             product.title ||
                                                             "Product"
                                                         }
-                                                        subtitle={`â‚¹${
+                                                        subtitle={`₹${
                                                             product.price ??
                                                             0
                                                         }`}
