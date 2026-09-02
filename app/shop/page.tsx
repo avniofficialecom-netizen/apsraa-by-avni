@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/ProductCard";
@@ -37,6 +37,10 @@ type Variant = {
     size: string | null;
     color: string | null;
     stock: number | null;
+};
+
+type StoreSettings = {
+    shop_hero_image_url: string | null;
 };
 
 function formatCategory(category: string) {
@@ -130,7 +134,7 @@ export default async function Shop({
                     <div className="max-w-4xl mx-auto">
                         <div className="bg-white rounded-3xl border border-pink-100 p-10 text-center shadow-sm">
                             <div className="text-4xl">
-                                ⚠️
+                                âš ï¸
                             </div>
 
                             <h1 className="text-2xl font-bold text-gray-900 mt-4">
@@ -152,8 +156,34 @@ export default async function Shop({
     const products = (productData || []) as Product[];
 
     // ==========================================
-    // SHOP HERO
-    // Admin-selected Shop Hero remains dynamic.
+    // SHOP HERO SETTINGS
+    // ==========================================
+
+    const {
+        data: settingsData,
+        error: settingsError,
+    } = await supabase
+        .from("store_settings")
+        .select("shop_hero_image_url")
+        .order("id", {
+            ascending: true,
+        })
+        .limit(1)
+        .maybeSingle();
+
+    if (settingsError) {
+        console.error(
+            "Shop hero settings loading error:",
+            settingsError
+        );
+    }
+
+    const shopHeroImageUrl =
+        (settingsData as StoreSettings | null)
+            ?.shop_hero_image_url || null;
+
+    // ==========================================
+    // SHOP HERO FALLBACK
     // ==========================================
 
     const heroProduct =
@@ -380,8 +410,6 @@ export default async function Shop({
         collection,
     ].filter(Boolean).length;
 
-    const totalProducts = products.length;
-
     return (
         <>
             <Navbar />
@@ -398,9 +426,7 @@ export default async function Shop({
 
                         <div className="grid lg:grid-cols-2 min-h-[500px] lg:min-h-[560px]">
 
-                            {/* ==================================
-                                HERO COPY
-                            ================================== */}
+                            {/* HERO COPY */}
 
                             <div className="flex items-center px-6 sm:px-10 lg:px-16 xl:px-20 py-14 lg:py-20">
 
@@ -413,7 +439,7 @@ export default async function Shop({
                                     <div className="flex items-center gap-4 mb-6">
                                         <span className="h-px w-16 bg-[#d7aa58]" />
                                         <span className="text-[#d7aa58] text-xl">
-                                            ✦
+                                            âœ¦
                                         </span>
                                         <span className="h-px w-16 bg-[#d7aa58]" />
                                     </div>
@@ -435,7 +461,7 @@ export default async function Shop({
                                     <div className="flex items-center gap-4 my-7">
                                         <span className="h-px w-20 bg-[#d7aa58]" />
                                         <span className="text-[#d7aa58] text-2xl">
-                                            ✦
+                                            âœ¦
                                         </span>
                                         <span className="h-px w-20 bg-[#d7aa58]" />
                                     </div>
@@ -526,15 +552,29 @@ export default async function Shop({
                                 HERO IMAGE
                             ================================== */}
 
-                            {heroProduct?.image && (
+                            {(shopHeroImageUrl ||
+                                heroProduct?.image) && (
                                 <Link
-                                    href={`/product/${heroProduct.id}`}
+                                    href={
+                                        heroProduct?.id
+                                            ? `/product/${heroProduct.id}`
+                                            : "/shop"
+                                    }
                                     className="group relative min-h-[380px] lg:min-h-full overflow-hidden"
                                 >
 
                                     <img
-                                        src={heroProduct.image}
-                                        alt={heroProduct.title}
+                                        src={
+                                            shopHeroImageUrl ||
+                                            heroProduct?.image ||
+                                            ""
+                                        }
+                                        alt={
+                                            shopHeroImageUrl
+                                                ? "APSRAA BY AVNI Shop Collection"
+                                                : heroProduct?.title ||
+                                                  "APSRAA Shop Collection"
+                                        }
                                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                                     />
 
@@ -565,9 +605,7 @@ export default async function Shop({
 
                     <div className="grid lg:grid-cols-[220px_1fr] xl:grid-cols-[240px_1fr] gap-8 xl:gap-12">
 
-                        {/* ==================================
-                            FILTER SIDEBAR
-                        ================================== */}
+                        {/* FILTER SIDEBAR */}
 
                         <aside className="hidden lg:block">
 
@@ -580,7 +618,7 @@ export default async function Shop({
                                     </h2>
 
                                     <span className="text-lg text-gray-500">
-                                        ☷
+                                        â˜·
                                     </span>
 
                                 </div>
@@ -590,13 +628,15 @@ export default async function Shop({
                                 <div className="py-6 border-b border-gray-200">
 
                                     <div className="flex items-center justify-between mb-5">
+
                                         <h3 className="text-sm font-semibold text-gray-900">
                                             Categories
                                         </h3>
 
                                         <span className="text-gray-500">
-                                            ⌃
+                                            âŒƒ
                                         </span>
+
                                     </div>
 
                                     <div className="space-y-4">
@@ -669,7 +709,7 @@ export default async function Shop({
                                         </h3>
 
                                         <span className="text-gray-500">
-                                            ⌄
+                                            âŒ„
                                         </span>
 
                                     </div>
@@ -691,7 +731,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            Under ₹299
+                                            Under â‚¹299
                                         </Link>
 
                                         <Link
@@ -709,7 +749,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            ₹300 – ₹499
+                                            â‚¹300 â€“ â‚¹499
                                         </Link>
 
                                         <Link
@@ -727,7 +767,7 @@ export default async function Shop({
                                                     : "text-gray-600"
                                             }`}
                                         >
-                                            ₹500+
+                                            â‚¹500+
                                         </Link>
 
                                     </div>
@@ -748,21 +788,21 @@ export default async function Shop({
                                             href="/shop?collection=new-arrivals"
                                             className="block text-sm text-gray-600 hover:text-pink-600"
                                         >
-                                            ✨ New Arrivals
+                                            âœ¨ New Arrivals
                                         </Link>
 
                                         <Link
                                             href="/shop?collection=best-sellers"
                                             className="block text-sm text-gray-600 hover:text-pink-600"
                                         >
-                                            🔥 Best Sellers
+                                            ðŸ”¥ Best Sellers
                                         </Link>
 
                                         <Link
                                             href="/shop?collection=trending"
                                             className="block text-sm text-gray-600 hover:text-pink-600"
                                         >
-                                            ♡ Trending
+                                            â™¡ Trending
                                         </Link>
 
                                     </div>
@@ -773,9 +813,7 @@ export default async function Shop({
 
                         </aside>
 
-                        {/* ==================================
-                            PRODUCTS AREA
-                        ================================== */}
+                        {/* PRODUCTS AREA */}
 
                         <div className="min-w-0">
 
@@ -822,15 +860,15 @@ export default async function Shop({
                                         </option>
 
                                         <option value="under-299">
-                                            Under ₹299
+                                            Under â‚¹299
                                         </option>
 
                                         <option value="300-499">
-                                            ₹300 – ₹499
+                                            â‚¹300 â€“ â‚¹499
                                         </option>
 
                                         <option value="500-plus">
-                                            ₹500+
+                                            â‚¹500+
                                         </option>
                                     </select>
 
@@ -894,7 +932,7 @@ export default async function Shop({
                                         </option>
 
                                         <option value="name">
-                                            Name: A–Z
+                                            Name: Aâ€“Z
                                         </option>
                                     </select>
 
@@ -1036,8 +1074,9 @@ export default async function Shop({
                                                 </option>
 
                                                 <option value="name">
-                                                    Name: A–Z
+                                                    Name: Aâ€“Z
                                                 </option>
+
                                             </select>
 
                                             <button
@@ -1072,11 +1111,11 @@ export default async function Shop({
                                         <span className="px-3 py-1.5 bg-pink-50 text-pink-700 rounded-full text-xs font-semibold">
                                             {price ===
                                             "under-299"
-                                                ? "Under ₹299"
+                                                ? "Under â‚¹299"
                                                 : price ===
                                                   "300-499"
-                                                ? "₹300 – ₹499"
-                                                : "₹500+"}
+                                                ? "â‚¹300 â€“ â‚¹499"
+                                                : "â‚¹500+"}
                                         </span>
                                     )}
 
@@ -1095,15 +1134,13 @@ export default async function Shop({
                                 </div>
                             )}
 
-                            {/* ==================================
-                                PRODUCT GRID
-                            ================================== */}
+                            {/* PRODUCT GRID */}
 
                             {filteredProducts.length === 0 ? (
                                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
 
                                     <div className="text-4xl">
-                                        🔍
+                                        ðŸ”
                                     </div>
 
                                     <h2 className="text-xl font-bold text-gray-900 mt-4">
@@ -1157,7 +1194,7 @@ export default async function Shop({
                                                             product.title ||
                                                             "Product"
                                                         }
-                                                        subtitle={`₹${
+                                                        subtitle={`â‚¹${
                                                             product.price ??
                                                             0
                                                         }`}

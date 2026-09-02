@@ -12,6 +12,7 @@ import Footer from "../../../components/Footer";
 
 type Settings = {
     hero_image_url: string;
+    shop_hero_image_url: string | null;
     hero_badge: string;
     hero_title: string;
     hero_description: string;
@@ -24,6 +25,7 @@ type Settings = {
 
 const DEFAULT_SETTINGS: Settings = {
     hero_image_url: "/images/product1.jpg",
+    shop_hero_image_url: null,
     hero_badge: "✨ Premium Collection 2026",
     hero_title: "Elegance That Lasts",
     hero_description:
@@ -44,9 +46,17 @@ export default function StoreSettingsPage() {
     const [selectedFile, setSelectedFile] =
         useState<File | null>(null);
 
+    const [shopHeroFile, setShopHeroFile] =
+        useState<File | null>(null);
+
     const [previewUrl, setPreviewUrl] =
         useState<string>(
             DEFAULT_SETTINGS.hero_image_url
+        );
+
+    const [shopHeroPreviewUrl, setShopHeroPreviewUrl] =
+        useState<string>(
+            DEFAULT_SETTINGS.shop_hero_image_url || ""
         );
 
     const [loading, setLoading] =
@@ -123,6 +133,11 @@ export default function StoreSettingsPage() {
                     setPreviewUrl(
                         loaded.hero_image_url
                     );
+
+                    setShopHeroPreviewUrl(
+                        loaded.shop_hero_image_url ||
+                        ""
+                    );
                 }
             } catch (err) {
                 if (!cancelled) {
@@ -164,7 +179,7 @@ export default function StoreSettingsPage() {
     }
 
     // =====================================================
-    // IMAGE SELECT
+    // HOMEPAGE IMAGE SELECT
     // =====================================================
 
     function handleImageChange(
@@ -202,6 +217,47 @@ export default function StoreSettingsPage() {
             URL.createObjectURL(file);
 
         setPreviewUrl(objectUrl);
+    }
+
+    // =====================================================
+    // SHOP HERO IMAGE SELECT
+    // =====================================================
+
+    function handleShopHeroImageChange(
+        event: ChangeEvent<HTMLInputElement>
+    ) {
+        const file =
+            event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith("image/")) {
+            setError(
+                "Please select a valid image file."
+            );
+            return;
+        }
+
+        if (
+            file.size >
+            10 * 1024 * 1024
+        ) {
+            setError(
+                "Shop hero image must be smaller than 10 MB."
+            );
+            return;
+        }
+
+        setShopHeroFile(file);
+        setMessage("");
+        setError("");
+
+        const objectUrl =
+            URL.createObjectURL(file);
+
+        setShopHeroPreviewUrl(objectUrl);
     }
 
     // =====================================================
@@ -261,6 +317,7 @@ export default function StoreSettingsPage() {
                 String(settings.hero_enabled)
             );
 
+            // Homepage hero image
             if (selectedFile) {
                 formData.append(
                     "hero_image",
@@ -268,8 +325,15 @@ export default function StoreSettingsPage() {
                 );
             }
 
-            // IMPORTANT:
-            // API route uses PUT, not POST.
+            // Shop page hero image
+            if (shopHeroFile) {
+                formData.append(
+                    "shop_hero_image",
+                    shopHeroFile
+                );
+            }
+
+            // API route uses PUT.
             const response =
                 await fetch(
                     "/api/admin/settings",
@@ -314,12 +378,18 @@ export default function StoreSettingsPage() {
                 setPreviewUrl(
                     saved.hero_image_url
                 );
+
+                setShopHeroPreviewUrl(
+                    saved.shop_hero_image_url ||
+                    ""
+                );
             }
 
             setSelectedFile(null);
+            setShopHeroFile(null);
 
             setMessage(
-                "Homepage settings saved successfully."
+                "Store settings saved successfully."
             );
         } catch (err) {
             setError(
@@ -385,7 +455,7 @@ export default function StoreSettingsPage() {
                                 </h1>
 
                                 <p className="text-slate-500 mt-1">
-                                    Manage your homepage hero section.
+                                    Manage your homepage and shop page appearance.
                                 </p>
 
                             </div>
@@ -426,7 +496,7 @@ export default function StoreSettingsPage() {
                     >
 
                         {/* =================================================
-                            HERO IMAGE
+                            HOMEPAGE HERO IMAGE
                         ================================================= */}
 
                         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -482,7 +552,7 @@ export default function StoreSettingsPage() {
                                         <div className="mt-4 bg-pink-50 border border-pink-100 rounded-xl p-4">
 
                                             <p className="font-semibold text-pink-700">
-                                                New image selected
+                                                New homepage image selected
                                             </p>
 
                                             <p className="text-sm text-slate-600 mt-1 break-all">
@@ -492,6 +562,119 @@ export default function StoreSettingsPage() {
                                             <p className="text-xs text-slate-500 mt-1">
                                                 {(
                                                     selectedFile.size /
+                                                    1024 /
+                                                    1024
+                                                ).toFixed(
+                                                    2
+                                                )}{" "}
+                                                MB
+                                            </p>
+
+                                        </div>
+                                    )}
+
+                                    <p className="text-xs text-slate-500 mt-4">
+                                        Recommended: high-quality JPG, PNG, WebP or AVIF.
+                                        Maximum size: 10 MB.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                        {/* =================================================
+                            SHOP PAGE HERO IMAGE
+                        ================================================= */}
+
+                        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+
+                            <div className="mb-5">
+
+                                <h2 className="text-xl font-bold text-slate-900">
+                                    Shop Page Hero Image
+                                </h2>
+
+                                <p className="text-sm text-slate-500 mt-1">
+                                    This image appears on the Shop page and is independent from the homepage hero image.
+                                </p>
+
+                            </div>
+
+                            <div className="grid lg:grid-cols-2 gap-6">
+
+                                <div>
+
+                                    <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 bg-slate-50">
+
+                                        {shopHeroPreviewUrl ? (
+                                            <img
+                                                src={
+                                                    shopHeroPreviewUrl
+                                                }
+                                                alt="Shop page hero preview"
+                                                className="w-full h-[420px] object-cover rounded-xl"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-[420px] rounded-xl bg-slate-100 flex items-center justify-center text-center px-6">
+
+                                                <div>
+
+                                                    <div className="text-5xl mb-3">
+                                                        🛍️
+                                                    </div>
+
+                                                    <p className="font-semibold text-slate-700">
+                                                        No custom Shop hero image
+                                                    </p>
+
+                                                    <p className="text-sm text-slate-500 mt-1">
+                                                        The Shop page will use its product image fallback.
+                                                    </p>
+
+                                                </div>
+
+                                            </div>
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                                <div className="flex flex-col justify-center">
+
+                                    <label className="block">
+
+                                        <span className="text-sm font-semibold text-slate-700">
+                                            Choose New Shop Image
+                                        </span>
+
+                                        <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp,image/avif"
+                                            onChange={
+                                                handleShopHeroImageChange
+                                            }
+                                            className="mt-2 block w-full text-sm text-slate-600 border border-slate-300 rounded-lg p-3 bg-white cursor-pointer"
+                                        />
+
+                                    </label>
+
+                                    {shopHeroFile && (
+                                        <div className="mt-4 bg-pink-50 border border-pink-100 rounded-xl p-4">
+
+                                            <p className="font-semibold text-pink-700">
+                                                New Shop image selected
+                                            </p>
+
+                                            <p className="text-sm text-slate-600 mt-1 break-all">
+                                                {shopHeroFile.name}
+                                            </p>
+
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                {(
+                                                    shopHeroFile.size /
                                                     1024 /
                                                     1024
                                                 ).toFixed(

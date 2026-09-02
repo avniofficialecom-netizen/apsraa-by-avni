@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 type StoreSettings = {
     id: number;
     hero_image_url: string | null;
+    shop_hero_image_url: string | null;
     hero_badge: string | null;
     hero_title: string | null;
     hero_description: string | null;
@@ -100,6 +101,91 @@ async function authenticateAdmin() {
     };
 }
 
+const ALLOWED_IMAGE_TYPES = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/avif",
+];
+
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+
+async function uploadImage(
+    image: File,
+    prefix: string
+) {
+    if (!ALLOWED_IMAGE_TYPES.includes(image.type)) {
+        throw new Error(
+            "Only JPG, PNG, WEBP or AVIF images are allowed."
+        );
+    }
+
+    if (image.size > MAX_IMAGE_SIZE) {
+        throw new Error(
+            "Hero image must be 10 MB or smaller."
+        );
+    }
+
+    const extension =
+        image.name
+            .split(".")
+            .pop()
+            ?.toLowerCase() || "jpg";
+
+    const filePath =
+        `${prefix}-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 9)}.${extension}`;
+
+    const arrayBuffer =
+        await image.arrayBuffer();
+
+    const buffer =
+        Buffer.from(arrayBuffer);
+
+    const {
+        error: uploadError,
+    } = await supabaseAdmin.storage
+        .from("hero-images")
+        .upload(
+            filePath,
+            buffer,
+            {
+                contentType: image.type,
+                cacheControl: "3600",
+                upsert: false,
+            }
+        );
+
+    if (uploadError) {
+        console.error(
+            `${prefix} image upload error:`,
+            uploadError
+        );
+
+        throw new Error(
+            `${prefix === "shop-hero"
+                ? "Shop page hero"
+                : "Homepage hero"
+            } image upload failed.`
+        );
+    }
+
+    const {
+        data: publicUrlData,
+    } =
+        supabaseAdmin.storage
+            .from("hero-images")
+            .getPublicUrl(filePath);
+
+    return {
+        filePath,
+        publicUrl:
+            publicUrlData.publicUrl,
+    };
+}
+
 // ======================================================
 // GET SETTINGS
 // ======================================================
@@ -126,7 +212,9 @@ export async function GET() {
         } = await supabaseAdmin
             .from("store_settings")
             .select("*")
-            .order("id", { ascending: true })
+            .order("id", {
+                ascending: true,
+            })
             .limit(1)
             .maybeSingle();
 
@@ -150,32 +238,49 @@ export async function GET() {
 
         // If the table exists but has no row, create one.
         if (!data) {
-            const { data: created, error: createError } =
-                await supabaseAdmin
-                    .from("store_settings")
-                    .insert({
-                        hero_image_url:
-                            "/images/product1.jpg",
-                        hero_badge:
-                            "✨ Premium Collection 2026",
-                        hero_title:
-                            "Elegance That Lasts",
-                        hero_description:
-                            "Premium Artificial Jewellery For Every Occasion.",
-                        hero_button_one_text:
-                            "Shop Collection",
-                        hero_button_one_link:
-                            "/shop",
-                        hero_button_two_text:
-                            "Explore Categories",
-                        hero_button_two_link:
-                            "/products/categories",
-                        hero_enabled: true,
-                    })
-                    .select("*")
-                    .single();
+            const {
+                data: created,
+                error: createError,
+            } = await supabaseAdmin
+                .from("store_settings")
+                .insert({
+                    hero_image_url:
+                        "/images/product1.jpg",
 
-            if (createError || !created) {
+                    shop_hero_image_url:
+                        null,
+
+                    hero_badge:
+                        "✨ Premium Collection 2026",
+
+                    hero_title:
+                        "Elegance That Lasts",
+
+                    hero_description:
+                        "Premium Artificial Jewellery For Every Occasion.",
+
+                    hero_button_one_text:
+                        "Shop Collection",
+
+                    hero_button_one_link:
+                        "/shop",
+
+                    hero_button_two_text:
+                        "Explore Categories",
+
+                    hero_button_two_link:
+                        "/products/categories",
+
+                    hero_enabled:
+                        true,
+                })
+                .select("*")
+                .single();
+
+            if (
+                createError ||
+                !created
+            ) {
                 console.error(
                     "Store Settings Create Error:",
                     createError
@@ -201,7 +306,8 @@ export async function GET() {
 
         return NextResponse.json({
             success: true,
-            settings: data as StoreSettings,
+            settings:
+                data as StoreSettings,
         });
     } catch (error) {
         console.error(
@@ -212,7 +318,8 @@ export async function GET() {
         return NextResponse.json(
             {
                 success: false,
-                message: "Internal server error.",
+                message:
+                    "Internal server error.",
             },
             {
                 status: 500,
@@ -226,8 +333,15 @@ export async function GET() {
 // ======================================================
 
 export async function PUT(req: Request) {
+    let uploadedHeroFilePath:
+        string | null = null;
+
+    let uploadedShopHeroFilePath:
+        string | null = null;
+
     try {
-        const auth = await authenticateAdmin();
+        const auth =
+            await authenticateAdmin();
 
         if (!auth.success) {
             return NextResponse.json(
@@ -241,21 +355,32 @@ export async function PUT(req: Request) {
             );
         }
 
-        const formData = await req.formData();
+        const formData =
+            await req.formData();
+
+        // ----------------------------------------------
+        // TEXT SETTINGS
+        // ----------------------------------------------
 
         const heroBadge =
             String(
-                formData.get("hero_badge") ?? ""
+                formData.get(
+                    "hero_badge"
+                ) ?? ""
             ).trim();
 
         const heroTitle =
             String(
-                formData.get("hero_title") ?? ""
+                formData.get(
+                    "hero_title"
+                ) ?? ""
             ).trim();
 
         const heroDescription =
             String(
-                formData.get("hero_description") ?? ""
+                formData.get(
+                    "hero_description"
+                ) ?? ""
             ).trim();
 
         const heroButtonOneText =
@@ -288,14 +413,21 @@ export async function PUT(req: Request) {
 
         const heroEnabled =
             String(
-                formData.get("hero_enabled") ?? "true"
+                formData.get(
+                    "hero_enabled"
+                ) ?? "true"
             ) === "true";
+
+        // ----------------------------------------------
+        // VALIDATION
+        // ----------------------------------------------
 
         if (!heroTitle) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: "Hero title is required.",
+                    message:
+                        "Hero title is required.",
                 },
                 {
                     status: 400,
@@ -369,18 +501,21 @@ export async function PUT(req: Request) {
         }
 
         // ----------------------------------------------
-        // Get current settings
+        // CURRENT SETTINGS
         // ----------------------------------------------
 
         const {
             data: currentSettings,
             error: currentError,
-        } = await supabaseAdmin
-            .from("store_settings")
-            .select("*")
-            .order("id", { ascending: true })
-            .limit(1)
-            .maybeSingle();
+        } =
+            await supabaseAdmin
+                .from("store_settings")
+                .select("*")
+                .order("id", {
+                    ascending: true,
+                })
+                .limit(1)
+                .maybeSingle();
 
         if (currentError) {
             console.error(
@@ -413,168 +548,202 @@ export async function PUT(req: Request) {
             );
         }
 
+        // ----------------------------------------------
+        // CURRENT IMAGE URLS
+        // ----------------------------------------------
+
         let heroImageUrl =
             currentSettings.hero_image_url;
 
-        let uploadedFilePath: string | null = null;
+        let shopHeroImageUrl =
+            currentSettings.shop_hero_image_url ??
+            null;
 
         // ----------------------------------------------
-        // Upload new hero image if supplied
+        // HOMEPAGE HERO IMAGE
         // ----------------------------------------------
 
-        const image = formData.get("hero_image");
+        const heroImage =
+            formData.get("hero_image");
 
-        if (image instanceof File && image.size > 0) {
-            const allowedTypes = [
-                "image/jpeg",
-                "image/jpg",
-                "image/png",
-                "image/webp",
-                "image/avif",
-            ];
+        if (
+            heroImage instanceof File &&
+            heroImage.size > 0
+        ) {
+            try {
+                const uploaded =
+                    await uploadImage(
+                        heroImage,
+                        "hero"
+                    );
 
-            if (!allowedTypes.includes(image.type)) {
+                uploadedHeroFilePath =
+                    uploaded.filePath;
+
+                heroImageUrl =
+                    uploaded.publicUrl;
+            } catch (error) {
                 return NextResponse.json(
                     {
                         success: false,
                         message:
-                            "Only JPG, PNG, WEBP or AVIF images are allowed.",
+                            error instanceof Error
+                                ? error.message
+                                : "Hero image upload failed.",
                     },
                     {
                         status: 400,
                     }
                 );
             }
-
-            const maxSize =
-                10 * 1024 * 1024;
-
-            if (image.size > maxSize) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            "Hero image must be 10 MB or smaller.",
-                    },
-                    {
-                        status: 400,
-                    }
-                );
-            }
-
-            const extension =
-                image.name
-                    .split(".")
-                    .pop()
-                    ?.toLowerCase() || "jpg";
-
-            const filePath =
-                `hero-${Date.now()}-${Math.random()
-                    .toString(36)
-                    .slice(2, 9)}.${extension}`;
-
-            uploadedFilePath = filePath;
-
-            const arrayBuffer =
-                await image.arrayBuffer();
-
-            const buffer =
-                Buffer.from(arrayBuffer);
-
-            const {
-                error: uploadError,
-            } = await supabaseAdmin.storage
-                .from("hero-images")
-                .upload(
-                    filePath,
-                    buffer,
-                    {
-                        contentType: image.type,
-                        cacheControl: "3600",
-                        upsert: false,
-                    }
-                );
-
-            if (uploadError) {
-                console.error(
-                    "Hero Image Upload Error:",
-                    uploadError
-                );
-
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message:
-                            "Hero image upload failed.",
-                    },
-                    {
-                        status: 500,
-                    }
-                );
-            }
-
-            const {
-                data: publicUrlData,
-            } =
-                supabaseAdmin.storage
-                    .from("hero-images")
-                    .getPublicUrl(filePath);
-
-            heroImageUrl =
-                publicUrlData.publicUrl;
         }
 
         // ----------------------------------------------
-        // Update database
+        // SHOP PAGE HERO IMAGE
+        // ----------------------------------------------
+
+        const shopHeroImage =
+            formData.get(
+                "shop_hero_image"
+            );
+console.log(
+    "SHOP HERO DEBUG:",
+    shopHeroImage instanceof File,
+    shopHeroImage instanceof File
+        ? {
+              name: shopHeroImage.name,
+              type: shopHeroImage.type,
+              size: shopHeroImage.size,
+          }
+        : shopHeroImage
+);
+        if (
+            shopHeroImage instanceof File &&
+            shopHeroImage.size > 0
+        ) {
+            try {
+                const uploaded =
+                    await uploadImage(
+                        shopHeroImage,
+                        "shop-hero"
+                    );
+
+                uploadedShopHeroFilePath =
+                    uploaded.filePath;
+
+                shopHeroImageUrl =
+                    uploaded.publicUrl;
+            } catch (error) {
+                // Clean up homepage upload if
+                // shop upload fails.
+                if (
+                    uploadedHeroFilePath
+                ) {
+                    await supabaseAdmin
+                        .storage
+                        .from("hero-images")
+                        .remove([
+                            uploadedHeroFilePath,
+                        ]);
+                }
+
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message:
+                            error instanceof Error
+                                ? error.message
+                                : "Shop hero image upload failed.",
+                    },
+                    {
+                        status: 400,
+                    }
+                );
+            }
+        }
+
+        // ----------------------------------------------
+        // UPDATE DATABASE
         // ----------------------------------------------
 
         const {
             data: updatedSettings,
             error: updateError,
-        } = await supabaseAdmin
-            .from("store_settings")
-            .update({
-                hero_image_url:
-                heroImageUrl,
-                hero_badge:
-                heroBadge,
-                hero_title:
-                heroTitle,
-                hero_description:
-                heroDescription,
-                hero_button_one_text:
-                heroButtonOneText,
-                hero_button_one_link:
-                heroButtonOneLink,
-                hero_button_two_text:
-                heroButtonTwoText,
-                hero_button_two_link:
-                heroButtonTwoLink,
-                hero_enabled:
-                heroEnabled,
-                updated_at:
-                    new Date().toISOString(),
-            })
-            .eq(
-                "id",
-                currentSettings.id
-            )
-            .select("*")
-            .single();
+        } =
+            await supabaseAdmin
+                .from("store_settings")
+                .update({
+                    hero_image_url:
+                        heroImageUrl,
 
-        if (updateError || !updatedSettings) {
+                    shop_hero_image_url:
+                        shopHeroImageUrl,
+
+                    hero_badge:
+                        heroBadge,
+
+                    hero_title:
+                        heroTitle,
+
+                    hero_description:
+                        heroDescription,
+
+                    hero_button_one_text:
+                        heroButtonOneText,
+
+                    hero_button_one_link:
+                        heroButtonOneLink,
+
+                    hero_button_two_text:
+                        heroButtonTwoText,
+
+                    hero_button_two_link:
+                        heroButtonTwoLink,
+
+                    hero_enabled:
+                        heroEnabled,
+
+                    updated_at:
+                        new Date().toISOString(),
+                })
+                .eq(
+                    "id",
+                    currentSettings.id
+                )
+                .select("*")
+                .single();
+
+        if (
+            updateError ||
+            !updatedSettings
+        ) {
             console.error(
                 "Store Settings Update Error:",
                 updateError
             );
 
-            // Clean up newly uploaded image if DB update failed.
-            if (uploadedFilePath) {
-                await supabaseAdmin.storage
+            // Clean up any newly uploaded files
+            // because the database update failed.
+            const filesToRemove =
+                [
+                    uploadedHeroFilePath,
+                    uploadedShopHeroFilePath,
+                ].filter(
+                    (
+                        path
+                    ): path is string =>
+                        Boolean(path)
+                );
+
+            if (
+                filesToRemove.length > 0
+            ) {
+                await supabaseAdmin
+                    .storage
                     .from("hero-images")
-                    .remove([
-                        uploadedFilePath,
-                    ]);
+                    .remove(
+                        filesToRemove
+                    );
             }
 
             return NextResponse.json(
@@ -594,7 +763,7 @@ export async function PUT(req: Request) {
             message:
                 "Store settings saved successfully.",
             settings:
-            updatedSettings,
+                updatedSettings,
         });
     } catch (error) {
         console.error(
@@ -602,10 +771,44 @@ export async function PUT(req: Request) {
             error
         );
 
+        // Clean up uploaded files if
+        // an unexpected error occurs.
+        const filesToRemove =
+            [
+                uploadedHeroFilePath,
+                uploadedShopHeroFilePath,
+            ].filter(
+                (
+                    path
+                ): path is string =>
+                    Boolean(path)
+            );
+
+        if (
+            filesToRemove.length > 0
+        ) {
+            try {
+                await supabaseAdmin
+                    .storage
+                    .from("hero-images")
+                    .remove(
+                        filesToRemove
+                    );
+            } catch (cleanupError) {
+                console.error(
+                    "Image cleanup error:",
+                    cleanupError
+                );
+            }
+        }
+
         return NextResponse.json(
             {
                 success: false,
-                message: "Internal server error.",
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : "Internal server error.",
             },
             {
                 status: 500,
